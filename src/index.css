@@ -351,6 +351,14 @@ textarea:focus {
   border-color: var(--line-strong);
 }
 
+.chip.active[data-net='raw'] {
+  background: var(--st-raw);
+}
+
+.chip.active[data-net='edited'] {
+  background: var(--st-edited);
+}
+
 .chip.active[data-net='instagram'] {
   background: linear-gradient(45deg, var(--ig-a), var(--ig-b) 55%, var(--ig-c));
 }

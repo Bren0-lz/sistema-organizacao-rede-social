@@ -20,8 +20,13 @@ import { NetworkIcon } from '../components/NetworkIcon';
 import { StageIcon } from '../components/StageIcon';
 import { STAGE_COLORS, STAGE_LABELS } from '../lib/journey';
 
-type Filter = 'all' | Network;
+type Filter = 'all' | 'raw' | 'edited' | Network;
 type ViewMode = 'board' | 'list';
+
+const STAGE_FILTERS: { filter: 'raw' | 'edited'; label: string }[] = [
+  { filter: 'raw', label: '🎬 Vídeos crus' },
+  { filter: 'edited', label: '✂️ Vídeos editados' },
+];
 
 const STAGES: { stage: Stage; title: string; color: string }[] = [
   { stage: 'raw', title: STAGE_LABELS.raw, color: STAGE_COLORS.raw },
@@ -44,7 +49,7 @@ export function Dashboard() {
   const items = useStore((s) => s.items);
   const refresh = useStore((s) => s.refresh);
   const [filter, setFilter] = useState<Filter>('all');
-  const [view, setView] = useState<ViewMode>('board');
+  const [view, setView] = useState<ViewMode>('list');
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [openItemId, setOpenItemId] = useState<string | null>(null);
@@ -66,7 +71,11 @@ export function Dashboard() {
   const byStage = useMemo(() => {
     const map = new Map<Stage, ContentItem[]>(STAGES.map(({ stage }) => [stage, []]));
     for (const item of searched) {
-      const stage = filter === 'all' ? itemStage(item) : stageForNetwork(item, filter);
+      let stage: Stage | null;
+      if (filter === 'all') stage = itemStage(item);
+      else if (filter === 'raw' || filter === 'edited')
+        stage = itemStage(item) === filter ? filter : null;
+      else stage = stageForNetwork(item, filter);
       if (stage) map.get(stage)!.push(item);
     }
     // programados primeiro por data mais próxima; demais por atualização recente
@@ -83,10 +92,12 @@ export function Dashboard() {
   }, [searched, filter]);
 
   // na visão lista, o filtro de rede vira só "atribuído àquela rede"
-  const listItems = useMemo(
-    () => (filter === 'all' ? searched : searched.filter((i) => i.networks[filter].assigned)),
-    [searched, filter],
-  );
+  const listItems = useMemo(() => {
+    if (filter === 'all') return searched;
+    if (filter === 'raw' || filter === 'edited')
+      return searched.filter((i) => itemStage(i) === filter);
+    return searched.filter((i) => i.networks[filter].assigned);
+  }, [searched, filter]);
 
   const openItem = openItemId ? items.find((i) => i.id === openItemId) : undefined;
 
@@ -183,6 +194,16 @@ export function Dashboard() {
         >
           ✦ Tudo
         </button>
+        {STAGE_FILTERS.map(({ filter: f, label }) => (
+          <button
+            key={f}
+            className={`chip ${filter === f ? 'active' : ''}`}
+            data-net={f}
+            onClick={() => setFilter(f)}
+          >
+            {label}
+          </button>
+        ))}
         {NETWORKS.map((n) => (
           <button
             key={n}
@@ -223,9 +244,12 @@ export function Dashboard() {
         />
       ) : (
         <main className="board">
-          {STAGES.filter(
-            ({ stage }) => filter === 'all' || (stage !== 'raw' && stage !== 'edited'),
-          ).map(({ stage, title, color }, columnIndex) => {
+          {STAGES.filter(({ stage }) => {
+            if (filter === 'raw') return stage === 'raw';
+            if (filter === 'edited') return stage === 'edited';
+            if (filter === 'all') return true;
+            return stage !== 'raw' && stage !== 'edited';
+          }).map(({ stage, title, color }, columnIndex) => {
             const list = byStage.get(stage) ?? [];
             return (
               <motion.section

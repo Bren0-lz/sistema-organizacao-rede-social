@@ -33,6 +33,7 @@
   --st-ready: #38bdf8;
   --st-scheduled: #fbbf24;
   --st-posted: #34d399;
+  --st-done: #22c55e; /* verde de etapa concluída na trilha */
 
   --radius: 14px;
   --radius-lg: 22px;
@@ -1579,10 +1580,24 @@ textarea:focus {
   background: currentColor;
 }
 .trail-mini-dot {
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   background: var(--line-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: width 0.2s ease, height 0.2s ease, background 0.2s ease;
+}
+.trail-mini-glyph {
+  display: inline-flex;
+  width: 0;
+  height: 0;
+  opacity: 0;
+}
+.trail-mini-glyph svg {
+  width: 100%;
+  height: 100%;
 }
 .trail-mini-seg[data-stage='raw'] {
   color: var(--st-raw);
@@ -1599,13 +1614,36 @@ textarea:focus {
 .trail-mini-seg[data-stage='posted'] {
   color: var(--st-posted);
 }
-.trail-mini-seg[data-state='done'] .trail-mini-dot,
-.trail-mini-seg[data-state='current'] .trail-mini-dot {
-  background: currentColor;
+
+/* etapa concluída → bolinha verde com check (independe da cor do estágio) */
+.trail-mini-seg[data-state='done'] {
+  color: var(--st-done);
 }
+.trail-mini-seg[data-state='done'] .trail-mini-dot {
+  background: var(--st-done);
+}
+.trail-mini-seg[data-state='done'] .trail-mini-glyph {
+  width: 7px;
+  height: 7px;
+  opacity: 1;
+  color: #04140c;
+}
+
+/* etapa atual → bolinha maior com o ícone da fase + pulso */
 .trail-mini-seg[data-state='current'] .trail-mini-dot {
-  box-shadow: 0 0 8px currentColor;
+  width: 18px;
+  height: 18px;
+  background: currentColor;
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, currentColor 24%, transparent),
+    0 0 8px currentColor;
   animation: pulse 2.4s ease-in-out infinite;
+}
+.trail-mini-seg[data-state='current'] .trail-mini-glyph {
+  width: 12px;
+  height: 12px;
+  opacity: 1;
+  color: #0b0f1a;
 }
 
 .card-trail {

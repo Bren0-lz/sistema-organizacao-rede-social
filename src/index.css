@@ -331,6 +331,12 @@ textarea:focus {
   transition: all 0.2s;
 }
 
+.chip svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
 .chip:hover {
   color: var(--ink);
 }

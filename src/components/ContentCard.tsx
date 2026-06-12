@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { NETWORKS, type ContentItem } from '../types';
 import { useStore } from '../store/useStore';
+import { useInView } from '../lib/concurrency';
 import { NetworkIcon } from './NetworkIcon';
 
 interface Props {
@@ -12,15 +13,18 @@ interface Props {
 export function ContentCard({ item, onOpen }: Props) {
   const coverUrls = useStore((s) => s.coverUrls);
   const loadCover = useStore((s) => s.loadCover);
+  const { ref, inView } = useInView<HTMLElement>();
 
   const coverUrl = item.coverFileId ? coverUrls[item.coverFileId] : undefined;
 
   useEffect(() => {
-    if (item.coverFileId) void loadCover(item.coverFileId);
-  }, [item.coverFileId, loadCover]);
+    // só baixa a capa quando o card entra na viewport
+    if (inView && item.coverFileId) void loadCover(item.coverFileId);
+  }, [inView, item.coverFileId, loadCover]);
 
   return (
     <motion.article
+      ref={ref}
       layout
       layoutId={item.id}
       className="card"

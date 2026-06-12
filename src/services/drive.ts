@@ -243,6 +243,27 @@ export async function fetchBlobUrl(fileId: string): Promise<string> {
   return URL.createObjectURL(blob);
 }
 
+/**
+ * Versão leve de {@link fetchBlobUrl} para capas: baixa o `thumbnailLink` do
+ * Drive (poucos KB) em vez do arquivo cheio. Se o item não tiver thumbnail
+ * disponível, cai de volta para o download completo.
+ */
+export async function fetchThumbnailUrl(fileId: string): Promise<string> {
+  const info = await getFileInfo(fileId);
+  if (info.thumbnailLink) {
+    try {
+      // pede um tamanho razoável de capa (=s400) em vez do default minúsculo
+      const sized = info.thumbnailLink.replace(/=s\d+$/, '=s400');
+      const res = await driveFetch(sized);
+      const blob = await res.blob();
+      return URL.createObjectURL(blob);
+    } catch {
+      // thumbnail indisponível/expirado — segue para o fallback abaixo
+    }
+  }
+  return fetchBlobUrl(fileId);
+}
+
 export function setSharedRootFolder(folderIdOrUrl: string): string {
   // aceita tanto o ID puro quanto a URL https://drive.google.com/drive/folders/<id>
   const match = folderIdOrUrl.match(/folders\/([\w-]+)/);

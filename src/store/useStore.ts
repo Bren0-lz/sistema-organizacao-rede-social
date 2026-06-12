@@ -6,11 +6,12 @@ import {
 } from '../services/googleAuth';
 import {
   ensureAppStructure,
-  fetchBlobUrl,
+  fetchThumbnailUrl,
   setSharedRootFolder,
   uploadFile,
 } from '../services/drive';
 import { loadDatabase, saveDatabase } from '../services/database';
+import { createLimiter } from '../lib/concurrency';
 import {
   newContentItem,
   type AppFolders,
@@ -19,6 +20,11 @@ import {
   type Network,
   type NetworkStatus,
 } from '../types';
+
+/** Capas baixadas no máximo 4 por vez, para não saturar a rede. */
+const coverLimiter = createLimiter(4);
+/** Uploads em lote: no máximo 3 arquivos subindo ao mesmo tempo. */
+const uploadLimiter = createLimiter(3);
 
 export interface UploadTask {
   id: string;
@@ -49,7 +55,14 @@ interface AppState {
   deleteItem(id: string): Promise<void>;
   setNetwork(id: string, network: Network, status: Partial<NetworkStatus>): Promise<void>;
 
+  /** Aplica o mesmo patch de rede a vários itens numa única escrita. */
+  bulkSetNetwork(ids: string[], network: Network, patch: Partial<NetworkStatus>): Promise<void>;
+  /** Remove vários itens de uma vez. */
+  deleteItems(ids: string[]): Promise<void>;
+
   uploadToItem(itemId: string, slot: FileSlot, file: File): Promise<void>;
+  /** Cria um item por arquivo e enfileira os uploads (concorrência limitada). */
+  bulkUploadAsItems(files: File[], slot: Extract<FileSlot, 'raw' | 'edited'>): Promise<void>;
   loadCover(fileId: string): Promise<void>;
 }
 
@@ -63,12 +76,31 @@ const SLOT_FIELD: Record<FileSlot, keyof Pick<
 };
 
 export const useStore = create<AppState>((set, get) => {
+  // Mutex de persistência: encadeia as gravações para que nunca rodem
+  // concorrentes. Cada `mutate` lê o estado MAIS RECENTE (depois da gravação
+  // anterior) antes de aplicar seu patch — sem isso, dois uploads que terminam
+  // juntos leem o mesmo snapshot e um sobrescreve o fileId do outro.
+  let chain: Promise<void> = Promise.resolve();
+
   async function persist(items: ContentItem[]): Promise<void> {
     const { folders } = get();
     if (!folders) return;
     const saved = await saveDatabase(folders.dbFileId, items);
     set({ items: saved });
   }
+
+  /** Aplica `updater` ao estado atual e persiste, serializado pelo mutex. */
+  function mutate(updater: (items: ContentItem[]) => ContentItem[]): Promise<void> {
+    const run = chain.then(() => persist(updater(get().items)));
+    // mantém a cadeia viva mesmo se uma gravação falhar
+    chain = run.catch(() => {});
+    return run;
+  }
+
+  const touch = (item: ContentItem): ContentItem => ({
+    ...item,
+    updatedAt: new Date().toISOString(),
+  });
 
   async function connect(explicitRootId?: string): Promise<void> {
     set({ authStatus: 'connecting', errorMessage: undefined });
@@ -130,37 +162,56 @@ export const useStore = create<AppState>((set, get) => {
     async createItem(title, notes) {
       const item = newContentItem(title);
       if (notes) item.notes = notes;
-      await persist([item, ...get().items]);
+      await mutate((items) => [item, ...items]);
       return item;
     },
 
     async updateItem(id, patch) {
-      const items = get().items.map((item) =>
-        item.id === id
-          ? { ...item, ...patch, updatedAt: new Date().toISOString() }
-          : item,
+      await mutate((items) =>
+        items.map((item) => (item.id === id ? touch({ ...item, ...patch }) : item)),
       );
-      await persist(items);
     },
 
     async deleteItem(id) {
-      await persist(get().items.filter((item) => item.id !== id));
+      await mutate((items) => items.filter((item) => item.id !== id));
     },
 
     async setNetwork(id, network, status) {
-      const items = get().items.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              updatedAt: new Date().toISOString(),
-              networks: {
-                ...item.networks,
-                [network]: { ...item.networks[network], ...status },
-              },
-            }
-          : item,
+      await mutate((items) =>
+        items.map((item) =>
+          item.id === id
+            ? touch({
+                ...item,
+                networks: {
+                  ...item.networks,
+                  [network]: { ...item.networks[network], ...status },
+                },
+              })
+            : item,
+        ),
       );
-      await persist(items);
+    },
+
+    async bulkSetNetwork(ids, network, patch) {
+      const idSet = new Set(ids);
+      await mutate((items) =>
+        items.map((item) =>
+          idSet.has(item.id)
+            ? touch({
+                ...item,
+                networks: {
+                  ...item.networks,
+                  [network]: { ...item.networks[network], ...patch },
+                },
+              })
+            : item,
+        ),
+      );
+    },
+
+    async deleteItems(ids) {
+      const idSet = new Set(ids);
+      await mutate((items) => items.filter((item) => !idSet.has(item.id)));
     },
 
     async uploadToItem(itemId, slot, file) {
@@ -168,46 +219,82 @@ export const useStore = create<AppState>((set, get) => {
       if (!folders) return;
       const item = items.find((i) => i.id === itemId);
       if (!item) return;
+      await runUpload(itemId, item.title, slot, file);
+    },
 
-      const parentId =
-        slot === 'raw' ? folders.raw : slot === 'edited' ? folders.edited : folders.covers;
+    async bulkUploadAsItems(files, slot) {
+      const { folders } = get();
+      if (!folders || files.length === 0) return;
 
-      const task: UploadTask = {
-        id: crypto.randomUUID(),
-        fileName: file.name,
-        slot,
-        itemTitle: item.title,
-        progress: 0,
-      };
-      set({ uploads: [...get().uploads, task] });
+      const now = new Date().toISOString();
+      const created = files.map((file) => {
+        const item = newContentItem(stripExtension(file.name));
+        item.createdAt = now;
+        item.updatedAt = now;
+        return { item, file };
+      });
 
-      const updateTask = (patch: Partial<UploadTask>) =>
-        set({
-          uploads: get().uploads.map((u) => (u.id === task.id ? { ...u, ...patch } : u)),
-        });
+      // todos os itens entram numa única gravação
+      await mutate((items) => [...created.map((c) => c.item), ...items]);
 
-      try {
-        const fileId = await uploadFile(file, parentId, (p) => updateTask({ progress: p }));
-        await get().updateItem(itemId, { [SLOT_FIELD[slot]]: fileId });
-        if (slot === 'cover') void get().loadCover(fileId);
-        // remove a tarefa concluída após breve pausa para a animação terminar
-        setTimeout(
-          () => set({ uploads: get().uploads.filter((u) => u.id !== task.id) }),
-          1500,
-        );
-      } catch (error) {
-        updateTask({ error: error instanceof Error ? error.message : String(error) });
-      }
+      // uploads em paralelo limitado; cada conclusão grava seu fileId (serializado)
+      await Promise.all(
+        created.map(({ item, file }) =>
+          uploadLimiter(() => runUpload(item.id, item.title, slot, file)),
+        ),
+      );
     },
 
     async loadCover(fileId) {
       if (get().coverUrls[fileId]) return;
       try {
-        const url = await fetchBlobUrl(fileId);
+        const url = await coverLimiter(() => fetchThumbnailUrl(fileId));
         set({ coverUrls: { ...get().coverUrls, [fileId]: url } });
       } catch {
         // capa indisponível — o card mostra o placeholder
       }
     },
   };
+
+  /** Sobe um arquivo para um item já existente, com tarefa de progresso. */
+  async function runUpload(
+    itemId: string,
+    itemTitle: string,
+    slot: FileSlot,
+    file: File,
+  ): Promise<void> {
+    const { folders } = get();
+    if (!folders) return;
+    const parentId =
+      slot === 'raw' ? folders.raw : slot === 'edited' ? folders.edited : folders.covers;
+
+    const task: UploadTask = {
+      id: crypto.randomUUID(),
+      fileName: file.name,
+      slot,
+      itemTitle,
+      progress: 0,
+    };
+    set({ uploads: [...get().uploads, task] });
+
+    const updateTask = (patch: Partial<UploadTask>) =>
+      set({
+        uploads: get().uploads.map((u) => (u.id === task.id ? { ...u, ...patch } : u)),
+      });
+
+    try {
+      const fileId = await uploadFile(file, parentId, (p) => updateTask({ progress: p }));
+      await get().updateItem(itemId, { [SLOT_FIELD[slot]]: fileId });
+      if (slot === 'cover') void get().loadCover(fileId);
+      // remove a tarefa concluída após breve pausa para a animação terminar
+      setTimeout(() => set({ uploads: get().uploads.filter((u) => u.id !== task.id) }), 1500);
+    } catch (error) {
+      updateTask({ error: error instanceof Error ? error.message : String(error) });
+    }
+  }
 });
+
+/** Remove a extensão do nome do arquivo para virar título do conteúdo. */
+function stripExtension(name: string): string {
+  return name.replace(/\.[^./\\]+$/, '').trim() || name;
+}

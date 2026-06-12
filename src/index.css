@@ -309,6 +309,38 @@ textarea:focus {
   transform: translateY(-1px);
 }
 
+.icon-btn.active {
+  color: var(--ink);
+  border-color: var(--line-strong);
+  background: var(--bg-raised-2, var(--bg-raised));
+}
+
+/* o botão da lixeira pode exibir um contador, então não fixa a largura */
+.icon-btn:has(> :only-child),
+.icon-btn {
+  white-space: nowrap;
+}
+.topbar .icon-btn {
+  width: auto;
+  min-width: 40px;
+  padding: 0 10px;
+}
+
+/* ---------- lixeira ---------- */
+
+.trash-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--bg-raised);
+  color: var(--ink-dim);
+  font-size: 13px;
+}
+
 /* ---------- filtros de rede ---------- */
 
 .filters {

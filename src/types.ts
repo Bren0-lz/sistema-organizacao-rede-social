@@ -31,6 +31,8 @@ export interface ContentItem {
   rawUploadedAt?: string;
   /** Quando o vídeo editado foi anexado. */
   editedUploadedAt?: string;
+  /** Quando o item foi mandado para a lixeira. Ausente = item ativo. */
+  deletedAt?: string;
   networks: Record<Network, NetworkStatus>;
 }
 
@@ -57,6 +59,23 @@ export interface AppFolders {
   edited: string;
   covers: string;
   dbFileId: string;
+}
+
+/** Dias que um item permanece na lixeira antes de ser excluído de vez. */
+export const TRASH_RETENTION_DAYS = 30;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Quantos dias faltam até a exclusão definitiva (0 = expirado). */
+export function trashDaysLeft(item: ContentItem): number {
+  if (!item.deletedAt) return TRASH_RETENTION_DAYS;
+  const elapsed = (Date.now() - new Date(item.deletedAt).getTime()) / DAY_MS;
+  return Math.max(0, Math.ceil(TRASH_RETENTION_DAYS - elapsed));
+}
+
+/** Item na lixeira há mais de 30 dias, pronto para purga automática. */
+export function isTrashExpired(item: ContentItem): boolean {
+  return !!item.deletedAt && trashDaysLeft(item) <= 0;
 }
 
 export function emptyNetworkStatus(): NetworkStatus {

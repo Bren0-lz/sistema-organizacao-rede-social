@@ -11,6 +11,7 @@ import {
 import { useStore } from '../store/useStore';
 import { ContentCard } from '../components/ContentCard';
 import { ListView } from '../components/ListView';
+import { TrashView } from '../components/TrashView';
 import { BulkActionBar } from '../components/BulkActionBar';
 import { DetailPanel } from '../components/DetailPanel';
 import { NewItemModal, SettingsModal } from '../components/Modals';
@@ -50,6 +51,7 @@ export function Dashboard() {
   const refresh = useStore((s) => s.refresh);
   const [filter, setFilter] = useState<Filter>('all');
   const [view, setView] = useState<ViewMode>('list');
+  const [showTrash, setShowTrash] = useState(false);
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [openItemId, setOpenItemId] = useState<string | null>(null);
@@ -58,15 +60,19 @@ export function Dashboard() {
   const [showSettings, setShowSettings] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
+  // separa itens ativos dos que estão na lixeira
+  const active = useMemo(() => items.filter((i) => !i.deletedAt), [items]);
+  const trashed = useMemo(() => items.filter((i) => i.deletedAt), [items]);
+
   // filtro de texto (título/notas), aplicado às duas visões
   const searched = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return items;
-    return items.filter(
+    if (!q) return active;
+    return active.filter(
       (i) =>
         i.title.toLowerCase().includes(q) || (i.notes ?? '').toLowerCase().includes(q),
     );
-  }, [items, query]);
+  }, [active, query]);
 
   const byStage = useMemo(() => {
     const map = new Map<Stage, ContentItem[]>(STAGES.map(({ stage }) => [stage, []]));
@@ -175,6 +181,13 @@ export function Dashboard() {
             ↻
           </motion.span>
         </button>
+        <button
+          className={`icon-btn ${showTrash ? 'active' : ''}`}
+          title="Lixeira"
+          onClick={() => setShowTrash((v) => !v)}
+        >
+          🗑{trashed.length > 0 ? ` ${trashed.length}` : ''}
+        </button>
         <button className="icon-btn" title="Configurações" onClick={() => setShowSettings(true)}>
           ⚙
         </button>
@@ -186,6 +199,10 @@ export function Dashboard() {
         </button>
       </header>
 
+      {showTrash ? (
+        <TrashView items={trashed} />
+      ) : (
+      <>
       <nav className="filters">
         <button
           className={`chip ${filter === 'all' ? 'active' : ''}`}
@@ -217,7 +234,7 @@ export function Dashboard() {
         ))}
       </nav>
 
-      {items.length === 0 ? (
+      {active.length === 0 ? (
         <motion.div
           className="empty-state"
           initial={{ opacity: 0, y: 16 }}
@@ -279,8 +296,10 @@ export function Dashboard() {
           })}
         </main>
       )}
+      </>
+      )}
 
-      <BulkActionBar ids={[...selected]} onClear={clearSelection} />
+      {!showTrash && <BulkActionBar ids={[...selected]} onClear={clearSelection} />}
 
       <AnimatePresence>
         {openItem && <DetailPanel key="drawer" item={openItem} onClose={() => setOpenItemId(null)} />}

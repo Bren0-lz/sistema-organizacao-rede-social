@@ -5,6 +5,7 @@ import {
   signOut as authSignOut,
 } from '../services/googleAuth';
 import {
+  deleteFile,
   ensureAppStructure,
   fetchThumbnailUrl,
   setSharedRootFolder,
@@ -13,6 +14,7 @@ import {
 import { loadDatabase, saveDatabase } from '../services/database';
 import { createLimiter } from '../lib/concurrency';
 import {
+  isTrashExpired,
   newContentItem,
   type AppFolders,
   type ContentItem,
@@ -52,13 +54,18 @@ interface AppState {
 
   createItem(title: string, notes?: string): Promise<ContentItem>;
   updateItem(id: string, patch: Partial<ContentItem>): Promise<void>;
+  /** Manda o item para a lixeira (soft delete). */
   deleteItem(id: string): Promise<void>;
   setNetwork(id: string, network: Network, status: Partial<NetworkStatus>): Promise<void>;
 
   /** Aplica o mesmo patch de rede a vários itens numa única escrita. */
   bulkSetNetwork(ids: string[], network: Network, patch: Partial<NetworkStatus>): Promise<void>;
-  /** Remove vários itens de uma vez. */
+  /** Manda vários itens para a lixeira de uma vez. */
   deleteItems(ids: string[]): Promise<void>;
+  /** Tira itens da lixeira, devolvendo-os ao fluxo normal. */
+  restoreItems(ids: string[]): Promise<void>;
+  /** Exclui itens de vez (apaga também os arquivos no Drive). */
+  purgeItems(ids: string[]): Promise<void>;
 
   uploadToItem(itemId: string, slot: FileSlot, file: File): Promise<void>;
   /** Cria um item por arquivo e enfileira os uploads (concorrência limitada). */
@@ -108,6 +115,9 @@ export const useStore = create<AppState>((set, get) => {
       const folders = await ensureAppStructure(explicitRootId);
       const db = await loadDatabase(folders.dbFileId);
       set({ authStatus: 'ready', folders, items: db.items });
+      // limpa itens que já passaram dos 30 dias na lixeira
+      const expired = db.items.filter(isTrashExpired).map((i) => i.id);
+      if (expired.length > 0) void get().purgeItems(expired);
     } catch (error) {
       set({
         authStatus: 'error',
@@ -173,7 +183,12 @@ export const useStore = create<AppState>((set, get) => {
     },
 
     async deleteItem(id) {
-      await mutate((items) => items.filter((item) => item.id !== id));
+      const now = new Date().toISOString();
+      await mutate((items) =>
+        items.map((item) =>
+          item.id === id ? { ...item, deletedAt: now, updatedAt: now } : item,
+        ),
+      );
     },
 
     async setNetwork(id, network, status) {
@@ -211,7 +226,40 @@ export const useStore = create<AppState>((set, get) => {
 
     async deleteItems(ids) {
       const idSet = new Set(ids);
+      const now = new Date().toISOString();
+      await mutate((items) =>
+        items.map((item) =>
+          idSet.has(item.id) ? { ...item, deletedAt: now, updatedAt: now } : item,
+        ),
+      );
+    },
+
+    async restoreItems(ids) {
+      const idSet = new Set(ids);
+      await mutate((items) =>
+        items.map((item) => {
+          if (!idSet.has(item.id)) return item;
+          const restored = { ...item, updatedAt: new Date().toISOString() };
+          delete restored.deletedAt;
+          return restored;
+        }),
+      );
+    },
+
+    async purgeItems(ids) {
+      const idSet = new Set(ids);
+      const targets = get().items.filter((item) => idSet.has(item.id));
+      // remove do banco primeiro; a falha ao apagar arquivos não deve
+      // deixar o item preso na lixeira
       await mutate((items) => items.filter((item) => !idSet.has(item.id)));
+      // apaga os arquivos do Drive em paralelo, ignorando os que já sumiram
+      await Promise.all(
+        targets.flatMap((item) =>
+          [item.rawVideoFileId, item.editedVideoFileId, item.coverFileId]
+            .filter((id): id is string => !!id)
+            .map((fileId) => deleteFile(fileId).catch(() => {})),
+        ),
+      );
     },
 
     async uploadToItem(itemId, slot, file) {

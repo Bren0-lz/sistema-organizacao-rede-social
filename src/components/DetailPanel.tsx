@@ -285,7 +285,7 @@ export function DetailPanel({ item, onClose }: Props) {
           {confirmDelete ? (
             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
               <span style={{ fontSize: 13, color: 'var(--ink-dim)' }}>
-                Remover este conteúdo? (os arquivos continuam no Drive)
+                Mandar para a lixeira? Fica lá 30 dias antes da exclusão definitiva.
               </span>
               <button
                 className="btn btn-danger"
@@ -294,7 +294,7 @@ export function DetailPanel({ item, onClose }: Props) {
                   onClose();
                 }}
               >
-                Remover
+                Mover para lixeira
               </button>
               <button className="btn btn-ghost" onClick={() => setConfirmDelete(false)}>
                 Cancelar
@@ -302,7 +302,7 @@ export function DetailPanel({ item, onClose }: Props) {
             </div>
           ) : (
             <button className="btn btn-ghost btn-danger" onClick={() => setConfirmDelete(true)}>
-              🗑 Remover conteúdo
+              🗑 Mover para lixeira
             </button>
           )}
         </section>

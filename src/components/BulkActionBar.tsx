@@ -100,7 +100,7 @@ export function BulkActionBar({ ids, onClear }: Props) {
                 })
               }
             >
-              Confirmar remoção
+              Mover para lixeira
             </button>
           ) : (
             <button

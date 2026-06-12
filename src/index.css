@@ -1090,6 +1090,15 @@ textarea:focus {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
+  /* larguras estáveis: com virtualização nem todas as linhas existem para o
+     navegador auto-dimensionar, então fixamos o layout das colunas */
+  table-layout: fixed;
+}
+
+/* linhas espaçadoras da virtualização: só ocupam altura, sem moldura */
+.list-table tr.row-spacer td {
+  padding: 0;
+  border: none;
 }
 
 .list-table thead th {
@@ -1206,6 +1215,19 @@ textarea:focus {
 .col-date {
   color: var(--ink-dim);
   white-space: nowrap;
+  width: 78px;
+}
+
+/* com table-layout fixo, as colunas sem largura explícita dividiriam o espaço
+   igualmente; fixamos as auxiliares e deixamos o título ocupar o restante */
+.col-nets {
+  width: 116px;
+}
+.col-files {
+  width: 132px;
+}
+.col-stage {
+  width: 138px;
 }
 
 .list-empty {

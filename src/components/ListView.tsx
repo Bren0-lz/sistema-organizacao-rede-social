@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useWindowVirtualizer } from '@tanstack/react-virtual';
 import { itemStage, NETWORKS, STAGE_ORDER, type ContentItem } from '../types';
 import { useStore } from '../store/useStore';
 import { useInView } from '../lib/concurrency';
@@ -58,6 +59,36 @@ export function ListView({ items, selected, onToggle, onToggleAll, onOpen }: Pro
   const allIds = useMemo(() => sorted.map((i) => i.id), [sorted]);
   const allSelected = allIds.length > 0 && allIds.every((id) => selected.has(id));
 
+  // virtualização: renderiza só as linhas visíveis. O scroll é o da janela
+  // (a página inteira rola), então usamos o window virtualizer com scrollMargin
+  // igual ao deslocamento da tabela no topo do documento.
+  const listRef = useRef<HTMLDivElement>(null);
+  const [listTop, setListTop] = useState(0);
+
+  // mede o deslocamento da tabela (muda se topbar/filtros mudarem de altura,
+  // ou no resize da janela) — fora do render, como exige o react-hooks/refs
+  useLayoutEffect(() => {
+    const measure = () => setListTop(listRef.current?.offsetTop ?? 0);
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, []);
+
+  const rowVirtualizer = useWindowVirtualizer({
+    count: sorted.length,
+    estimateSize: () => 49,
+    overscan: 8,
+    scrollMargin: listTop,
+  });
+
+  const virtualRows = rowVirtualizer.getVirtualItems();
+  const scrollMargin = rowVirtualizer.options.scrollMargin;
+  const paddingTop = virtualRows.length > 0 ? virtualRows[0].start - scrollMargin : 0;
+  const paddingBottom =
+    virtualRows.length > 0
+      ? rowVirtualizer.getTotalSize() - (virtualRows[virtualRows.length - 1].end - scrollMargin)
+      : 0;
+
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
     else {
@@ -69,7 +100,7 @@ export function ListView({ items, selected, onToggle, onToggleAll, onOpen }: Pro
   const arrow = (key: SortKey) => (sortKey === key ? (sortDir === 'asc' ? ' ↑' : ' ↓') : '');
 
   return (
-    <div className="list-wrap">
+    <div className="list-wrap" ref={listRef}>
       <table className="list-table">
         <thead>
           <tr>
@@ -96,12 +127,20 @@ export function ListView({ items, selected, onToggle, onToggleAll, onOpen }: Pro
           </tr>
         </thead>
         <tbody>
-          {sorted.map((item) => {
+          {paddingTop > 0 && (
+            <tr className="row-spacer" aria-hidden>
+              <td colSpan={7} style={{ height: paddingTop }} />
+            </tr>
+          )}
+          {virtualRows.map((virtualRow) => {
+            const item = sorted[virtualRow.index];
             const stage = itemStage(item);
             const isSel = selected.has(item.id);
             return (
               <tr
                 key={item.id}
+                data-index={virtualRow.index}
+                ref={rowVirtualizer.measureElement}
                 className={isSel ? 'selected' : ''}
                 onClick={() => onOpen(item.id)}
               >
@@ -145,6 +184,11 @@ export function ListView({ items, selected, onToggle, onToggleAll, onOpen }: Pro
               </tr>
             );
           })}
+          {paddingBottom > 0 && (
+            <tr className="row-spacer" aria-hidden>
+              <td colSpan={7} style={{ height: paddingBottom }} />
+            </tr>
+          )}
         </tbody>
       </table>
       {sorted.length === 0 && <div className="list-empty">nada por aqui</div>}

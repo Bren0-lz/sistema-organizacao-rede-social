@@ -17,16 +17,18 @@ import { NewItemModal, SettingsModal } from '../components/Modals';
 import { BulkUploadModal } from '../components/BulkUploadModal';
 import { UploadToasts } from '../components/UploadToasts';
 import { NetworkIcon } from '../components/NetworkIcon';
+import { StageIcon } from '../components/StageIcon';
+import { STAGE_COLORS, STAGE_LABELS } from '../lib/journey';
 
 type Filter = 'all' | Network;
 type ViewMode = 'board' | 'list';
 
-const STAGES: { stage: Stage; title: string; emoji: string; color: string }[] = [
-  { stage: 'raw', title: 'Crus', emoji: '🎬', color: 'var(--st-raw)' },
-  { stage: 'edited', title: 'Editados', emoji: '✂️', color: 'var(--st-edited)' },
-  { stage: 'ready', title: 'Sem programação', emoji: '⬜', color: 'var(--st-ready)' },
-  { stage: 'scheduled', title: 'Programados', emoji: '📅', color: 'var(--st-scheduled)' },
-  { stage: 'posted', title: 'Postados', emoji: '✅', color: 'var(--st-posted)' },
+const STAGES: { stage: Stage; title: string; color: string }[] = [
+  { stage: 'raw', title: STAGE_LABELS.raw, color: STAGE_COLORS.raw },
+  { stage: 'edited', title: STAGE_LABELS.edited, color: STAGE_COLORS.edited },
+  { stage: 'ready', title: STAGE_LABELS.ready, color: STAGE_COLORS.ready },
+  { stage: 'scheduled', title: STAGE_LABELS.scheduled, color: STAGE_COLORS.scheduled },
+  { stage: 'posted', title: STAGE_LABELS.posted, color: STAGE_COLORS.posted },
 ];
 
 /** Estágio do item sob a ótica de UMA rede específica. */
@@ -223,7 +225,7 @@ export function Dashboard() {
         <main className="board">
           {STAGES.filter(
             ({ stage }) => filter === 'all' || (stage !== 'raw' && stage !== 'edited'),
-          ).map(({ stage, title, emoji, color }, columnIndex) => {
+          ).map(({ stage, title, color }, columnIndex) => {
             const list = byStage.get(stage) ?? [];
             return (
               <motion.section
@@ -236,7 +238,7 @@ export function Dashboard() {
                 <div className="column-head">
                   <span className="column-glow" style={{ background: color, boxShadow: `0 0 10px ${color}` }} />
                   <span className="column-title" style={{ color }}>
-                    {emoji} {title}
+                    <StageIcon stage={stage} /> {title}
                   </span>
                   <span className="column-count">{list.length}</span>
                 </div>

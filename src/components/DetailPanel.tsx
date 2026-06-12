@@ -10,6 +10,7 @@ import {
 import { useStore } from '../store/useStore';
 import { previewUrl } from '../services/drive';
 import { NetworkIcon } from './NetworkIcon';
+import { JourneyTrail } from './JourneyTrail';
 
 interface Props {
   item: ContentItem;
@@ -238,6 +239,11 @@ export function DetailPanel({ item, onClose }: Props) {
             ✕
           </button>
         </div>
+
+        <section className="drawer-section">
+          <h3>Jornada do vídeo</h3>
+          <JourneyTrail item={item} />
+        </section>
 
         <section className="drawer-section">
           <h3>Arquivos</h3>

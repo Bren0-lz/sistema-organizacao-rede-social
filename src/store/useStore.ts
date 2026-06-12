@@ -284,7 +284,10 @@ export const useStore = create<AppState>((set, get) => {
 
     try {
       const fileId = await uploadFile(file, parentId, (p) => updateTask({ progress: p }));
-      await get().updateItem(itemId, { [SLOT_FIELD[slot]]: fileId });
+      const patch: Partial<ContentItem> = { [SLOT_FIELD[slot]]: fileId };
+      if (slot === 'raw') patch.rawUploadedAt = new Date().toISOString();
+      if (slot === 'edited') patch.editedUploadedAt = new Date().toISOString();
+      await get().updateItem(itemId, patch);
       if (slot === 'cover') void get().loadCover(fileId);
       // remove a tarefa concluída após breve pausa para a animação terminar
       setTimeout(() => set({ uploads: get().uploads.filter((u) => u.id !== task.id) }), 1500);

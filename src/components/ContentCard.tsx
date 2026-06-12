@@ -1,9 +1,11 @@
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { NETWORKS, type ContentItem } from '../types';
+import { itemStage, NETWORKS, type ContentItem } from '../types';
 import { useStore } from '../store/useStore';
 import { useInView } from '../lib/concurrency';
 import { NetworkIcon } from './NetworkIcon';
+import { TrailMini } from './TrailMini';
+import { STAGE_LABELS } from '../lib/journey';
 
 interface Props {
   item: ContentItem;
@@ -16,6 +18,7 @@ export function ContentCard({ item, onOpen }: Props) {
   const { ref, inView } = useInView<HTMLElement>();
 
   const coverUrl = item.coverFileId ? coverUrls[item.coverFileId] : undefined;
+  const stage = itemStage(item);
 
   useEffect(() => {
     // só baixa a capa quando o card entra na viewport
@@ -57,10 +60,11 @@ export function ContentCard({ item, onOpen }: Props) {
                   : 'pendente'}
             </span>
           ))}
-          <span className="file-pips" title="Arquivos: cru / editado / capa">
-            <span className={`pip ${item.rawVideoFileId ? 'on-raw' : ''}`} />
-            <span className={`pip ${item.editedVideoFileId ? 'on-edited' : ''}`} />
-            <span className={`pip ${item.coverFileId ? 'on-cover' : ''}`} />
+        </div>
+        <div className="card-trail">
+          <TrailMini item={item} />
+          <span className="card-trail-label" data-stage={stage}>
+            {STAGE_LABELS[stage]}
           </span>
         </div>
       </div>

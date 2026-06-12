@@ -27,6 +27,10 @@ export interface ContentItem {
   rawVideoFileId?: string;
   editedVideoFileId?: string;
   coverFileId?: string;
+  /** Quando o vídeo bruto foi anexado (opcional; itens antigos não têm). */
+  rawUploadedAt?: string;
+  /** Quando o vídeo editado foi anexado. */
+  editedUploadedAt?: string;
   networks: Record<Network, NetworkStatus>;
 }
 
@@ -76,6 +80,16 @@ export function newContentItem(title: string): ContentItem {
 
 /** Estágio do item no pipeline de produção. */
 export type Stage = 'raw' | 'edited' | 'ready' | 'scheduled' | 'posted';
+
+export const STAGE_ORDER: Record<Stage, number> = {
+  raw: 0,
+  edited: 1,
+  ready: 2,
+  scheduled: 3,
+  posted: 4,
+};
+
+export const STAGES_SEQ: Stage[] = ['raw', 'edited', 'ready', 'scheduled', 'posted'];
 
 export function itemStage(item: ContentItem): Stage {
   const statuses = NETWORKS.filter((n) => item.networks[n].assigned).map(

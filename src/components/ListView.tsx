@@ -1,29 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import {
-  itemStage,
-  NETWORKS,
-  type ContentItem,
-  type Stage,
-} from '../types';
+import { itemStage, NETWORKS, STAGE_ORDER, type ContentItem } from '../types';
 import { useStore } from '../store/useStore';
 import { useInView } from '../lib/concurrency';
 import { NetworkIcon } from './NetworkIcon';
-
-const STAGE_META: Record<Stage, { label: string; emoji: string; color: string }> = {
-  raw: { label: 'Cru', emoji: '🎬', color: 'var(--st-raw)' },
-  edited: { label: 'Editado', emoji: '✂️', color: 'var(--st-edited)' },
-  ready: { label: 'Sem programação', emoji: '⬜', color: 'var(--st-ready)' },
-  scheduled: { label: 'Programado', emoji: '📅', color: 'var(--st-scheduled)' },
-  posted: { label: 'Postado', emoji: '✅', color: 'var(--st-posted)' },
-};
-
-const STAGE_ORDER: Record<Stage, number> = {
-  raw: 0,
-  edited: 1,
-  ready: 2,
-  scheduled: 3,
-  posted: 4,
-};
+import { StageIcon } from './StageIcon';
+import { TrailMini } from './TrailMini';
+import { STAGE_COLORS, STAGE_LABELS } from '../lib/journey';
 
 type SortKey = 'title' | 'updated' | 'stage';
 type SortDir = 'asc' | 'desc';
@@ -104,7 +86,7 @@ export function ListView({ items, selected, onToggle, onToggleAll, onOpen }: Pro
               Título{arrow('title')}
             </th>
             <th className="col-nets">Redes</th>
-            <th className="col-files">Arquivos</th>
+            <th className="col-files">Progresso</th>
             <th className="col-stage sortable" onClick={() => toggleSort('stage')}>
               Estágio{arrow('stage')}
             </th>
@@ -116,7 +98,6 @@ export function ListView({ items, selected, onToggle, onToggleAll, onOpen }: Pro
         <tbody>
           {sorted.map((item) => {
             const stage = itemStage(item);
-            const meta = STAGE_META[stage];
             const isSel = selected.has(item.id);
             return (
               <tr
@@ -148,15 +129,11 @@ export function ListView({ items, selected, onToggle, onToggleAll, onOpen }: Pro
                   </div>
                 </td>
                 <td className="col-files">
-                  <span className="file-pips" title="cru / editado / capa">
-                    <span className={`pip ${item.rawVideoFileId ? 'on-raw' : ''}`} />
-                    <span className={`pip ${item.editedVideoFileId ? 'on-edited' : ''}`} />
-                    <span className={`pip ${item.coverFileId ? 'on-cover' : ''}`} />
-                  </span>
+                  <TrailMini item={item} />
                 </td>
                 <td className="col-stage">
-                  <span className="stage-tag" style={{ color: meta.color }}>
-                    {meta.emoji} {meta.label}
+                  <span className="stage-tag" style={{ color: STAGE_COLORS[stage] }}>
+                    <StageIcon stage={stage} /> {STAGE_LABELS[stage]}
                   </span>
                 </td>
                 <td className="col-date">

@@ -1215,7 +1215,7 @@ textarea:focus {
 .col-date {
   color: var(--ink-dim);
   white-space: nowrap;
-  width: 78px;
+  width: 116px;
 }
 
 /* com table-layout fixo, as colunas sem largura explícita dividiriam o espaço

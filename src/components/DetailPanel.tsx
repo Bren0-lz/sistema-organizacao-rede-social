@@ -1,4 +1,4 @@
-import { useRef, useState, type DragEvent } from 'react';
+import { useEffect, useRef, useState, type DragEvent } from 'react';
 import { motion } from 'framer-motion';
 import {
   NETWORK_LABELS,
@@ -87,6 +87,48 @@ function FileSlotBox({ item, slot }: { item: ContentItem; slot: FileSlot }) {
           e.target.value = '';
         }}
       />
+    </div>
+  );
+}
+
+// Preview do vídeo sob demanda: mostra um poster (capa, se houver) com botão ▶.
+// O iframe pesado do Drive só monta após o clique, mantendo a abertura do drawer fluida.
+function VideoPreview({ item, fileId }: { item: ContentItem; fileId: string }) {
+  const coverUrl = useStore((s) =>
+    item.coverFileId ? s.coverUrls[item.coverFileId] : undefined,
+  );
+  const loadCover = useStore((s) => s.loadCover);
+  const [playing, setPlaying] = useState(false);
+
+  useEffect(() => {
+    if (!playing && item.coverFileId) void loadCover(item.coverFileId);
+  }, [playing, item.coverFileId, loadCover]);
+
+  if (playing) {
+    return (
+      <iframe
+        className="drawer-preview"
+        src={previewUrl(fileId)}
+        title="Preview do vídeo"
+        allow="autoplay"
+        loading="lazy"
+      />
+    );
+  }
+
+  return (
+    <div
+      className="drawer-preview-poster"
+      style={coverUrl ? { backgroundImage: `url(${coverUrl})` } : undefined}
+      onClick={() => setPlaying(true)}
+      role="button"
+      tabIndex={0}
+      aria-label="Carregar preview do vídeo"
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') setPlaying(true);
+      }}
+    >
+      <span className="drawer-preview-play">▶</span>
     </div>
   );
 }
@@ -252,14 +294,7 @@ export function DetailPanel({ item, onClose }: Props) {
               <FileSlotBox key={slot} item={item} slot={slot} />
             ))}
           </div>
-          {videoToPreview && (
-            <iframe
-              className="drawer-preview"
-              src={previewUrl(videoToPreview)}
-              title="Preview do vídeo"
-              allow="autoplay"
-            />
-          )}
+          {videoToPreview && <VideoPreview item={item} fileId={videoToPreview} />}
         </section>
 
         <section className="drawer-section">

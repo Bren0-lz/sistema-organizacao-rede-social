@@ -585,8 +585,7 @@ textarea:focus {
 .drawer-backdrop {
   position: fixed;
   inset: 0;
-  background: var(--bg-overlay);
-  backdrop-filter: blur(6px);
+  background: rgba(0, 0, 0, 0.55);
   z-index: 60;
 }
 
@@ -601,6 +600,7 @@ textarea:focus {
   z-index: 61;
   overflow-y: auto;
   padding: 28px 28px 60px;
+  will-change: transform;
 }
 
 .drawer-head {
@@ -733,6 +733,48 @@ textarea:focus {
   border-radius: var(--radius);
   background: #000;
   margin-top: 14px;
+}
+
+.drawer-preview-poster {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #000 center / cover no-repeat;
+  margin-top: 14px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  overflow: hidden;
+  position: relative;
+}
+
+.drawer-preview-poster::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.drawer-preview-play {
+  position: relative;
+  z-index: 1;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 20px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform 0.15s, background 0.15s;
+}
+
+.drawer-preview-poster:hover .drawer-preview-play {
+  transform: scale(1.08);
+  background: var(--st-ready);
 }
 
 /* redes no drawer */

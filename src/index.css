@@ -1413,9 +1413,9 @@ textarea:focus {
   height: 13px;
 }
 .journey-step[data-state='done'] .journey-node {
-  border-color: var(--node-color);
-  background: color-mix(in srgb, var(--node-color) 18%, var(--bg-card));
-  color: var(--node-color);
+  border-color: var(--st-done);
+  background: color-mix(in srgb, var(--st-done) 18%, var(--bg-card));
+  color: var(--st-done);
 }
 .journey-step[data-state='current'] .journey-node {
   border-color: var(--node-color);
@@ -1450,11 +1450,7 @@ textarea:focus {
   position: absolute;
   inset: 0;
   transform-origin: top;
-  background: linear-gradient(
-    180deg,
-    var(--node-color),
-    color-mix(in srgb, var(--node-color) 40%, var(--st-posted))
-  );
+  background: var(--st-done);
 }
 
 .journey-info {

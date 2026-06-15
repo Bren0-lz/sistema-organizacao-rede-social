@@ -13,11 +13,14 @@ interface Props {
 }
 
 export function ContentCard({ item, onOpen }: Props) {
-  const coverUrls = useStore((s) => s.coverUrls);
+  // assina só a URL desta capa — não o mapa inteiro — para que o carregamento
+  // de uma capa não re-renderize todos os cards visíveis
+  const coverUrl = useStore((s) =>
+    item.coverFileId ? s.coverUrls[item.coverFileId] : undefined,
+  );
   const loadCover = useStore((s) => s.loadCover);
   const { ref, inView } = useInView<HTMLElement>();
 
-  const coverUrl = item.coverFileId ? coverUrls[item.coverFileId] : undefined;
   const stage = itemStage(item);
 
   useEffect(() => {

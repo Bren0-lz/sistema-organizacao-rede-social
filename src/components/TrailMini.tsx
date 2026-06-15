@@ -1,8 +1,9 @@
+import { memo } from 'react';
 import { itemStage, type ContentItem } from '../types';
 import { miniTrail, STAGE_LABELS } from '../lib/journey';
 import { StageIcon } from './StageIcon';
 
-export function TrailMini({ item }: { item: ContentItem }) {
+export const TrailMini = memo(function TrailMini({ item }: { item: ContentItem }) {
   const dots = miniTrail(item);
   const stage = itemStage(item);
   const label = STAGE_LABELS[stage];
@@ -31,4 +32,4 @@ export function TrailMini({ item }: { item: ContentItem }) {
       ))}
     </span>
   );
-}
+});

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useWindowVirtualizer } from '@tanstack/react-virtual';
 import { itemStage, NETWORKS, STAGE_ORDER, type ContentItem } from '../types';
 import { useStore } from '../store/useStore';
@@ -20,10 +20,11 @@ interface Props {
 }
 
 function LazyThumb({ fileId }: { fileId?: string }) {
-  const coverUrls = useStore((s) => s.coverUrls);
+  // assina só a URL desta capa — não o mapa inteiro — senão cada capa que
+  // carrega re-renderiza todas as linhas visíveis (o grande causador de travamento)
+  const url = useStore((s) => (fileId ? s.coverUrls[fileId] : undefined));
   const loadCover = useStore((s) => s.loadCover);
   const { ref, inView } = useInView<HTMLDivElement>();
-  const url = fileId ? coverUrls[fileId] : undefined;
 
   useEffect(() => {
     if (inView && fileId) void loadCover(fileId);
@@ -39,6 +40,75 @@ function LazyThumb({ fileId }: { fileId?: string }) {
     </div>
   );
 }
+
+/**
+ * Linha memoizada: só re-renderiza quando o próprio item, sua seleção ou as
+ * callbacks mudam. Sem isso, qualquer mudança na ListView (ordenar, selecionar
+ * uma linha, rolar) re-renderiza todas as linhas visíveis.
+ */
+const ListRow = memo(function ListRow({
+  item,
+  index,
+  isSel,
+  measureElement,
+  onToggle,
+  onOpen,
+}: {
+  item: ContentItem;
+  index: number;
+  isSel: boolean;
+  measureElement: (el: HTMLElement | null) => void;
+  onToggle: (id: string) => void;
+  onOpen: (id: string) => void;
+}) {
+  const stage = itemStage(item);
+  return (
+    <tr
+      data-index={index}
+      ref={measureElement}
+      className={isSel ? 'selected' : ''}
+      onClick={() => onOpen(item.id)}
+    >
+      <td className="col-check" onClick={(e) => e.stopPropagation()}>
+        <input
+          type="checkbox"
+          checked={isSel}
+          aria-label={`Selecionar ${item.title}`}
+          onChange={() => onToggle(item.id)}
+        />
+      </td>
+      <td className="col-thumb">
+        <LazyThumb fileId={item.coverFileId} />
+      </td>
+      <td className="col-title">
+        <span className="row-title">{item.title}</span>
+      </td>
+      <td className="col-nets">
+        <div className="row-nets">
+          {NETWORKS.filter((n) => item.networks[n].assigned).map((n) => (
+            <span key={n} className="net-badge" data-status={item.networks[n].status}>
+              <NetworkIcon network={n} />
+            </span>
+          ))}
+        </div>
+      </td>
+      <td className="col-files">
+        <TrailMini item={item} />
+      </td>
+      <td className="col-stage">
+        <span className="stage-tag" style={{ color: STAGE_COLORS[stage] }}>
+          <StageIcon stage={stage} /> {STAGE_LABELS[stage]}
+        </span>
+      </td>
+      <td className="col-date">
+        {new Date(item.updatedAt).toLocaleDateString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+        })}
+      </td>
+    </tr>
+  );
+});
 
 export function ListView({ items, selected, onToggle, onToggleAll, onOpen }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>('updated');
@@ -134,54 +204,16 @@ export function ListView({ items, selected, onToggle, onToggleAll, onOpen }: Pro
           )}
           {virtualRows.map((virtualRow) => {
             const item = sorted[virtualRow.index];
-            const stage = itemStage(item);
-            const isSel = selected.has(item.id);
             return (
-              <tr
+              <ListRow
                 key={item.id}
-                data-index={virtualRow.index}
-                ref={rowVirtualizer.measureElement}
-                className={isSel ? 'selected' : ''}
-                onClick={() => onOpen(item.id)}
-              >
-                <td className="col-check" onClick={(e) => e.stopPropagation()}>
-                  <input
-                    type="checkbox"
-                    checked={isSel}
-                    aria-label={`Selecionar ${item.title}`}
-                    onChange={() => onToggle(item.id)}
-                  />
-                </td>
-                <td className="col-thumb">
-                  <LazyThumb fileId={item.coverFileId} />
-                </td>
-                <td className="col-title">
-                  <span className="row-title">{item.title}</span>
-                </td>
-                <td className="col-nets">
-                  <div className="row-nets">
-                    {NETWORKS.filter((n) => item.networks[n].assigned).map((n) => (
-                      <span key={n} className="net-badge" data-status={item.networks[n].status}>
-                        <NetworkIcon network={n} />
-                      </span>
-                    ))}
-                  </div>
-                </td>
-                <td className="col-files">
-                  <TrailMini item={item} />
-                </td>
-                <td className="col-stage">
-                  <span className="stage-tag" style={{ color: STAGE_COLORS[stage] }}>
-                    <StageIcon stage={stage} /> {STAGE_LABELS[stage]}
-                  </span>
-                </td>
-                <td className="col-date">
-                  {new Date(item.updatedAt).toLocaleDateString('pt-BR', {
-                    day: '2-digit',
-                    month: '2-digit',
-                  })}
-                </td>
-              </tr>
+                item={item}
+                index={virtualRow.index}
+                isSel={selected.has(item.id)}
+                measureElement={rowVirtualizer.measureElement}
+                onToggle={onToggle}
+                onOpen={onOpen}
+              />
             );
           })}
           {paddingBottom > 0 && (

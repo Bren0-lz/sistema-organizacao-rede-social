@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   itemStage,
@@ -107,15 +107,17 @@ export function Dashboard() {
 
   const openItem = openItemId ? items.find((i) => i.id === openItemId) : undefined;
 
-  const toggle = (id: string) =>
+  // callbacks estáveis para que as linhas memoizadas (ListRow) não re-renderizem
+  const toggle = useCallback((id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
+  }, []);
 
-  const toggleAll = (ids: string[], select: boolean) =>
+  const toggleAll = useCallback((ids: string[], select: boolean) => {
     setSelected((prev) => {
       const next = new Set(prev);
       for (const id of ids) {
@@ -124,8 +126,9 @@ export function Dashboard() {
       }
       return next;
     });
+  }, []);
 
-  const clearSelection = () => setSelected(new Set());
+  const clearSelection = useCallback(() => setSelected(new Set()), []);
 
   return (
     <div className="shell">

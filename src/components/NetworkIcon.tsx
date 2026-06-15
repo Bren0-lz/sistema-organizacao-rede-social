@@ -1,6 +1,7 @@
+import { memo } from 'react';
 import type { Network } from '../types';
 
-export function NetworkIcon({ network }: { network: Network }) {
+export const NetworkIcon = memo(function NetworkIcon({ network }: { network: Network }) {
   switch (network) {
     case 'instagram':
       return (
@@ -21,4 +22,4 @@ export function NetworkIcon({ network }: { network: Network }) {
         </svg>
       );
   }
-}
+});

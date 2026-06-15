@@ -1,7 +1,8 @@
+import { memo } from 'react';
 import type { Stage } from '../types';
 
 /** Ícones SVG por estágio (currentColor) — emojis variam por SO e não aceitam cor. */
-export function StageIcon({ stage }: { stage: Stage | 'check' | 'flag' }) {
+export const StageIcon = memo(function StageIcon({ stage }: { stage: Stage | 'check' | 'flag' }) {
   switch (stage) {
     case 'raw': // claquete
       return (
@@ -47,4 +48,4 @@ export function StageIcon({ stage }: { stage: Stage | 'check' | 'flag' }) {
         </svg>
       );
   }
-}
+});

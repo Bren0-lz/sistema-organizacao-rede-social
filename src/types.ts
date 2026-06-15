@@ -111,12 +111,13 @@ export const STAGE_ORDER: Record<Stage, number> = {
 export const STAGES_SEQ: Stage[] = ['raw', 'edited', 'ready', 'scheduled', 'posted'];
 
 export function itemStage(item: ContentItem): Stage {
-  const statuses = NETWORKS.filter((n) => item.networks[n].assigned).map(
-    (n) => item.networks[n].status,
-  );
-  if (statuses.length > 0) {
-    if (statuses.every((s) => s === 'posted')) return 'posted';
-    if (statuses.some((s) => s === 'scheduled' || s === 'posted')) return 'scheduled';
+  const states = NETWORKS.filter((n) => item.networks[n].assigned).map((n) => item.networks[n]);
+  if (states.length > 0) {
+    if (states.every((s) => s.status === 'posted')) return 'posted';
+    // Só avança para "Programado" quando TODAS as redes têm data definida (ou já publicaram).
+    // Se alguma rede ainda está sem data programada, o progresso fica em "Pronto".
+    if (states.every((s) => s.status === 'posted' || (s.status === 'scheduled' && !!s.scheduledAt)))
+      return 'scheduled';
     return 'ready';
   }
   if (item.editedVideoFileId) return 'edited';

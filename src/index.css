@@ -1600,33 +1600,50 @@ textarea:focus {
   display: inline-flex;
   align-items: center;
 }
+.journey-substep {
+  display: inline-flex;
+  align-items: center;
+}
 .journey-subnode {
-  width: 9px;
-  height: 9px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background: var(--line-strong);
   display: inline-block;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  transition:
+    background 0.25s ease,
+    box-shadow 0.25s ease;
 }
 .journey-subline {
-  width: 18px;
-  height: 2px;
+  width: 22px;
+  height: 3px;
+  border-radius: 3px;
   background: var(--line-strong);
   display: inline-block;
+  transition: background 0.25s ease;
 }
+/* linha preenchida: gradiente programado→publicado (âmbar → verde) */
 .journey-subline[data-filled='true'] {
-  background: var(--st-scheduled);
+  background: linear-gradient(90deg, var(--st-scheduled), var(--st-posted));
 }
 .journey-substep[data-state='done'] .journey-subnode,
 .journey-substep[data-state='current'] .journey-subnode {
   background: var(--st-scheduled);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--st-scheduled) 60%, transparent);
 }
 .journey-substep:last-child[data-state='done'] .journey-subnode,
 .journey-substep:last-child[data-state='current'] .journey-subnode {
   background: var(--st-posted);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--st-posted) 60%, transparent);
 }
-.journey-substep[data-state='current'] .journey-subnode {
-  animation: journey-pulse 2s ease-out infinite;
-  --node-glow: rgba(251, 191, 36, 0.5);
+/* publicado: trilha inteira verde (ambos os nós + a linha) */
+.journey-branch[data-state='done'] .journey-subnode {
+  background: var(--st-posted);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--st-posted) 60%, transparent);
+}
+.journey-branch[data-state='done'] .journey-subline {
+  background: var(--st-posted);
 }
 
 /* legenda */

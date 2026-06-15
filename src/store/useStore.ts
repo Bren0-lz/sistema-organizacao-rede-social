@@ -96,9 +96,18 @@ export const useStore = create<AppState>((set, get) => {
     set({ items: saved });
   }
 
-  /** Aplica `updater` ao estado atual e persiste, serializado pelo mutex. */
+  /**
+   * Aplica `updater` ao estado atual e persiste, serializado pelo mutex.
+   *
+   * O patch é refletido no estado local IMEDIATAMENTE (update otimista) para
+   * que a UI responda na hora — sem esperar o round-trip de gravação no Drive.
+   * A persistência (releitura + merge + escrita remota) roda em segundo plano,
+   * encadeada pelo mutex, e reconcilia o estado quando termina.
+   */
   function mutate(updater: (items: ContentItem[]) => ContentItem[]): Promise<void> {
-    const run = chain.then(() => persist(updater(get().items)));
+    const next = updater(get().items);
+    set({ items: next });
+    const run = chain.then(() => persist(next));
     // mantém a cadeia viva mesmo se uma gravação falhar
     chain = run.catch(() => {});
     return run;

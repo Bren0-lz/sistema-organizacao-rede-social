@@ -1,12 +1,19 @@
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type DragEvent, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { useStore } from '../store/useStore';
 import { getRootFolderId, rootFolderUrl } from '../services/drive';
-import type { ContentType } from '../types';
+import type { ContentType, FileSlot } from '../types';
 
 const TYPE_OPTIONS: { type: ContentType; label: string }[] = [
   { type: 'video', label: '🎬 Vídeo' },
   { type: 'carousel', label: '🖼️ Carrossel' },
+];
+
+type VideoSlot = Extract<FileSlot, 'raw' | 'edited'>;
+
+const VIDEO_SLOT_OPTIONS: { slot: VideoSlot; label: string }[] = [
+  { slot: 'raw', label: '🎬 Vídeo cru' },
+  { slot: 'edited', label: '✂️ Vídeo editado' },
 ];
 
 function ModalShell({ children, onClose }: { children: ReactNode; onClose: () => void }) {
@@ -36,16 +43,55 @@ export function NewItemModal({
   onCreated: (id: string) => void;
 }) {
   const createItem = useStore((s) => s.createItem);
+  const uploadToItem = useStore((s) => s.uploadToItem);
+  const addCarouselImages = useStore((s) => s.addCarouselImages);
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [type, setType] = useState<ContentType>('video');
+  const [videoSlot, setVideoSlot] = useState<VideoSlot>('raw');
+  const [files, setFiles] = useState<File[]>([]);
+  const [dragOver, setDragOver] = useState(false);
   const [busy, setBusy] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const isVideo = type === 'video';
+  const accept = isVideo ? 'video/*' : 'image/*';
+
+  // troca de tipo: zera os arquivos (vídeo aceita só 1; carrossel aceita imagens)
+  const changeType = (next: ContentType) => {
+    if (next === type) return;
+    setType(next);
+    setFiles([]);
+  };
+
+  const addFiles = (list: FileList | null) => {
+    if (!list) return;
+    const picked = Array.from(list).filter((f) =>
+      f.type.startsWith(isVideo ? 'video/' : 'image/'),
+    );
+    if (picked.length === 0) return;
+    // vídeo: mantém só o último arquivo escolhido; carrossel: acumula
+    setFiles((prev) => (isVideo ? picked.slice(-1) : [...prev, ...picked]));
+  };
+
+  const removeFile = (idx: number) => setFiles((prev) => prev.filter((_, i) => i !== idx));
+
+  const onDrop = (e: DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    addFiles(e.dataTransfer.files);
+  };
+
+  const canSubmit = !!title.trim() && files.length > 0 && !busy;
 
   const submit = async () => {
-    if (!title.trim() || busy) return;
+    if (!canSubmit) return;
     setBusy(true);
     try {
       const item = await createItem(title.trim(), notes.trim() || undefined, type);
+      // dispara os uploads em segundo plano (progresso aparece nos toasts/cards)
+      if (isVideo) void uploadToItem(item.id, videoSlot, files[0]);
+      else void addCarouselImages(item.id, files);
       onCreated(item.id);
     } finally {
       setBusy(false);
@@ -64,7 +110,7 @@ export function NewItemModal({
                 key={o.type}
                 type="button"
                 className={`status-tab ${type === o.type ? 'active' : ''}`}
-                onClick={() => setType(o.type)}
+                onClick={() => changeType(o.type)}
               >
                 {o.label}
               </button>
@@ -81,6 +127,70 @@ export function NewItemModal({
             onKeyDown={(e) => e.key === 'Enter' && void submit()}
           />
         </div>
+
+        {isVideo && (
+          <div>
+            <label className="form-label">Etapa do vídeo</label>
+            <div className="type-pick">
+              {VIDEO_SLOT_OPTIONS.map((o) => (
+                <button
+                  key={o.slot}
+                  type="button"
+                  className={`status-tab ${videoSlot === o.slot ? 'active' : ''}`}
+                  onClick={() => setVideoSlot(o.slot)}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div>
+          <label className="form-label">{isVideo ? 'Vídeo' : 'Imagens do carrossel'}</label>
+          <div
+            className={`bulk-drop ${dragOver ? 'drag-over' : ''}`}
+            onClick={() => inputRef.current?.click()}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={onDrop}
+          >
+            <span className="bulk-drop-icon">⬆️</span>
+            <span>
+              {isVideo
+                ? 'Arraste o vídeo aqui ou clique para escolher'
+                : 'Arraste as imagens aqui ou clique para escolher'}
+            </span>
+            <input
+              ref={inputRef}
+              type="file"
+              accept={accept}
+              multiple={!isVideo}
+              hidden
+              onChange={(e) => {
+                addFiles(e.target.files);
+                e.target.value = '';
+              }}
+            />
+          </div>
+          {files.length > 0 && (
+            <ul className="bulk-file-list">
+              {files.map((f, i) => (
+                <li key={`${f.name}-${i}`}>
+                  <span className="bulk-file-name">{f.name}</span>
+                  <span className="bulk-file-size">{(f.size / 1024 / 1024).toFixed(1)} MB</span>
+                  <button className="icon-btn" onClick={() => removeFile(i)} title="Remover">
+                    ✕
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
         <div>
           <label className="form-label">Notas (opcional)</label>
           <textarea
@@ -95,7 +205,7 @@ export function NewItemModal({
         <button className="btn btn-ghost" onClick={onClose}>
           Cancelar
         </button>
-        <button className="btn btn-primary" disabled={!title.trim() || busy} onClick={() => void submit()}>
+        <button className="btn btn-primary" disabled={!canSubmit} onClick={() => void submit()}>
           {busy ? 'Criando…' : 'Criar e abrir'}
         </button>
       </div>

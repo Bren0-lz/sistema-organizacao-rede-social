@@ -11,6 +11,7 @@ import {
 import { useStore } from '../store/useStore';
 import { useInView } from '../lib/concurrency';
 import { NetworkIcon } from './NetworkIcon';
+import { Icon } from './Icon';
 import { TrailMini } from './TrailMini';
 import { STAGE_LABELS } from '../lib/journey';
 
@@ -53,11 +54,11 @@ export function ContentCard({ item, onOpen }: Props) {
           <img src={coverUrl} alt={`Capa de ${item.title}`} />
         ) : (
           <div className="card-cover-placeholder">
-            {coverFileId ? '⏳' : isCarousel ? '🖼️' : '🎬'}
+            <Icon name={coverFileId ? 'hourglass' : isCarousel ? 'carousel' : 'video'} />
           </div>
         )}
         <span className="card-type-badge" title={isCarousel ? 'Carrossel' : 'Vídeo'}>
-          {isCarousel ? '🖼️ Carrossel' : '🎬 Vídeo'}
+          <Icon name={isCarousel ? 'carousel' : 'video'} /> {isCarousel ? 'Carrossel' : 'Vídeo'}
         </span>
       </div>
       <div className="card-body">

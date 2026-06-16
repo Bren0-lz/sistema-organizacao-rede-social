@@ -19,14 +19,15 @@ import { BulkUploadModal } from '../components/BulkUploadModal';
 import { UploadToasts } from '../components/UploadToasts';
 import { NetworkIcon } from '../components/NetworkIcon';
 import { StageIcon } from '../components/StageIcon';
+import { Icon, type IconName } from '../components/Icon';
 import { STAGE_COLORS, STAGE_LABELS } from '../lib/journey';
 
 type Filter = 'all' | 'raw' | 'edited' | Network;
 type ViewMode = 'board' | 'list';
 
-const STAGE_FILTERS: { filter: 'raw' | 'edited'; label: string }[] = [
-  { filter: 'raw', label: '🎬 Vídeos crus' },
-  { filter: 'edited', label: '✂️ Vídeos editados' },
+const STAGE_FILTERS: { filter: 'raw' | 'edited'; icon: IconName; label: string }[] = [
+  { filter: 'raw', icon: 'video', label: 'Vídeos crus' },
+  { filter: 'edited', icon: 'scissors', label: 'Vídeos editados' },
 ];
 
 const STAGES: { stage: Stage; title: string; color: string }[] = [
@@ -194,13 +195,14 @@ export function Dashboard() {
           title="Lixeira"
           onClick={() => setShowTrash((v) => !v)}
         >
-          🗑{trashed.length > 0 ? ` ${trashed.length}` : ''}
+          <Icon name="trash" size={18} />
+          {trashed.length > 0 ? ` ${trashed.length}` : ''}
         </button>
         <button className="icon-btn" title="Configurações" onClick={() => setShowSettings(true)}>
-          ⚙
+          <Icon name="settings" size={18} />
         </button>
         <button className="btn btn-ghost hide-mobile" onClick={() => setShowBulk(true)}>
-          📤 Subir em lote
+          <Icon name="upload" /> Subir em lote
         </button>
         <button className="btn btn-primary hide-mobile" onClick={() => setShowNew(true)}>
           + Novo conteúdo
@@ -219,14 +221,14 @@ export function Dashboard() {
         >
           ✦ Tudo
         </button>
-        {STAGE_FILTERS.map(({ filter: f, label }) => (
+        {STAGE_FILTERS.map(({ filter: f, icon, label }) => (
           <button
             key={f}
             className={`chip ${filter === f ? 'active' : ''}`}
             data-net={f}
             onClick={() => setFilter(f)}
           >
-            {label}
+            <Icon name={icon} /> {label}
           </button>
         ))}
         {NETWORKS.map((n) => (
@@ -248,14 +250,14 @@ export function Dashboard() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <h2>Seu estúdio está vazio 🎬</h2>
+          <h2>Seu estúdio está vazio</h2>
           <p>Crie o primeiro conteúdo e suba o vídeo cru, o editado e a capa.</p>
           <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
             <button className="btn btn-primary" onClick={() => setShowNew(true)}>
               + Criar primeiro conteúdo
             </button>
             <button className="btn btn-ghost" onClick={() => setShowBulk(true)}>
-              📤 Subir em lote
+              <Icon name="upload" /> Subir em lote
             </button>
           </div>
         </motion.div>
@@ -350,14 +352,17 @@ export function Dashboard() {
           Lista
         </button>
         <button className="mobile-nav-btn" onClick={() => setShowBulk(true)}>
-          <span className="mobile-nav-icon">📤</span>
+          <span className="mobile-nav-icon"><Icon name="upload" /></span>
           Subir
         </button>
         <button
           className={`mobile-nav-btn ${showTrash ? 'active' : ''}`}
           onClick={() => setShowTrash((v) => !v)}
         >
-          <span className="mobile-nav-icon">🗑{trashed.length > 0 ? ` ${trashed.length}` : ''}</span>
+          <span className="mobile-nav-icon">
+            <Icon name="trash" />
+            {trashed.length > 0 ? ` ${trashed.length}` : ''}
+          </span>
           Lixeira
         </button>
       </nav>

@@ -283,7 +283,7 @@ export function buildJourney(item: ContentItem): Journey {
     state: stage === 'posted' ? 'current' : 'pending',
     title:
       stage === 'posted'
-        ? 'Jornada concluída — publicado em todas as redes 🎉'
+        ? 'Jornada concluída — publicado em todas as redes'
         : 'Jornada concluída',
     timestamp: stage === 'posted' ? lastPostedAt : undefined,
     detail: stage === 'posted' && lastPostedAt ? 'Última publicação em' : undefined,

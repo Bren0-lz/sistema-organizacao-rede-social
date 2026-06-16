@@ -1,12 +1,13 @@
 import { useRef, useState, type DragEvent } from 'react';
 import { motion } from 'framer-motion';
 import { useStore } from '../store/useStore';
+import { Icon, type IconName } from './Icon';
 
 type BulkSlot = 'raw' | 'edited';
 
-const SLOT_LABEL: Record<BulkSlot, string> = {
-  raw: '🎬 Vídeos crus',
-  edited: '✂️ Vídeos editados',
+const SLOT_META: Record<BulkSlot, { icon: IconName; label: string }> = {
+  raw: { icon: 'video', label: 'Vídeos crus' },
+  edited: { icon: 'scissors', label: 'Vídeos editados' },
 };
 
 export function BulkUploadModal({ onClose }: { onClose: () => void }) {
@@ -55,20 +56,20 @@ export function BulkUploadModal({ onClose }: { onClose: () => void }) {
         transition={{ type: 'spring', stiffness: 380, damping: 30 }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2>📤 Subir em lote</h2>
+        <h2><Icon name="upload" /> Subir em lote</h2>
         <p className="form-help" style={{ marginTop: 0 }}>
           Cada vídeo vira um conteúdo novo, com o título tirado do nome do arquivo. Você pode
           ajustar título, capa e redes depois.
         </p>
 
         <div className="bulk-slot-pick">
-          {(Object.keys(SLOT_LABEL) as BulkSlot[]).map((s) => (
+          {(Object.keys(SLOT_META) as BulkSlot[]).map((s) => (
             <button
               key={s}
               className={`status-tab ${slot === s ? 'active' : ''}`}
               onClick={() => setSlot(s)}
             >
-              {SLOT_LABEL[s]}
+              <Icon name={SLOT_META[s].icon} /> {SLOT_META[s].label}
             </button>
           ))}
         </div>
@@ -83,7 +84,7 @@ export function BulkUploadModal({ onClose }: { onClose: () => void }) {
           onDragLeave={() => setDragOver(false)}
           onDrop={onDrop}
         >
-          <span className="bulk-drop-icon">⬆️</span>
+          <span className="bulk-drop-icon"><Icon name="upload" /></span>
           <span>Arraste vários vídeos aqui ou clique para escolher</span>
           <input
             ref={inputRef}

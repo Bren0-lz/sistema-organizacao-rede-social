@@ -26,6 +26,26 @@ const SLOT_META: Record<FileSlot, { icon: string; label: string; accept: string 
   cover: { icon: '🖼️', label: 'Capa', accept: 'image/*' },
 };
 
+function pad2(value: number): string {
+  return String(value).padStart(2, '0');
+}
+
+function isoToLocalInputValue(iso?: string): string {
+  if (!iso) return '';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return (
+    [date.getFullYear(), pad2(date.getMonth() + 1), pad2(date.getDate())].join('-') +
+    `T${pad2(date.getHours())}:${pad2(date.getMinutes())}`
+  );
+}
+
+function localInputValueToIso(value: string): string | undefined {
+  if (!value) return undefined;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+}
+
 function FileSlotBox({ item, slot }: { item: ContentItem; slot: FileSlot }) {
   const uploadToItem = useStore((s) => s.uploadToItem);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -338,12 +358,10 @@ function NetworkRow({ item, network }: { item: ContentItem; network: Network }) 
               <label>Data:</label>
               <input
                 type="datetime-local"
-                value={state.scheduledAt?.slice(0, 16) ?? ''}
+                value={isoToLocalInputValue(state.scheduledAt)}
                 onChange={(e) =>
                   void setNetwork(item.id, network, {
-                    scheduledAt: e.target.value
-                      ? new Date(e.target.value).toISOString()
-                      : undefined,
+                    scheduledAt: localInputValueToIso(e.target.value),
                   })
                 }
               />
@@ -356,12 +374,10 @@ function NetworkRow({ item, network }: { item: ContentItem; network: Network }) 
                 <label>Postado em:</label>
                 <input
                   type="datetime-local"
-                  value={state.postedAt?.slice(0, 16) ?? ''}
+                  value={isoToLocalInputValue(state.postedAt)}
                   onChange={(e) =>
                     void setNetwork(item.id, network, {
-                      postedAt: e.target.value
-                        ? new Date(e.target.value).toISOString()
-                        : undefined,
+                      postedAt: localInputValueToIso(e.target.value),
                     })
                   }
                 />

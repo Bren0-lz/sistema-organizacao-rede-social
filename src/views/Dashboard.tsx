@@ -46,6 +46,13 @@ function stageForNetwork(item: ContentItem, network: Network): Stage | null {
   return 'ready';
 }
 
+function nextScheduledAt(item: ContentItem): string {
+  const dates = NETWORKS.map((network) => item.networks[network])
+    .filter((status) => status.assigned && status.status === 'scheduled' && status.scheduledAt)
+    .map((status) => status.scheduledAt!);
+  return dates.sort()[0] ?? item.updatedAt;
+}
+
 export function Dashboard() {
   const items = useStore((s) => s.items);
   const refresh = useStore((s) => s.refresh);
@@ -88,9 +95,7 @@ export function Dashboard() {
     for (const [stage, list] of map) {
       list.sort((a, b) =>
         stage === 'scheduled'
-          ? (a.networks.instagram.scheduledAt ?? a.updatedAt).localeCompare(
-              b.networks.instagram.scheduledAt ?? b.updatedAt,
-            )
+          ? nextScheduledAt(a).localeCompare(nextScheduledAt(b))
           : b.updatedAt.localeCompare(a.updatedAt),
       );
     }

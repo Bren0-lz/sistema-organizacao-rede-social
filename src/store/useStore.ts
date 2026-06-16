@@ -78,6 +78,8 @@ interface AppState {
   addCarouselImages(itemId: string, files: File[]): Promise<void>;
   /** Remove uma imagem do carrossel (do array e do Drive). */
   removeCarouselImage(itemId: string, fileId: string): Promise<void>;
+  /** Move uma imagem do carrossel de uma posição para outra (reordena a exibição). */
+  reorderCarousel(itemId: string, from: number, to: number): Promise<void>;
   loadCover(fileId: string): Promise<void>;
 }
 
@@ -341,6 +343,21 @@ export const useStore = create<AppState>((set, get) => {
         ),
       );
       await deleteFile(fileId).catch(() => {});
+    },
+
+    async reorderCarousel(itemId, from, to) {
+      await mutate((items) =>
+        items.map((item) => {
+          if (item.id !== itemId) return item;
+          const ids = [...(item.carouselFileIds ?? [])];
+          if (from < 0 || from >= ids.length || to < 0 || to >= ids.length || from === to) {
+            return item;
+          }
+          const [moved] = ids.splice(from, 1);
+          ids.splice(to, 0, moved);
+          return touch({ ...item, carouselFileIds: ids });
+        }),
+      );
     },
 
     async loadCover(fileId) {

@@ -110,11 +110,16 @@ function CarouselThumb({ fileId }: { fileId: string }) {
 }
 
 // Editor do carrossel: grade ordenada de imagens (a 1ª é a capa) + adicionar/remover.
+// A ordem da grade é a ordem de exibição no carrossel: arraste as imagens (ou use
+// as setas) para reordenar; a 1ª posição é sempre a capa.
 function CarouselEditor({ item }: { item: ContentItem }) {
   const addCarouselImages = useStore((s) => s.addCarouselImages);
   const removeCarouselImage = useStore((s) => s.removeCarouselImage);
+  const reorderCarousel = useStore((s) => s.reorderCarousel);
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [overIndex, setOverIndex] = useState<number | null>(null);
   const ids = item.carouselFileIds ?? [];
 
   const addFiles = (files: FileList | null) => {
@@ -127,13 +132,62 @@ function CarouselEditor({ item }: { item: ContentItem }) {
     addFiles(e.dataTransfer.files);
   };
 
+  const move = (from: number, to: number) => {
+    if (to < 0 || to >= ids.length) return;
+    void reorderCarousel(item.id, from, to);
+  };
+
   return (
     <div className="carousel-editor">
       <div className="carousel-grid">
         {ids.map((fileId, i) => (
-          <div key={fileId} className="carousel-cell">
+          <div
+            key={fileId}
+            className={`carousel-cell${dragIndex === i ? ' dragging' : ''}${
+              overIndex === i && dragIndex !== i ? ' drag-target' : ''
+            }`}
+            draggable
+            onDragStart={(e) => {
+              setDragIndex(i);
+              e.dataTransfer.effectAllowed = 'move';
+            }}
+            onDragOver={(e) => {
+              if (dragIndex === null) return;
+              e.preventDefault();
+              setOverIndex(i);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              if (dragIndex !== null && dragIndex !== i) move(dragIndex, i);
+              setDragIndex(null);
+              setOverIndex(null);
+            }}
+            onDragEnd={() => {
+              setDragIndex(null);
+              setOverIndex(null);
+            }}
+          >
             <CarouselThumb fileId={fileId} />
+            <span className="carousel-order">{i + 1}</span>
             {i === 0 && <span className="carousel-cover-tag">capa</span>}
+            <div className="carousel-move">
+              <button
+                className="carousel-move-btn"
+                title="Mover para trás"
+                disabled={i === 0}
+                onClick={() => move(i, i - 1)}
+              >
+                ‹
+              </button>
+              <button
+                className="carousel-move-btn"
+                title="Mover para frente"
+                disabled={i === ids.length - 1}
+                onClick={() => move(i, i + 1)}
+              >
+                ›
+              </button>
+            </div>
             <button
               className="carousel-remove"
               title="Remover imagem"

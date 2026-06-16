@@ -2,7 +2,7 @@ import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'rea
 import { useWindowVirtualizer } from '@tanstack/react-virtual';
 import {
   coverFileIdFor,
-  hasScheduledTimeArrived,
+  isAutoPostedFromSchedule,
   itemStage,
   itemType,
   NETWORKS,
@@ -105,7 +105,7 @@ const ListRow = memo(function ListRow({
               key={n}
               className="net-badge"
               data-status={
-                hasScheduledTimeArrived(item.networks[n]) ? 'posted' : item.networks[n].status
+                isAutoPostedFromSchedule(n, item.networks[n]) ? 'posted' : item.networks[n].status
               }
             >
               <NetworkIcon network={n} />

@@ -1,5 +1,10 @@
 import { memo, Fragment, useEffect, useState } from 'react';
-import { hasScheduledTimeArrived, NETWORKS, NETWORK_LABELS, type ContentItem } from '../types';
+import {
+  isAutoPostedFromSchedule,
+  NETWORKS,
+  NETWORK_LABELS,
+  type ContentItem,
+} from '../types';
 import { NetworkIcon } from './NetworkIcon';
 
 /** "15/06 · 12:10" — formato curto p/ a pílula da lista (sem o "às"). */
@@ -54,10 +59,14 @@ export const RowTrail = memo(function RowTrail({ item }: { item: ContentItem }) 
             tip = when ? `Publicado em ${when}` : 'Publicado';
           } else if (ns.status === 'scheduled') {
             const when = shortWhen(ns.scheduledAt);
-            const arrived = hasScheduledTimeArrived(ns, now);
-            kind = when ? (arrived ? 'posted' : 'scheduled') : 'warning';
+            const autoPosted = isAutoPostedFromSchedule(n, ns, now);
+            kind = when ? (autoPosted ? 'posted' : 'scheduled') : 'warning';
             text = when ?? 'definir data';
-            tip = when ? `Programado para ${when}` : 'Programado — defina a data';
+            tip = autoPosted
+              ? `Publicado em ${when}`
+              : when
+                ? `Programado para ${when}`
+                : 'Programado — defina a data';
           } else {
             kind = 'pending';
             text = 'aguardando data';

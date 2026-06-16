@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   coverFileIdFor,
-  hasScheduledTimeArrived,
+  isAutoPostedFromSchedule,
   itemStage,
   itemType,
   NETWORKS,
@@ -68,11 +68,12 @@ export function ContentCard({ item, onOpen }: Props) {
               key={n}
               className="net-badge"
               data-status={
-                hasScheduledTimeArrived(item.networks[n]) ? 'posted' : item.networks[n].status
+                isAutoPostedFromSchedule(n, item.networks[n]) ? 'posted' : item.networks[n].status
               }
             >
               <NetworkIcon network={n} />
-              {item.networks[n].status === 'posted' || hasScheduledTimeArrived(item.networks[n])
+              {item.networks[n].status === 'posted' ||
+              isAutoPostedFromSchedule(n, item.networks[n])
                 ? 'postado'
                 : item.networks[n].status === 'scheduled'
                   ? 'programado'

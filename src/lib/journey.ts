@@ -1,5 +1,6 @@
 import {
   hasScheduledTimeArrived,
+  isAutoPostedFromSchedule,
   itemStage,
   itemType,
   NETWORKS,
@@ -206,24 +207,26 @@ export function buildJourney(item: ContentItem): Journey {
   // ----- ramos por rede -----
   const branches: TrailBranch[] = assigned.map((network) => {
     const ns = item.networks[network];
+    const autoPosted = isAutoPostedFromSchedule(network, ns);
     let scheduledStep: BranchStep;
     let postedStep: BranchStep;
     let branchState: NodeState;
 
-    if (ns.status === 'posted') {
+    if (ns.status === 'posted' || autoPosted) {
+      const postedAt = ns.postedAt ?? (autoPosted ? ns.scheduledAt : undefined);
       branchState = 'done';
       scheduledStep = { key: 'scheduled', state: 'done', title: 'Programado' };
-      const when = formatWhen(ns.postedAt);
+      const when = formatWhen(postedAt);
       postedStep = {
         key: 'posted',
         state: 'current',
         title: when ? `Publicado em ${when}` : 'Publicado',
-        timestamp: ns.postedAt,
+        timestamp: postedAt,
         url: ns.postUrl,
       };
     } else if (ns.status === 'scheduled') {
       const arrived = hasScheduledTimeArrived(ns);
-      branchState = arrived ? 'done' : 'current';
+      branchState = 'current';
       const when = formatWhen(ns.scheduledAt);
       scheduledStep = {
         key: 'scheduled',
@@ -249,7 +252,9 @@ export function buildJourney(item: ContentItem): Journey {
   });
 
   // ----- nó publish (agregado das redes) -----
-  const postedCount = assigned.filter((n) => item.networks[n].status === 'posted').length;
+  const postedCount = assigned.filter(
+    (n) => item.networks[n].status === 'posted' || isAutoPostedFromSchedule(n, item.networks[n]),
+  ).length;
   const publishStep: TrailStep = (() => {
     let detail: string;
     if (unassigned) detail = 'Nenhuma rede selecionada ainda';

@@ -100,6 +100,14 @@ export function hasScheduledTimeArrived(status: NetworkStatus, now = Date.now())
   return Number.isFinite(scheduled) && scheduled <= now;
 }
 
+export function isAutoPostedFromSchedule(
+  network: Network,
+  status: NetworkStatus,
+  now = Date.now(),
+): boolean {
+  return network === 'youtube' && hasScheduledTimeArrived(status, now);
+}
+
 export function newContentItem(title: string, type: ContentType = 'video'): ContentItem {
   const now = new Date().toISOString();
   return {

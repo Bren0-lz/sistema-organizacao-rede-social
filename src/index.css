@@ -1727,6 +1727,34 @@ input[type='time']::-webkit-calendar-picker-indicator {
   color: var(--st-edited);
 }
 
+/* tipo + selos ficam na mesma linha, com quebra se faltar espaço */
+.row-title-tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}
+
+/* sinaliza, direto na tabela, que o carrossel já foi marcado como editado */
+.row-edited-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--st-posted) 18%, transparent);
+  color: var(--st-posted);
+}
+
+.row-edited-badge svg {
+  width: 11px;
+  height: 11px;
+}
+
 .row-nets {
   display: flex;
   gap: 4px;

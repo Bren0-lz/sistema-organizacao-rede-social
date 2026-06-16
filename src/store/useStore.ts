@@ -256,8 +256,8 @@ export const useStore = create<AppState>((set, get) => {
     async uploadAndScheduleYoutube(id, input) {
       const item = get().items.find((i) => i.id === id);
       if (!item) return;
-      if (!item.editedVideoFileId) {
-        throw new Error('Anexe um video editado antes de agendar no YouTube.');
+      if (!item.editedVideoFileId && !item.rawVideoFileId) {
+        throw new Error('Anexe ou selecione um video antes de agendar no YouTube.');
       }
       if (new Date(input.publishAt).getTime() <= Date.now()) {
         throw new Error('Escolha uma data futura para o agendamento no YouTube.');
@@ -305,9 +305,9 @@ export const useStore = create<AppState>((set, get) => {
 
       try {
         const fresh = get().items.find((current) => current.id === id) ?? item;
-        const editedVideoFileId = fresh.editedVideoFileId;
-        if (!editedVideoFileId) throw new Error('Anexe um video editado antes de agendar no YouTube.');
-        const video = await fetchFileBlob(editedVideoFileId);
+        const videoFileId = fresh.editedVideoFileId ?? fresh.rawVideoFileId;
+        if (!videoFileId) throw new Error('Anexe ou selecione um video antes de agendar no YouTube.');
+        const video = await fetchFileBlob(videoFileId);
         const thumbnail = fresh.coverFileId
           ? await fetchFileBlob(fresh.coverFileId).catch(() => undefined)
           : undefined;

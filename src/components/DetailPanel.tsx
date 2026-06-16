@@ -393,7 +393,18 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
   const [description, setDescription] = useState(item.notes ?? '');
   const [error, setError] = useState<string | null>(null);
   const busy = state.youtubeUploadStatus === 'uploading';
-  const canSchedule = !!item.editedVideoFileId && !!state.scheduledAt && !busy;
+  const selectedVideoFileId = item.editedVideoFileId ?? item.rawVideoFileId;
+  const selectedVideoLabel = item.editedVideoFileId ? 'editado' : item.rawVideoFileId ? 'cru' : null;
+  const canSchedule = !!selectedVideoFileId && !!state.scheduledAt && !busy;
+  const buttonLabel = busy
+    ? 'Enviando...'
+    : !selectedVideoFileId
+      ? 'Anexe um video'
+      : !state.scheduledAt
+        ? 'Escolha uma data'
+        : state.youtubeVideoId
+          ? 'Reenviar/agendar de novo'
+          : 'Enviar e agendar';
 
   const submit = async () => {
     if (!state.scheduledAt) {
@@ -423,8 +434,9 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
         )}
       </div>
       <p className="youtube-help">
-        Usa o video editado do Drive. O YouTube exige que o upload agendado seja privado ate a
-        data de publicacao.
+        Usa o video selecionado no Drive. Quando houver video editado, ele tem prioridade; caso
+        contrario, o video cru sera enviado. O YouTube exige que o upload agendado seja privado ate
+        a data de publicacao.
       </p>
       <div className="youtube-fields">
         <input
@@ -439,8 +451,11 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
           placeholder="Descricao do video"
         />
       </div>
-      {!item.editedVideoFileId && (
-        <p className="youtube-warning">Anexe um video editado para liberar o agendamento.</p>
+      {selectedVideoLabel && (
+        <p className="youtube-help">Video selecionado: {selectedVideoLabel}.</p>
+      )}
+      {!selectedVideoFileId && (
+        <p className="youtube-warning">Anexe um video cru ou editado para liberar o agendamento.</p>
       )}
       {!state.scheduledAt && (
         <p className="youtube-warning">Marque o status como Programado e escolha uma data.</p>
@@ -466,8 +481,12 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
       {state.youtubeUploadStatus === 'scheduled' && state.youtubeVideoId && (
         <p className="youtube-success">Video enviado e agendado no YouTube.</p>
       )}
-      <button className="btn btn-primary youtube-action" disabled={!canSchedule} onClick={() => void submit()}>
-        {busy ? 'Enviando...' : state.youtubeVideoId ? 'Reenviar/agendar de novo' : 'Enviar e agendar'}
+      <button
+        className="btn btn-primary youtube-action"
+        disabled={!canSchedule}
+        onClick={() => void submit()}
+      >
+        {buttonLabel}
       </button>
     </div>
   );

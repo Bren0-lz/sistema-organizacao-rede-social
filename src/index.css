@@ -1194,6 +1194,33 @@ textarea:focus {
   gap: 8px;
 }
 
+.youtube-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.youtube-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--ink-dim);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.youtube-check input {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  accent-color: var(--yt-red);
+}
+
 .youtube-progress-title {
   display: flex;
   justify-content: space-between;
@@ -2473,6 +2500,9 @@ textarea:focus {
   }
   .view-btn {
     min-height: 44px;
+  }
+  .youtube-options {
+    grid-template-columns: 1fr;
   }
 
   /* ----- BARRA DE NAVEGAÇÃO INFERIOR ----- */

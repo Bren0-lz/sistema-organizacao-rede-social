@@ -7,6 +7,13 @@ export interface YouTubeScheduleInput {
   title: string;
   description?: string;
   publishAt: string;
+  categoryId?: string;
+  tags?: string[];
+  madeForKids?: boolean;
+  containsSyntheticMedia?: boolean;
+  embeddable?: boolean;
+  publicStatsViewable?: boolean;
+  notifySubscribers?: boolean;
   thumbnail?: Blob;
   onProgress?: (fraction: number) => void;
 }
@@ -21,6 +28,13 @@ export async function uploadScheduledVideo({
   title,
   description,
   publishAt,
+  categoryId = '22',
+  tags = [],
+  madeForKids = false,
+  containsSyntheticMedia = false,
+  embeddable = true,
+  publicStatsViewable = true,
+  notifySubscribers = true,
   thumbnail,
   onProgress,
 }: YouTubeScheduleInput): Promise<YouTubeScheduleResult> {
@@ -29,18 +43,21 @@ export async function uploadScheduledVideo({
     snippet: {
       title,
       description: description ?? '',
-      categoryId: '22',
+      categoryId,
+      ...(tags.length > 0 ? { tags } : {}),
     },
     status: {
       privacyStatus: 'private',
       publishAt,
-      selfDeclaredMadeForKids: false,
-      containsSyntheticMedia: false,
+      selfDeclaredMadeForKids: madeForKids,
+      containsSyntheticMedia,
+      embeddable,
+      publicStatsViewable,
     },
   };
 
   const initRes = await fetch(
-    `${UPLOAD_API}/videos?uploadType=resumable&part=snippet,status`,
+    `${UPLOAD_API}/videos?uploadType=resumable&part=snippet,status&notifySubscribers=${notifySubscribers}`,
     {
       method: 'POST',
       headers: {

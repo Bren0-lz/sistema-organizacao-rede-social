@@ -46,6 +46,31 @@ function localInputValueToIso(value: string): string | undefined {
   return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
 }
 
+const YOUTUBE_CATEGORY_OPTIONS = [
+  { id: '1', label: 'Filme e animacao' },
+  { id: '2', label: 'Autos e veiculos' },
+  { id: '10', label: 'Musica' },
+  { id: '15', label: 'Animais' },
+  { id: '17', label: 'Esportes' },
+  { id: '19', label: 'Viagens e eventos' },
+  { id: '20', label: 'Games' },
+  { id: '22', label: 'Pessoas e blogs' },
+  { id: '23', label: 'Comedia' },
+  { id: '24', label: 'Entretenimento' },
+  { id: '25', label: 'Noticias e politica' },
+  { id: '26', label: 'Como fazer e estilo' },
+  { id: '27', label: 'Educacao' },
+  { id: '28', label: 'Ciencia e tecnologia' },
+  { id: '29', label: 'Sem fins lucrativos' },
+];
+
+function parseTags(value: string): string[] {
+  return value
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
+
 function FileSlotBox({ item, slot }: { item: ContentItem; slot: FileSlot }) {
   const uploadToItem = useStore((s) => s.uploadToItem);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -407,6 +432,13 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
   const uploadAndScheduleYoutube = useStore((s) => s.uploadAndScheduleYoutube);
   const [title, setTitle] = useState(item.title);
   const [description, setDescription] = useState(item.notes ?? '');
+  const [categoryId, setCategoryId] = useState('22');
+  const [tagsText, setTagsText] = useState('');
+  const [madeForKids, setMadeForKids] = useState(false);
+  const [containsSyntheticMedia, setContainsSyntheticMedia] = useState(false);
+  const [embeddable, setEmbeddable] = useState(true);
+  const [publicStatsViewable, setPublicStatsViewable] = useState(true);
+  const [notifySubscribers, setNotifySubscribers] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const busy = state.youtubeUploadStatus === 'uploading';
   const selectedVideoFileId = item.editedVideoFileId ?? item.rawVideoFileId;
@@ -433,6 +465,13 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
         title: title.trim() || item.title,
         description: description.trim() || undefined,
         publishAt: state.scheduledAt,
+        categoryId,
+        tags: parseTags(tagsText),
+        madeForKids,
+        containsSyntheticMedia,
+        embeddable,
+        publicStatsViewable,
+        notifySubscribers,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -466,6 +505,60 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Descricao do video"
         />
+        <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+          {YOUTUBE_CATEGORY_OPTIONS.map((category) => (
+            <option key={category.id} value={category.id}>
+              {category.label}
+            </option>
+          ))}
+        </select>
+        <input
+          value={tagsText}
+          onChange={(e) => setTagsText(e.target.value)}
+          placeholder="Tags separadas por virgula"
+        />
+        <div className="youtube-options">
+          <label className="youtube-check">
+            <input
+              type="checkbox"
+              checked={madeForKids}
+              onChange={(e) => setMadeForKids(e.target.checked)}
+            />
+            Feito para criancas
+          </label>
+          <label className="youtube-check">
+            <input
+              type="checkbox"
+              checked={containsSyntheticMedia}
+              onChange={(e) => setContainsSyntheticMedia(e.target.checked)}
+            />
+            Contem midia sintetica/IA
+          </label>
+          <label className="youtube-check">
+            <input
+              type="checkbox"
+              checked={embeddable}
+              onChange={(e) => setEmbeddable(e.target.checked)}
+            />
+            Permitir incorporacao
+          </label>
+          <label className="youtube-check">
+            <input
+              type="checkbox"
+              checked={publicStatsViewable}
+              onChange={(e) => setPublicStatsViewable(e.target.checked)}
+            />
+            Mostrar estatisticas publicas
+          </label>
+          <label className="youtube-check">
+            <input
+              type="checkbox"
+              checked={notifySubscribers}
+              onChange={(e) => setNotifySubscribers(e.target.checked)}
+            />
+            Notificar inscritos
+          </label>
+        </div>
       </div>
       {selectedVideoLabel && (
         <p className="youtube-help">Video selecionado: {selectedVideoLabel}.</p>

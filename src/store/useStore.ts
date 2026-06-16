@@ -68,7 +68,18 @@ interface AppState {
   bulkSetNetwork(ids: string[], network: Network, patch: Partial<NetworkStatus>): Promise<void>;
   uploadAndScheduleYoutube(
     id: string,
-    input: { title: string; description?: string; publishAt: string },
+    input: {
+      title: string;
+      description?: string;
+      publishAt: string;
+      categoryId?: string;
+      tags?: string[];
+      madeForKids?: boolean;
+      containsSyntheticMedia?: boolean;
+      embeddable?: boolean;
+      publicStatsViewable?: boolean;
+      notifySubscribers?: boolean;
+    },
   ): Promise<void>;
   /** Manda vários itens para a lixeira de uma vez. */
   deleteItems(ids: string[]): Promise<void>;
@@ -317,6 +328,13 @@ export const useStore = create<AppState>((set, get) => {
           title: input.title,
           description: input.description,
           publishAt: input.publishAt,
+          categoryId: input.categoryId,
+          tags: input.tags,
+          madeForKids: input.madeForKids,
+          containsSyntheticMedia: input.containsSyntheticMedia,
+          embeddable: input.embeddable,
+          publicStatsViewable: input.publicStatsViewable,
+          notifySubscribers: input.notifySubscribers,
           onProgress: setProgress,
         });
 

@@ -1,6 +1,13 @@
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { coverFileIdFor, itemStage, itemType, NETWORKS, type ContentItem } from '../types';
+import {
+  coverFileIdFor,
+  hasScheduledTimeArrived,
+  itemStage,
+  itemType,
+  NETWORKS,
+  type ContentItem,
+} from '../types';
 import { useStore } from '../store/useStore';
 import { useInView } from '../lib/concurrency';
 import { NetworkIcon } from './NetworkIcon';
@@ -57,9 +64,15 @@ export function ContentCard({ item, onOpen }: Props) {
         <div className="card-title">{item.title}</div>
         <div className="card-meta">
           {NETWORKS.filter((n) => item.networks[n].assigned).map((n) => (
-            <span key={n} className="net-badge" data-status={item.networks[n].status}>
+            <span
+              key={n}
+              className="net-badge"
+              data-status={
+                hasScheduledTimeArrived(item.networks[n]) ? 'posted' : item.networks[n].status
+              }
+            >
               <NetworkIcon network={n} />
-              {item.networks[n].status === 'posted'
+              {item.networks[n].status === 'posted' || hasScheduledTimeArrived(item.networks[n])
                 ? 'postado'
                 : item.networks[n].status === 'scheduled'
                   ? 'programado'

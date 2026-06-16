@@ -7,6 +7,7 @@ import {
   type ContentItem,
   type FileSlot,
   type Network,
+  type NetworkStatus,
 } from '../types';
 import { useStore } from '../store/useStore';
 import { useMediaQuery } from '../lib/useMediaQuery';
@@ -24,6 +25,51 @@ const SLOT_META: Record<FileSlot, { icon: string; label: string; accept: string 
   edited: { icon: '✂️', label: 'Editado', accept: 'video/*' },
   cover: { icon: '🖼️', label: 'Capa', accept: 'image/*' },
 };
+
+function pad2(value: number): string {
+  return String(value).padStart(2, '0');
+}
+
+function isoToLocalInputValue(iso?: string): string {
+  if (!iso) return '';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return (
+    [date.getFullYear(), pad2(date.getMonth() + 1), pad2(date.getDate())].join('-') +
+    `T${pad2(date.getHours())}:${pad2(date.getMinutes())}`
+  );
+}
+
+function localInputValueToIso(value: string): string | undefined {
+  if (!value) return undefined;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+}
+
+const YOUTUBE_CATEGORY_OPTIONS = [
+  { id: '1', label: 'Filme e animacao' },
+  { id: '2', label: 'Autos e veiculos' },
+  { id: '10', label: 'Musica' },
+  { id: '15', label: 'Animais' },
+  { id: '17', label: 'Esportes' },
+  { id: '19', label: 'Viagens e eventos' },
+  { id: '20', label: 'Games' },
+  { id: '22', label: 'Pessoas e blogs' },
+  { id: '23', label: 'Comedia' },
+  { id: '24', label: 'Entretenimento' },
+  { id: '25', label: 'Noticias e politica' },
+  { id: '26', label: 'Como fazer e estilo' },
+  { id: '27', label: 'Educacao' },
+  { id: '28', label: 'Ciencia e tecnologia' },
+  { id: '29', label: 'Sem fins lucrativos' },
+];
+
+function parseTags(value: string): string[] {
+  return value
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
 
 function FileSlotBox({ item, slot }: { item: ContentItem; slot: FileSlot }) {
   const uploadToItem = useStore((s) => s.uploadToItem);
@@ -337,12 +383,10 @@ function NetworkRow({ item, network }: { item: ContentItem; network: Network }) 
               <label>Data:</label>
               <input
                 type="datetime-local"
-                value={state.scheduledAt?.slice(0, 16) ?? ''}
+                value={isoToLocalInputValue(state.scheduledAt)}
                 onChange={(e) =>
                   void setNetwork(item.id, network, {
-                    scheduledAt: e.target.value
-                      ? new Date(e.target.value).toISOString()
-                      : undefined,
+                    scheduledAt: localInputValueToIso(e.target.value),
                   })
                 }
               />
@@ -355,12 +399,10 @@ function NetworkRow({ item, network }: { item: ContentItem; network: Network }) 
                 <label>Postado em:</label>
                 <input
                   type="datetime-local"
-                  value={state.postedAt?.slice(0, 16) ?? ''}
+                  value={isoToLocalInputValue(state.postedAt)}
                   onChange={(e) =>
                     void setNetwork(item.id, network, {
-                      postedAt: e.target.value
-                        ? new Date(e.target.value).toISOString()
-                        : undefined,
+                      postedAt: localInputValueToIso(e.target.value),
                     })
                   }
                 />
@@ -378,8 +420,183 @@ function NetworkRow({ item, network }: { item: ContentItem; network: Network }) 
               </div>
             </>
           )}
+
+          {network === 'youtube' && <YouTubeScheduler item={item} state={state} />}
         </motion.div>
       )}
+    </div>
+  );
+}
+
+function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkStatus }) {
+  const uploadAndScheduleYoutube = useStore((s) => s.uploadAndScheduleYoutube);
+  const [title, setTitle] = useState(item.title);
+  const [description, setDescription] = useState(item.notes ?? '');
+  const [categoryId, setCategoryId] = useState('22');
+  const [tagsText, setTagsText] = useState('');
+  const [madeForKids, setMadeForKids] = useState(false);
+  const [containsSyntheticMedia, setContainsSyntheticMedia] = useState(false);
+  const [embeddable, setEmbeddable] = useState(true);
+  const [publicStatsViewable, setPublicStatsViewable] = useState(true);
+  const [notifySubscribers, setNotifySubscribers] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const busy = state.youtubeUploadStatus === 'uploading';
+  const selectedVideoFileId = item.editedVideoFileId ?? item.rawVideoFileId;
+  const selectedVideoLabel = item.editedVideoFileId ? 'editado' : item.rawVideoFileId ? 'cru' : null;
+  const canSchedule = !!selectedVideoFileId && !!state.scheduledAt && !busy;
+  const buttonLabel = busy
+    ? 'Enviando...'
+    : !selectedVideoFileId
+      ? 'Anexe um video'
+      : !state.scheduledAt
+        ? 'Escolha uma data'
+        : state.youtubeVideoId
+          ? 'Reenviar/agendar de novo'
+          : 'Enviar e agendar';
+
+  const submit = async () => {
+    if (!state.scheduledAt) {
+      setError('Defina uma data em Programado antes de enviar ao YouTube.');
+      return;
+    }
+    setError(null);
+    try {
+      await uploadAndScheduleYoutube(item.id, {
+        title: title.trim() || item.title,
+        description: description.trim() || undefined,
+        publishAt: state.scheduledAt,
+        categoryId,
+        tags: parseTags(tagsText),
+        madeForKids,
+        containsSyntheticMedia,
+        embeddable,
+        publicStatsViewable,
+        notifySubscribers,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  return (
+    <div className="youtube-box">
+      <div className="youtube-box-head">
+        <span>Upload e agendamento no YouTube</span>
+        {state.youtubeVideoId && (
+          <a href={state.postUrl} target="_blank" rel="noreferrer">
+            abrir video
+          </a>
+        )}
+      </div>
+      <p className="youtube-help">
+        Usa o video selecionado no Drive. Quando houver video editado, ele tem prioridade; caso
+        contrario, o video cru sera enviado. O YouTube exige que o upload agendado seja privado ate
+        a data de publicacao.
+      </p>
+      <div className="youtube-fields">
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Titulo no YouTube"
+        />
+        <textarea
+          rows={3}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Descricao do video"
+        />
+        <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+          {YOUTUBE_CATEGORY_OPTIONS.map((category) => (
+            <option key={category.id} value={category.id}>
+              {category.label}
+            </option>
+          ))}
+        </select>
+        <input
+          value={tagsText}
+          onChange={(e) => setTagsText(e.target.value)}
+          placeholder="Tags separadas por virgula"
+        />
+        <div className="youtube-options">
+          <label className="youtube-check">
+            <input
+              type="checkbox"
+              checked={madeForKids}
+              onChange={(e) => setMadeForKids(e.target.checked)}
+            />
+            Feito para criancas
+          </label>
+          <label className="youtube-check">
+            <input
+              type="checkbox"
+              checked={containsSyntheticMedia}
+              onChange={(e) => setContainsSyntheticMedia(e.target.checked)}
+            />
+            Contem midia sintetica/IA
+          </label>
+          <label className="youtube-check">
+            <input
+              type="checkbox"
+              checked={embeddable}
+              onChange={(e) => setEmbeddable(e.target.checked)}
+            />
+            Permitir incorporacao
+          </label>
+          <label className="youtube-check">
+            <input
+              type="checkbox"
+              checked={publicStatsViewable}
+              onChange={(e) => setPublicStatsViewable(e.target.checked)}
+            />
+            Mostrar estatisticas publicas
+          </label>
+          <label className="youtube-check">
+            <input
+              type="checkbox"
+              checked={notifySubscribers}
+              onChange={(e) => setNotifySubscribers(e.target.checked)}
+            />
+            Notificar inscritos
+          </label>
+        </div>
+      </div>
+      {selectedVideoLabel && (
+        <p className="youtube-help">Video selecionado: {selectedVideoLabel}.</p>
+      )}
+      {!selectedVideoFileId && (
+        <p className="youtube-warning">Anexe um video cru ou editado para liberar o agendamento.</p>
+      )}
+      {!state.scheduledAt && (
+        <p className="youtube-warning">Marque o status como Programado e escolha uma data.</p>
+      )}
+      {busy && (
+        <div className="youtube-progress">
+          <div className="youtube-progress-title">
+            <span>Enviando para o YouTube</span>
+            <span>{Math.round((state.youtubeUploadProgress ?? 0) * 100)}%</span>
+          </div>
+          <div className="progress-track">
+            <motion.div
+              className="progress-bar"
+              animate={{ width: `${(state.youtubeUploadProgress ?? 0) * 100}%` }}
+              transition={{ ease: 'easeOut', duration: 0.2 }}
+            />
+          </div>
+        </div>
+      )}
+      {(error || state.youtubeUploadError) && (
+        <p className="youtube-error">{error ?? state.youtubeUploadError}</p>
+      )}
+      {state.youtubeUploadStatus === 'scheduled' && state.youtubeVideoId && (
+        <p className="youtube-success">Video enviado e agendado no YouTube.</p>
+      )}
+      <button
+        className="btn btn-primary youtube-action"
+        disabled={!canSchedule}
+        onClick={() => void submit()}
+      >
+        {buttonLabel}
+      </button>
     </div>
   );
 }

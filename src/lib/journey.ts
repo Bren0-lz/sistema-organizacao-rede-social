@@ -1,4 +1,5 @@
 import {
+  hasScheduledTimeArrived,
   itemStage,
   itemType,
   NETWORKS,
@@ -221,11 +222,12 @@ export function buildJourney(item: ContentItem): Journey {
         url: ns.postUrl,
       };
     } else if (ns.status === 'scheduled') {
-      branchState = 'current';
+      const arrived = hasScheduledTimeArrived(ns);
+      branchState = arrived ? 'done' : 'current';
       const when = formatWhen(ns.scheduledAt);
       scheduledStep = {
         key: 'scheduled',
-        state: 'current',
+        state: arrived ? 'done' : 'current',
         title: when ? `Programado para ${when}` : 'Programado — defina a data',
         timestamp: ns.scheduledAt,
       };

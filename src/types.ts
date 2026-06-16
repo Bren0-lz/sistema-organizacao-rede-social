@@ -19,6 +19,10 @@ export interface NetworkStatus {
   scheduledAt?: string;
   postedAt?: string;
   postUrl?: string;
+  youtubeVideoId?: string;
+  youtubeUploadStatus?: 'idle' | 'uploading' | 'scheduled' | 'failed';
+  youtubeUploadProgress?: number;
+  youtubeUploadError?: string;
 }
 
 export interface ContentItem {
@@ -88,6 +92,12 @@ export function isTrashExpired(item: ContentItem): boolean {
 
 export function emptyNetworkStatus(): NetworkStatus {
   return { assigned: false, status: 'none' };
+}
+
+export function hasScheduledTimeArrived(status: NetworkStatus, now = Date.now()): boolean {
+  if (status.status !== 'scheduled' || !status.scheduledAt) return false;
+  const scheduled = new Date(status.scheduledAt).getTime();
+  return Number.isFinite(scheduled) && scheduled <= now;
 }
 
 export function newContentItem(title: string, type: ContentType = 'video'): ContentItem {

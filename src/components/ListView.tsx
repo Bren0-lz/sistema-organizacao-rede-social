@@ -2,6 +2,7 @@ import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'rea
 import { useWindowVirtualizer } from '@tanstack/react-virtual';
 import {
   coverFileIdFor,
+  hasScheduledTimeArrived,
   itemStage,
   itemType,
   NETWORKS,
@@ -100,7 +101,13 @@ const ListRow = memo(function ListRow({
       <td className="col-nets">
         <div className="row-nets">
           {NETWORKS.filter((n) => item.networks[n].assigned).map((n) => (
-            <span key={n} className="net-badge" data-status={item.networks[n].status}>
+            <span
+              key={n}
+              className="net-badge"
+              data-status={
+                hasScheduledTimeArrived(item.networks[n]) ? 'posted' : item.networks[n].status
+              }
+            >
               <NetworkIcon network={n} />
             </span>
           ))}

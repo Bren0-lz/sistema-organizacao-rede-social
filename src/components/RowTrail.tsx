@@ -1,5 +1,5 @@
-import { memo, Fragment } from 'react';
-import { NETWORKS, NETWORK_LABELS, type ContentItem } from '../types';
+import { memo, Fragment, useEffect, useState } from 'react';
+import { hasScheduledTimeArrived, NETWORKS, NETWORK_LABELS, type ContentItem } from '../types';
 import { NetworkIcon } from './NetworkIcon';
 
 /** "15/06 · 12:10" — formato curto p/ a pílula da lista (sem o "às"). */
@@ -21,6 +21,14 @@ type PillKind = 'scheduled' | 'posted' | 'warning' | 'pending';
  */
 export const RowTrail = memo(function RowTrail({ item }: { item: ContentItem }) {
   const assigned = NETWORKS.filter((n) => item.networks[n].assigned);
+  const hasScheduled = assigned.some((n) => item.networks[n].status === 'scheduled');
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!hasScheduled) return undefined;
+    const interval = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(interval);
+  }, [hasScheduled]);
 
   if (assigned.length === 0) {
     return (
@@ -46,7 +54,8 @@ export const RowTrail = memo(function RowTrail({ item }: { item: ContentItem }) 
             tip = when ? `Publicado em ${when}` : 'Publicado';
           } else if (ns.status === 'scheduled') {
             const when = shortWhen(ns.scheduledAt);
-            kind = when ? 'scheduled' : 'warning';
+            const arrived = hasScheduledTimeArrived(ns, now);
+            kind = when ? (arrived ? 'posted' : 'scheduled') : 'warning';
             text = when ?? 'definir data';
             tip = when ? `Programado para ${when}` : 'Programado — defina a data';
           } else {

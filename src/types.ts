@@ -94,6 +94,12 @@ export function emptyNetworkStatus(): NetworkStatus {
   return { assigned: false, status: 'none' };
 }
 
+export function hasScheduledTimeArrived(status: NetworkStatus, now = Date.now()): boolean {
+  if (status.status !== 'scheduled' || !status.scheduledAt) return false;
+  const scheduled = new Date(status.scheduledAt).getTime();
+  return Number.isFinite(scheduled) && scheduled <= now;
+}
+
 export function newContentItem(title: string, type: ContentType = 'video'): ContentItem {
   const now = new Date().toISOString();
   return {

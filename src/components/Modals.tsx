@@ -24,10 +24,10 @@ function ModalShell({ children, onClose }: { children: ReactNode; onClose: () =>
     <div className="modal-backdrop" onClick={onClose}>
       <motion.div
         className="modal"
-        initial={{ scale: 0.92, y: 18, opacity: 0 }}
+        initial={{ scale: 0.98, y: 6, opacity: 0 }}
         animate={{ scale: 1, y: 0, opacity: 1 }}
-        exit={{ scale: 0.95, opacity: 0 }}
-        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+        exit={{ scale: 0.98, y: 4, opacity: 0 }}
+        transition={{ duration: 0.14, ease: [0.2, 0.8, 0.2, 1] }}
         onClick={(e) => e.stopPropagation()}
       >
         {children}

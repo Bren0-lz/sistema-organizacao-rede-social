@@ -1152,7 +1152,11 @@ input[type='time']::-webkit-calendar-picker-indicator {
   font-weight: 700;
   border: 1px solid var(--line);
   color: var(--ink-dim);
-  transition: all 0.2s;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease,
+    transform 0.1s ease;
 }
 
 /* seletor de tipo de postagem (Vídeo / Carrossel) no modal de novo conteúdo */

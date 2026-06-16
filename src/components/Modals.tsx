@@ -19,8 +19,7 @@ const VIDEO_SLOT_OPTIONS: { slot: VideoSlot; icon: IconName; label: string }[] =
 
 function ModalShell({ children, onClose }: { children: ReactNode; onClose: () => void }) {
   return (
-    // Backdrop sem animação de opacidade: animar opacidade com backdrop-filter
-    // força o navegador a recalcular o blur de toda a página atrás a cada frame.
+    // Backdrop escuro e estático para abrir rápido sem recalcular blur no fundo.
     <div className="modal-backdrop" onClick={onClose}>
       <motion.div
         className="modal"

@@ -8,7 +8,7 @@
   --bg: #0a0a0f;
   --bg-raised: #12121a;
   --bg-card: #16161f;
-  --bg-overlay: rgba(10, 10, 15, 0.82);
+  --bg-overlay: rgba(5, 5, 8, 0.9);
   --line: rgba(255, 255, 255, 0.07);
   --line-strong: rgba(255, 255, 255, 0.14);
 
@@ -1317,9 +1317,6 @@ input[type='time']::-webkit-calendar-picker-indicator {
   position: fixed;
   inset: 0;
   background: var(--bg-overlay);
-  /* blur leve: o backdrop não anima opacidade (ver ModalShell), então o desfoque
-     é rasterizado uma vez; manter o raio baixo barateia esse raster. */
-  backdrop-filter: blur(3px);
   z-index: 70;
   display: grid;
   place-items: center;

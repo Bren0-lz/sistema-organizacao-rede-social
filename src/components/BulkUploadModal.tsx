@@ -45,8 +45,7 @@ export function BulkUploadModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    // Backdrop estático: animar opacidade com backdrop-filter recalcula o blur
-    // da página inteira a cada frame (causa de travamento). Só o painel anima.
+    // Backdrop escuro e estático para abrir rápido sem recalcular blur no fundo.
     <div className="modal-backdrop" onClick={onClose}>
       <motion.div
         className="modal modal-wide"

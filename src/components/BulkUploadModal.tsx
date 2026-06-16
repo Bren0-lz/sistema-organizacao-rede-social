@@ -44,13 +44,9 @@ export function BulkUploadModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <motion.div
-      className="modal-backdrop"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      onClick={onClose}
-    >
+    // Backdrop estático: animar opacidade com backdrop-filter recalcula o blur
+    // da página inteira a cada frame (causa de travamento). Só o painel anima.
+    <div className="modal-backdrop" onClick={onClose}>
       <motion.div
         className="modal modal-wide"
         initial={{ scale: 0.92, y: 18, opacity: 0 }}
@@ -129,6 +125,6 @@ export function BulkUploadModal({ onClose }: { onClose: () => void }) {
           </button>
         </div>
       </motion.div>
-    </motion.div>
+    </div>
   );
 }

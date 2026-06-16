@@ -1034,7 +1034,9 @@ textarea:focus {
   position: fixed;
   inset: 0;
   background: var(--bg-overlay);
-  backdrop-filter: blur(6px);
+  /* blur leve: o backdrop não anima opacidade (ver ModalShell), então o desfoque
+     é rasterizado uma vez; manter o raio baixo barateia esse raster. */
+  backdrop-filter: blur(3px);
   z-index: 70;
   display: grid;
   place-items: center;

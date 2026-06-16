@@ -11,13 +11,9 @@ const TYPE_OPTIONS: { type: ContentType; label: string }[] = [
 
 function ModalShell({ children, onClose }: { children: ReactNode; onClose: () => void }) {
   return (
-    <motion.div
-      className="modal-backdrop"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      onClick={onClose}
-    >
+    // Backdrop sem animação de opacidade: animar opacidade com backdrop-filter
+    // força o navegador a recalcular o blur de toda a página atrás a cada frame.
+    <div className="modal-backdrop" onClick={onClose}>
       <motion.div
         className="modal"
         initial={{ scale: 0.92, y: 18, opacity: 0 }}
@@ -28,7 +24,7 @@ function ModalShell({ children, onClose }: { children: ReactNode; onClose: () =>
       >
         {children}
       </motion.div>
-    </motion.div>
+    </div>
   );
 }
 

@@ -946,6 +946,10 @@ input[type='time']::-webkit-calendar-picker-indicator {
   line-height: 1;
 }
 
+.carousel-edited-toggle {
+  margin-top: 14px;
+}
+
 .drawer-preview {
   width: auto;
   max-width: 280px;

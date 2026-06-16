@@ -22,7 +22,9 @@ import {
 } from '../services/youtube';
 import { createLimiter } from '../lib/concurrency';
 import {
+  hasScheduledTimeArrived,
   isTrashExpired,
+  NETWORKS,
   newContentItem,
   type AppFolders,
   type ContentItem,
@@ -62,6 +64,7 @@ interface AppState {
   signIn(): Promise<void>;
   signOut(): void;
   refresh(): Promise<void>;
+  reconcileScheduledPosts(): Promise<void>;
   connectSharedFolder(folderIdOrUrl: string): Promise<void>;
 
   createItem(title: string, notes?: string, type?: ContentType): Promise<ContentItem>;
@@ -118,6 +121,36 @@ const SLOT_FIELD: Record<FileSlot, keyof Pick<
   cover: 'coverFileId',
 };
 
+function markElapsedScheduledPosts(
+  items: ContentItem[],
+  now = Date.now(),
+): { items: ContentItem[]; changed: boolean } {
+  const nowIso = new Date(now).toISOString();
+  let changed = false;
+
+  const next = items.map((item) => {
+    let itemChanged = false;
+    const networks = { ...item.networks };
+
+    for (const network of NETWORKS) {
+      const status = item.networks[network];
+      if (!status.assigned || !hasScheduledTimeArrived(status, now)) continue;
+      networks[network] = {
+        ...status,
+        status: 'posted',
+        postedAt: status.postedAt ?? status.scheduledAt,
+      };
+      itemChanged = true;
+    }
+
+    if (!itemChanged) return item;
+    changed = true;
+    return { ...item, networks, updatedAt: nowIso };
+  });
+
+  return { items: next, changed };
+}
+
 export const useStore = create<AppState>((set, get) => {
   // Mutex de persistência: encadeia as gravações para que nunca rodem
   // concorrentes. Cada `mutate` lê o estado MAIS RECENTE (depois da gravação
@@ -145,7 +178,7 @@ export const useStore = create<AppState>((set, get) => {
    * encadeada pelo mutex, e reconcilia o estado quando termina.
    */
   function mutate(updater: (items: ContentItem[]) => ContentItem[]): Promise<void> {
-    const next = updater(get().items);
+    const next = markElapsedScheduledPosts(updater(get().items)).items;
     set({ items: next });
     const run = chain.then(() => persist(next));
     // mantém a cadeia viva mesmo se uma gravação falhar
@@ -158,14 +191,22 @@ export const useStore = create<AppState>((set, get) => {
     updatedAt: new Date().toISOString(),
   });
 
+  async function reconcileScheduledPosts(now = Date.now()): Promise<void> {
+    const result = markElapsedScheduledPosts(get().items, now);
+    if (!result.changed) return;
+    await mutate(() => result.items);
+  }
+
   async function connect(explicitRootId?: string): Promise<void> {
     set({ authStatus: 'connecting', errorMessage: undefined });
     try {
       const folders = await ensureAppStructure(explicitRootId);
       const db = await loadDatabase(folders.dbFileId);
-      set({ authStatus: 'ready', folders, items: db.items });
+      const normalized = markElapsedScheduledPosts(db.items);
+      set({ authStatus: 'ready', folders, items: normalized.items });
+      if (normalized.changed) void persist(normalized.items);
       // limpa itens que já passaram dos 30 dias na lixeira
-      const expired = db.items.filter(isTrashExpired).map((i) => i.id);
+      const expired = normalized.items.filter(isTrashExpired).map((i) => i.id);
       if (expired.length > 0) void get().purgeItems(expired);
     } catch (error) {
       set({
@@ -210,8 +251,12 @@ export const useStore = create<AppState>((set, get) => {
       const { folders } = get();
       if (!folders) return;
       const db = await loadDatabase(folders.dbFileId);
-      set({ items: db.items });
+      const normalized = markElapsedScheduledPosts(db.items);
+      set({ items: normalized.items });
+      if (normalized.changed) void persist(normalized.items);
     },
+
+    reconcileScheduledPosts,
 
     async connectSharedFolder(folderIdOrUrl) {
       const id = setSharedRootFolder(folderIdOrUrl);

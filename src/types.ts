@@ -105,7 +105,8 @@ export function isAutoPostedFromSchedule(
   status: NetworkStatus,
   now = Date.now(),
 ): boolean {
-  return network === 'youtube' && hasScheduledTimeArrived(status, now);
+  void network;
+  return hasScheduledTimeArrived(status, now);
 }
 
 export function newContentItem(title: string, type: ContentType = 'video'): ContentItem {

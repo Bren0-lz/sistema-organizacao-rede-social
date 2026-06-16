@@ -8,10 +8,20 @@ export default function App() {
   const errorMessage = useStore((s) => s.errorMessage);
   const init = useStore((s) => s.init);
   const signOut = useStore((s) => s.signOut);
+  const reconcileScheduledPosts = useStore((s) => s.reconcileScheduledPosts);
 
   useEffect(() => {
     void init();
   }, [init]);
+
+  useEffect(() => {
+    if (authStatus !== 'ready') return;
+    void reconcileScheduledPosts();
+    const id = window.setInterval(() => {
+      void reconcileScheduledPosts();
+    }, 30_000);
+    return () => window.clearInterval(id);
+  }, [authStatus, reconcileScheduledPosts]);
 
   switch (authStatus) {
     case 'checking':

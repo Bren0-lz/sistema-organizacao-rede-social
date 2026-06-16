@@ -12,7 +12,7 @@ import { useStore } from '../store/useStore';
 import { useInView } from '../lib/concurrency';
 import { NetworkIcon } from './NetworkIcon';
 import { StageIcon } from './StageIcon';
-import { TrailMini } from './TrailMini';
+import { RowTrail } from './RowTrail';
 import { STAGE_COLORS, STAGE_LABELS } from '../lib/journey';
 
 type SortKey = 'title' | 'updated' | 'stage';
@@ -107,7 +107,7 @@ const ListRow = memo(function ListRow({
         </div>
       </td>
       <td className="col-files">
-        <TrailMini item={item} />
+        <RowTrail item={item} />
       </td>
       <td className="col-stage">
         <span className="stage-tag" style={{ color: STAGE_COLORS[stage] }}>

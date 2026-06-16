@@ -2358,11 +2358,11 @@ input[type='time']::-webkit-calendar-picker-indicator {
     border-radius: var(--radius-lg);
     background: var(--bg-raised);
     display: grid;
-    grid-template-columns: 64px 1fr;
+    grid-template-columns: 64px 1fr auto auto;
     grid-template-areas:
-      'thumb title'
-      'thumb meta';
-    column-gap: 14px;
+      'thumb title title title'
+      'thumb nets  stage date';
+    column-gap: 10px;
     row-gap: 8px;
     align-items: center;
   }
@@ -2395,26 +2395,27 @@ input[type='time']::-webkit-calendar-picker-indicator {
     overflow: hidden;
   }
 
-  /* linha de metadados: redes + estágio + data lado a lado */
+  /* linha de metadados: cada um na sua coluna do grid (sem sobreposição) */
   .list-table td.col-nets {
-    grid-area: meta;
-    align-self: start;
+    grid-area: nets;
+    align-self: center;
+    min-width: 0; /* deixa a coluna 1fr encolher em vez de empurrar estágio/data */
     display: flex;
     align-items: center;
-    gap: 10px;
   }
-  /* estágio e data entram na mesma linha de metadados */
-  .list-table td.col-stage,
-  .list-table td.col-date {
-    grid-area: meta;
-    align-self: start;
-    justify-self: end;
-    width: auto;
+  /* permite que muitas redes quebrem em linha extra em vez de estourar */
+  .list-table td.col-nets .row-nets {
+    flex-wrap: wrap;
   }
   .list-table td.col-stage {
-    margin-right: 76px; /* abre espaço p/ a data à direita */
+    grid-area: stage;
+    align-self: center;
+    width: auto;
   }
   .list-table td.col-date {
+    grid-area: date;
+    align-self: center;
+    width: auto;
     font-size: 12px;
   }
   /* progresso (trail) escondido no cartão para não poluir */
@@ -2581,13 +2582,17 @@ input[type='time']::-webkit-calendar-picker-indicator {
 /* telas bem estreitas: ajustes finos */
 @media (max-width: 400px) {
   .list-table tbody tr {
-    grid-template-columns: 56px 1fr;
+    grid-template-columns: 56px 1fr auto;
+    grid-template-areas:
+      'thumb title title'
+      'thumb nets  stage'
+      'thumb date  date';
+  }
+  .list-table td.col-date {
+    justify-self: start;
   }
   .list-table .row-thumb {
     aspect-ratio: 9 / 16;
     height: 64px;
-  }
-  .list-table td.col-stage {
-    margin-right: 64px;
   }
 }

@@ -495,7 +495,7 @@ textarea:focus {
 }
 
 .card-cover {
-  aspect-ratio: 16 / 10;
+  aspect-ratio: 9 / 16;
   background: #0d0d14;
   position: relative;
   overflow: hidden;
@@ -924,21 +924,23 @@ textarea:focus {
 }
 
 .drawer-preview {
-  width: 100%;
-  aspect-ratio: 16 / 9;
+  width: auto;
+  max-width: 280px;
+  aspect-ratio: 9 / 16;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: #000;
-  margin-top: 14px;
+  margin: 14px auto 0;
 }
 
 .drawer-preview-poster {
-  width: 100%;
-  aspect-ratio: 16 / 9;
+  width: auto;
+  max-width: 280px;
+  aspect-ratio: 9 / 16;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: #000 center / cover no-repeat;
-  margin-top: 14px;
+  margin: 14px auto 0;
   display: grid;
   place-items: center;
   cursor: pointer;
@@ -1533,8 +1535,8 @@ textarea:focus {
 
 .row-thumb {
   position: relative;
-  width: 44px;
-  height: 30px;
+  aspect-ratio: 9 / 16;
+  height: 58px;
   border-radius: 6px;
   overflow: hidden;
   background: var(--bg-card);
@@ -1631,7 +1633,7 @@ textarea:focus {
   width: 116px;
 }
 .col-files {
-  width: 244px;
+  width: 168px;
 }
 .col-stage {
   width: 138px;
@@ -2120,88 +2122,51 @@ textarea:focus {
   color: #0b0f1a;
 }
 
-/* ---------- progresso da linha na lista: tronco + ramos por rede ---------- */
+/* ---------- progresso da linha na lista: pílula de data por rede ---------- */
 .row-trail {
   display: flex;
-  flex-direction: column;
-  gap: 5px;
-  align-items: flex-start;
 }
-/* tronco mais compacto que a trail-mini do cartão */
-.row-trail-trunk .trail-mini-line {
-  width: 8px;
-}
+/* grade alinhada: ícone (col fixa) + pílula, mesma coluna entre todas as redes */
 .row-branches {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  width: 100%;
-}
-.row-branch {
-  display: flex;
+  display: grid;
+  grid-template-columns: 16px auto;
   align-items: center;
-  gap: 7px;
+  gap: 4px 10px;
 }
-.row-branch-net {
+.row-net-ico {
   display: inline-flex;
+  justify-content: center;
   color: var(--ink-dim);
 }
-.row-branch-net svg {
+.row-net-ico svg {
   width: 13px;
   height: 13px;
 }
-/* 2 pontinhos do ramo: programado → publicado */
-.row-branch-dots {
-  display: inline-flex;
-  align-items: center;
-  color: var(--line-strong);
-}
-.row-branch-dots[data-state='current'] {
-  color: var(--st-scheduled);
-}
-.row-branch-dots[data-state='done'] {
-  color: var(--st-posted);
-}
-.row-branch-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--line-strong);
-}
-.row-branch-dot[data-on='true'] {
-  background: currentColor;
-}
-.row-branch-line {
-  width: 8px;
-  height: 2px;
-  background: var(--line-strong);
-}
-.row-branch-line[data-filled='true'] {
-  background: currentColor;
-}
-/* pílula da data/hora — em destaque quando programado */
-.row-branch-pill {
+/* pílula da data/hora — estado sinalizado pela cor */
+.row-net-pill {
+  justify-self: start;
   font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.01em;
-  padding: 2px 7px;
+  padding: 2px 8px;
   border-radius: 999px;
   white-space: nowrap;
   line-height: 1.4;
 }
-.row-branch-pill[data-kind='scheduled'] {
+.row-net-pill[data-kind='scheduled'] {
   background: color-mix(in srgb, var(--st-scheduled) 18%, transparent);
   color: var(--st-scheduled);
 }
-.row-branch-pill[data-kind='posted'] {
+.row-net-pill[data-kind='posted'] {
   background: color-mix(in srgb, var(--st-posted) 16%, transparent);
   color: var(--st-posted);
 }
-.row-branch-pill[data-kind='warning'] {
+.row-net-pill[data-kind='warning'] {
   background: color-mix(in srgb, var(--st-raw) 18%, transparent);
   color: var(--st-raw);
 }
-.row-branch-pill[data-kind='pending'] {
+.row-net-pill[data-kind='pending'] {
+  padding-left: 0;
   color: var(--ink-faint);
   font-weight: 600;
 }
@@ -2366,8 +2331,8 @@ textarea:focus {
     width: 64px;
   }
   .list-table .row-thumb {
-    width: 64px;
-    height: 64px;
+    aspect-ratio: 9 / 16;
+    height: 72px;
   }
   .list-table td.col-title {
     grid-area: title;
@@ -2568,8 +2533,8 @@ textarea:focus {
     grid-template-columns: 56px 1fr;
   }
   .list-table .row-thumb {
-    width: 56px;
-    height: 56px;
+    aspect-ratio: 9 / 16;
+    height: 64px;
   }
   .list-table td.col-stage {
     margin-right: 64px;

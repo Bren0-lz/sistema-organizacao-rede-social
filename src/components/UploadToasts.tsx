@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useStore } from '../store/useStore';
+import { Icon } from './Icon';
 
 const SLOT_LABEL = {
   raw: 'vídeo cru',
@@ -27,8 +28,8 @@ export function UploadToasts() {
           layout
         >
           <div className="upload-toast-title">
-            <span>
-              ⬆️ Subindo {done}/{uploads.length}
+            <span className="upload-toast-label">
+              <Icon name="upload" /> Subindo {done}/{uploads.length}
               {failed > 0 ? ` · ${failed} com erro` : ''}
             </span>
             <span className="pct">{Math.round(avg * 100)}%</span>
@@ -58,9 +59,9 @@ export function UploadToasts() {
             layout
           >
             <div className="upload-toast-title">
-              <span>
-                {u.error ? '⚠️' : u.progress >= 1 ? '✅' : '⬆️'} {SLOT_LABEL[u.slot]} —{' '}
-                {u.itemTitle}
+              <span className="upload-toast-label">
+                <Icon name={u.error ? 'warning' : u.progress >= 1 ? 'check' : 'upload'} />{' '}
+                {SLOT_LABEL[u.slot]} — {u.itemTitle}
               </span>
               {!u.error && <span className="pct">{Math.round(u.progress * 100)}%</span>}
             </div>

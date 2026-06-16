@@ -13,6 +13,7 @@ import { useStore } from '../store/useStore';
 import { useMediaQuery } from '../lib/useMediaQuery';
 import { previewUrl } from '../services/drive';
 import { NetworkIcon } from './NetworkIcon';
+import { Icon, type IconName } from './Icon';
 import { JourneyTrail } from './JourneyTrail';
 
 interface Props {
@@ -20,10 +21,10 @@ interface Props {
   onClose: () => void;
 }
 
-const SLOT_META: Record<FileSlot, { icon: string; label: string; accept: string }> = {
-  raw: { icon: '🎬', label: 'Vídeo cru', accept: 'video/*' },
-  edited: { icon: '✂️', label: 'Editado', accept: 'video/*' },
-  cover: { icon: '🖼️', label: 'Capa', accept: 'image/*' },
+const SLOT_META: Record<FileSlot, { icon: IconName; label: string; accept: string }> = {
+  raw: { icon: 'video', label: 'Vídeo cru', accept: 'video/*' },
+  edited: { icon: 'scissors', label: 'Editado', accept: 'video/*' },
+  cover: { icon: 'carousel', label: 'Capa', accept: 'image/*' },
 };
 
 function pad2(value: number): string {
@@ -107,7 +108,9 @@ function FileSlotBox({ item, slot }: { item: ContentItem; slot: FileSlot }) {
       onDragLeave={() => setDragOver(false)}
       onDrop={onDrop}
     >
-      <span className="slot-icon">{fileId ? '✅' : meta.icon}</span>
+      <span className="slot-icon">
+        <Icon name={fileId ? 'check' : meta.icon} />
+      </span>
       <span className="slot-label">{meta.label}</span>
       <span className="slot-hint">
         {fileId ? 'clique para substituir' : 'arraste ou clique'}
@@ -151,7 +154,9 @@ function CarouselThumb({ fileId }: { fileId: string }) {
   return url ? (
     <img src={url} alt="" loading="lazy" />
   ) : (
-    <span className="carousel-thumb-ph">⏳</span>
+    <span className="carousel-thumb-ph">
+      <Icon name="hourglass" />
+    </span>
   );
 }
 
@@ -369,11 +374,19 @@ function NetworkRow({ item, network }: { item: ContentItem; network: Network }) 
                   })
                 }
               >
-                {status === 'none'
-                  ? '⬜ Sem data'
-                  : status === 'scheduled'
-                    ? '📅 Programado'
-                    : '✅ Postado'}
+                {status === 'none' ? (
+                  <>
+                    <Icon name="none" /> Sem data
+                  </>
+                ) : status === 'scheduled' ? (
+                  <>
+                    <Icon name="calendar" /> Programado
+                  </>
+                ) : (
+                  <>
+                    <Icon name="check" /> Postado
+                  </>
+                )}
               </button>
             ))}
           </div>
@@ -709,7 +722,7 @@ export function DetailPanel({ item, onClose }: Props) {
             </div>
           ) : (
             <button className="btn btn-ghost btn-danger" onClick={() => setConfirmDelete(true)}>
-              🗑 Mover para lixeira
+              <Icon name="trash" /> Mover para lixeira
             </button>
           )}
         </section>

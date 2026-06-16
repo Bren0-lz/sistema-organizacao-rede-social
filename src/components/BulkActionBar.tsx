@@ -8,16 +8,17 @@ import {
 } from '../types';
 import { useStore } from '../store/useStore';
 import { NetworkIcon } from './NetworkIcon';
+import { Icon, type IconName } from './Icon';
 
 interface Props {
   ids: string[];
   onClear: () => void;
 }
 
-const STATUS_OPTIONS: { status: PostStatus; label: string }[] = [
-  { status: 'none', label: '⬜ Sem data' },
-  { status: 'scheduled', label: '📅 Programado' },
-  { status: 'posted', label: '✅ Postado' },
+const STATUS_OPTIONS: { status: PostStatus; icon: IconName; label: string }[] = [
+  { status: 'none', icon: 'none', label: 'Sem data' },
+  { status: 'scheduled', icon: 'calendar', label: 'Programado' },
+  { status: 'posted', icon: 'check', label: 'Postado' },
 ];
 
 export function BulkActionBar({ ids, onClear }: Props) {
@@ -84,7 +85,7 @@ export function BulkActionBar({ ids, onClear }: Props) {
               disabled={busy}
               onClick={() => void setStatus(o.status)}
             >
-              {o.label}
+              <Icon name={o.icon} /> {o.label}
             </button>
           ))}
 
@@ -108,7 +109,7 @@ export function BulkActionBar({ ids, onClear }: Props) {
               disabled={busy}
               onClick={() => setConfirmDelete(true)}
             >
-              🗑 Remover
+              <Icon name="trash" /> Remover
             </button>
           )}
 

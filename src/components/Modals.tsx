@@ -2,18 +2,19 @@ import { useRef, useState, type DragEvent, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { useStore } from '../store/useStore';
 import { getRootFolderId, rootFolderUrl } from '../services/drive';
+import { Icon, type IconName } from './Icon';
 import type { ContentType, FileSlot } from '../types';
 
-const TYPE_OPTIONS: { type: ContentType; label: string }[] = [
-  { type: 'video', label: '🎬 Vídeo' },
-  { type: 'carousel', label: '🖼️ Carrossel' },
+const TYPE_OPTIONS: { type: ContentType; icon: IconName; label: string }[] = [
+  { type: 'video', icon: 'video', label: 'Vídeo' },
+  { type: 'carousel', icon: 'carousel', label: 'Carrossel' },
 ];
 
 type VideoSlot = Extract<FileSlot, 'raw' | 'edited'>;
 
-const VIDEO_SLOT_OPTIONS: { slot: VideoSlot; label: string }[] = [
-  { slot: 'raw', label: '🎬 Vídeo cru' },
-  { slot: 'edited', label: '✂️ Vídeo editado' },
+const VIDEO_SLOT_OPTIONS: { slot: VideoSlot; icon: IconName; label: string }[] = [
+  { slot: 'raw', icon: 'video', label: 'Vídeo cru' },
+  { slot: 'edited', icon: 'scissors', label: 'Vídeo editado' },
 ];
 
 function ModalShell({ children, onClose }: { children: ReactNode; onClose: () => void }) {
@@ -100,7 +101,7 @@ export function NewItemModal({
 
   return (
     <ModalShell onClose={onClose}>
-      <h2>✨ Novo conteúdo</h2>
+      <h2><Icon name="sparkles" /> Novo conteúdo</h2>
       <div className="form-grid">
         <div>
           <label className="form-label">Tipo de postagem</label>
@@ -112,7 +113,7 @@ export function NewItemModal({
                 className={`status-tab ${type === o.type ? 'active' : ''}`}
                 onClick={() => changeType(o.type)}
               >
-                {o.label}
+                <Icon name={o.icon} /> {o.label}
               </button>
             ))}
           </div>
@@ -139,7 +140,7 @@ export function NewItemModal({
                   className={`status-tab ${videoSlot === o.slot ? 'active' : ''}`}
                   onClick={() => setVideoSlot(o.slot)}
                 >
-                  {o.label}
+                  <Icon name={o.icon} /> {o.label}
                 </button>
               ))}
             </div>
@@ -158,7 +159,7 @@ export function NewItemModal({
             onDragLeave={() => setDragOver(false)}
             onDrop={onDrop}
           >
-            <span className="bulk-drop-icon">⬆️</span>
+            <span className="bulk-drop-icon"><Icon name="upload" /></span>
             <span>
               {isVideo
                 ? 'Arraste o vídeo aqui ou clique para escolher'
@@ -222,7 +223,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
 
   return (
     <ModalShell onClose={onClose}>
-      <h2>⚙️ Configurações</h2>
+      <h2><Icon name="settings" /> Configurações</h2>
       <div className="form-grid">
         {rootId && (
           <div>

@@ -13,6 +13,7 @@ import { useStore } from '../store/useStore';
 import { useInView } from '../lib/concurrency';
 import { NetworkIcon } from './NetworkIcon';
 import { StageIcon } from './StageIcon';
+import { Icon } from './Icon';
 import { RowTrail } from './RowTrail';
 import { STAGE_COLORS, STAGE_LABELS } from '../lib/journey';
 
@@ -43,10 +44,12 @@ function LazyThumb({ fileId, isCarousel }: { fileId?: string; isCarousel: boolea
       {url ? (
         <img src={url} alt="" loading="lazy" />
       ) : (
-        <span className="row-thumb-ph">{fileId ? '⏳' : isCarousel ? '🖼️' : '🎬'}</span>
+        <span className="row-thumb-ph">
+          <Icon name={fileId ? 'hourglass' : isCarousel ? 'carousel' : 'video'} />
+        </span>
       )}
       <span className="row-type-badge" title={isCarousel ? 'Carrossel' : 'Vídeo'} aria-hidden>
-        {isCarousel ? '🖼️' : '🎬'}
+        <Icon name={isCarousel ? 'carousel' : 'video'} />
       </span>
     </div>
   );
@@ -95,7 +98,7 @@ const ListRow = memo(function ListRow({
       <td className="col-title">
         <span className="row-title">{item.title}</span>
         <span className="row-type" data-type={isCarousel ? 'carousel' : 'video'}>
-          {isCarousel ? '🖼️ Carrossel' : '🎬 Vídeo'}
+          <Icon name={isCarousel ? 'carousel' : 'video'} /> {isCarousel ? 'Carrossel' : 'Vídeo'}
         </span>
       </td>
       <td className="col-nets">

@@ -1,6 +1,7 @@
 import { getAccessToken } from './googleAuth';
 
 const UPLOAD_API = 'https://www.googleapis.com/upload/youtube/v3';
+const DATA_API = 'https://www.googleapis.com/youtube/v3';
 
 export interface YouTubeScheduleInput {
   video: Blob;
@@ -21,6 +22,39 @@ export interface YouTubeScheduleInput {
 export interface YouTubeScheduleResult {
   videoId: string;
   url: string;
+}
+
+export interface YouTubeMetadataInput {
+  title: string;
+  description?: string;
+  categoryId?: string;
+  tags?: string[];
+  madeForKids?: boolean;
+  containsSyntheticMedia?: boolean;
+  embeddable?: boolean;
+  publicStatsViewable?: boolean;
+}
+
+interface YouTubeVideoSnippet {
+  title?: string;
+  description?: string;
+  categoryId?: string;
+  tags?: string[];
+}
+
+interface YouTubeVideoStatus {
+  embeddable?: boolean;
+  license?: string;
+  privacyStatus?: string;
+  publishAt?: string;
+  publicStatsViewable?: boolean;
+  selfDeclaredMadeForKids?: boolean;
+  containsSyntheticMedia?: boolean;
+}
+
+interface YouTubeVideoResource {
+  snippet?: YouTubeVideoSnippet;
+  status?: YouTubeVideoStatus;
 }
 
 export async function uploadScheduledVideo({
@@ -137,4 +171,125 @@ async function setThumbnail(videoId: string, thumbnail: Blob): Promise<void> {
     const body = await res.text().catch(() => '');
     throw new Error(`Thumbnail YouTube ${res.status}: ${body.slice(0, 300)}`);
   }
+}
+
+export async function cancelYoutubePublication(videoId: string): Promise<void> {
+  const token = await getAccessToken(true);
+  const current = await fetchYoutubeStatus(videoId, token);
+  const status: YouTubeVideoStatus = {
+    privacyStatus: 'private',
+    ...(current.embeddable !== undefined ? { embeddable: current.embeddable } : {}),
+    ...(current.license ? { license: current.license } : {}),
+    ...(current.publicStatsViewable !== undefined
+      ? { publicStatsViewable: current.publicStatsViewable }
+      : {}),
+    ...(current.selfDeclaredMadeForKids !== undefined
+      ? { selfDeclaredMadeForKids: current.selfDeclaredMadeForKids }
+      : {}),
+    ...(current.containsSyntheticMedia !== undefined
+      ? { containsSyntheticMedia: current.containsSyntheticMedia }
+      : {}),
+  };
+
+  const res = await fetch(`${DATA_API}/videos?part=status`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json; charset=UTF-8',
+    },
+    body: JSON.stringify({ id: videoId, status }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`Cancelar YouTube ${res.status}: ${body.slice(0, 300)}`);
+  }
+}
+
+export async function updateYoutubeVideoMetadata(
+  videoId: string,
+  input: YouTubeMetadataInput,
+): Promise<void> {
+  const token = await getAccessToken(true);
+  const current = await fetchYoutubeVideo(videoId, token, 'snippet,status');
+  const currentSnippet = current.snippet ?? {};
+  const currentStatus = current.status ?? {};
+  const status: YouTubeVideoStatus = {
+    privacyStatus: currentStatus.privacyStatus ?? 'private',
+    ...(currentStatus.privacyStatus === 'private' && currentStatus.publishAt
+      ? { publishAt: currentStatus.publishAt }
+      : {}),
+    ...(input.embeddable !== undefined ? { embeddable: input.embeddable } : {}),
+    ...(currentStatus.license ? { license: currentStatus.license } : {}),
+    ...(input.publicStatsViewable !== undefined
+      ? { publicStatsViewable: input.publicStatsViewable }
+      : {}),
+    ...(input.madeForKids !== undefined ? { selfDeclaredMadeForKids: input.madeForKids } : {}),
+    ...(input.containsSyntheticMedia !== undefined
+      ? { containsSyntheticMedia: input.containsSyntheticMedia }
+      : {}),
+  };
+
+  const snippet: YouTubeVideoSnippet = {
+    title: input.title || currentSnippet.title || 'Video',
+    description: input.description ?? currentSnippet.description ?? '',
+    categoryId: input.categoryId ?? currentSnippet.categoryId ?? '22',
+    ...(input.tags
+      ? { tags: input.tags }
+      : currentSnippet.tags
+        ? { tags: currentSnippet.tags }
+        : {}),
+  };
+
+  const res = await fetch(`${DATA_API}/videos?part=snippet,status`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json; charset=UTF-8',
+    },
+    body: JSON.stringify({ id: videoId, snippet, status }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`Editar YouTube ${res.status}: ${body.slice(0, 300)}`);
+  }
+}
+
+export async function deleteYoutubeVideo(videoId: string): Promise<void> {
+  const token = await getAccessToken(true);
+  const res = await fetch(`${DATA_API}/videos?id=${encodeURIComponent(videoId)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok && res.status !== 404) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`Excluir YouTube ${res.status}: ${body.slice(0, 300)}`);
+  }
+}
+
+async function fetchYoutubeStatus(videoId: string, token: string): Promise<YouTubeVideoStatus> {
+  const video = await fetchYoutubeVideo(videoId, token, 'status');
+  return video.status ?? {};
+}
+
+async function fetchYoutubeVideo(
+  videoId: string,
+  token: string,
+  part: string,
+): Promise<YouTubeVideoResource> {
+  const res = await fetch(`${DATA_API}/videos?part=${part}&id=${encodeURIComponent(videoId)}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`YouTube API ${res.status}: ${body.slice(0, 300)}`);
+  }
+
+  const data = (await res.json()) as { items?: YouTubeVideoResource[] };
+  const video = data.items?.[0];
+  if (!video) throw new Error('Video do YouTube nao encontrado.');
+  return video;
 }

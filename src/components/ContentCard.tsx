@@ -60,6 +60,11 @@ export function ContentCard({ item, onOpen }: Props) {
         <span className="card-type-badge" title={isCarousel ? 'Carrossel' : 'Vídeo'}>
           <Icon name={isCarousel ? 'carousel' : 'video'} /> {isCarousel ? 'Carrossel' : 'Vídeo'}
         </span>
+        {isCarousel && item.carouselEditedAt && (
+          <span className="card-edited-badge" title="Carrossel marcado como editado">
+            <Icon name="check" /> editado
+          </span>
+        )}
       </div>
       <div className="card-body">
         <div className="card-title">{item.title}</div>

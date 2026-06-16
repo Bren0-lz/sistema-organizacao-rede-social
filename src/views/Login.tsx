@@ -58,6 +58,15 @@ export function Login() {
           Entrar com Google
         </motion.button>
         {errorMessage && <div className="login-error">{errorMessage}</div>}
+        <p className="login-legal">
+          <a href="/legal/privacidade.html" target="_blank" rel="noopener">
+            Política de Privacidade
+          </a>
+          {' · '}
+          <a href="/legal/termos.html" target="_blank" rel="noopener">
+            Termos de Serviço
+          </a>
+        </p>
       </motion.div>
     </div>
   );

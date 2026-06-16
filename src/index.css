@@ -415,6 +415,18 @@ input[type='time']::-webkit-calendar-picker-indicator {
   background: var(--st-edited);
 }
 
+.chip.active[data-net='carousel'] {
+  background: var(--st-ready);
+}
+
+.chip.active[data-net='carousel-raw'] {
+  background: var(--st-raw);
+}
+
+.chip.active[data-net='carousel-ready'] {
+  background: var(--st-posted);
+}
+
 .chip.active[data-net='instagram'] {
   background: linear-gradient(45deg, var(--ig-a), var(--ig-b) 55%, var(--ig-c));
 }

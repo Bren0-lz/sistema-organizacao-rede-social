@@ -920,6 +920,32 @@ input[type='time']::-webkit-calendar-picker-indicator {
   opacity: 1;
 }
 
+.carousel-download {
+  position: absolute;
+  top: 32px;
+  right: 5px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.carousel-cell:hover .carousel-download {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .carousel-cell .carousel-download {
+    opacity: 1;
+  }
+}
+
 .carousel-add {
   aspect-ratio: 1 / 1;
   border: 1.5px dashed var(--line-strong);
@@ -946,8 +972,15 @@ input[type='time']::-webkit-calendar-picker-indicator {
   line-height: 1;
 }
 
-.carousel-edited-toggle {
+.carousel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
   margin-top: 14px;
+}
+
+.carousel-edited-toggle {
+  margin-top: 0;
 }
 
 .drawer-preview {

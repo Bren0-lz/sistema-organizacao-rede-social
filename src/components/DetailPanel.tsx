@@ -11,7 +11,7 @@ import {
 } from '../types';
 import { useStore } from '../store/useStore';
 import { useMediaQuery } from '../lib/useMediaQuery';
-import { previewUrl } from '../services/drive';
+import { downloadFile, previewUrl } from '../services/drive';
 import { NetworkIcon } from './NetworkIcon';
 import { Icon, type IconName } from './Icon';
 import { JourneyTrail } from './JourneyTrail';
@@ -172,8 +172,22 @@ function CarouselEditor({ item }: { item: ContentItem }) {
   const [dragOver, setDragOver] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
+  const [downloadingAll, setDownloadingAll] = useState(false);
   const ids = item.carouselFileIds ?? [];
   const edited = !!item.carouselEditedAt;
+
+  const downloadAll = async () => {
+    if (downloadingAll || ids.length === 0) return;
+    setDownloadingAll(true);
+    try {
+      // baixa uma a uma, em ordem, para não disparar dezenas de requisições juntas
+      for (let i = 0; i < ids.length; i++) {
+        await downloadFile(ids[i], `${item.title}-${i + 1}`);
+      }
+    } finally {
+      setDownloadingAll(false);
+    }
+  };
 
   const toggleEdited = () =>
     void updateItem(item.id, {
@@ -254,6 +268,13 @@ function CarouselEditor({ item }: { item: ContentItem }) {
               </button>
             </div>
             <button
+              className="carousel-download"
+              title="Baixar imagem"
+              onClick={() => void downloadFile(fileId, `${item.title}-${i + 1}`)}
+            >
+              <Icon name="download" />
+            </button>
+            <button
               className="carousel-remove"
               title="Remover imagem"
               onClick={() => void removeCarouselImage(item.id, fileId)}
@@ -279,14 +300,25 @@ function CarouselEditor({ item }: { item: ContentItem }) {
         </button>
       </div>
       {ids.length > 0 && (
-        <button
-          type="button"
-          className={`btn carousel-edited-toggle ${edited ? 'btn-primary' : 'btn-ghost'}`}
-          onClick={toggleEdited}
-        >
-          <Icon name={edited ? 'check' : 'scissors'} />{' '}
-          {edited ? 'Marcado como editado' : 'Marcar como editado'}
-        </button>
+        <div className="carousel-actions">
+          <button
+            type="button"
+            className={`btn carousel-edited-toggle ${edited ? 'btn-primary' : 'btn-ghost'}`}
+            onClick={toggleEdited}
+          >
+            <Icon name={edited ? 'check' : 'scissors'} />{' '}
+            {edited ? 'Marcado como editado' : 'Marcar como editado'}
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            disabled={downloadingAll}
+            onClick={() => void downloadAll()}
+          >
+            <Icon name="download" />{' '}
+            {downloadingAll ? 'Baixando…' : `Baixar todas (${ids.length})`}
+          </button>
+        </div>
       )}
       <input
         ref={inputRef}

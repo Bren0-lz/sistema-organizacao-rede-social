@@ -2424,6 +2424,14 @@ input[type='time']::-webkit-calendar-picker-indicator {
     align-self: center;
     width: auto;
     font-size: 12px;
+    white-space: nowrap;
+  }
+  /* deixa explícito que essa data é a da última atualização
+     (no desktop o cabeçalho "Atualizado" cumpre esse papel) */
+  .list-table td.col-date::before {
+    content: 'atualizado ';
+    color: var(--ink-faint);
+    font-weight: 600;
   }
   /* datas por rede (mesmo conteúdo da coluna "Progresso" do desktop):
      linha de largura total abaixo dos metadados, separada por um filete */

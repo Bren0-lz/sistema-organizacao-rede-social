@@ -18,6 +18,7 @@ import {
   newContentItem,
   type AppFolders,
   type ContentItem,
+  type ContentType,
   type FileSlot,
   type Network,
   type NetworkStatus,
@@ -28,10 +29,13 @@ const coverLimiter = createLimiter(4);
 /** Uploads em lote: no máximo 3 arquivos subindo ao mesmo tempo. */
 const uploadLimiter = createLimiter(3);
 
+/** Destino de um upload: um slot de vídeo/capa ou uma imagem de carrossel. */
+export type UploadKind = FileSlot | 'carousel';
+
 export interface UploadTask {
   id: string;
   fileName: string;
-  slot: FileSlot;
+  slot: UploadKind;
   itemTitle: string;
   progress: number; // 0..1
   error?: string;
@@ -52,7 +56,7 @@ interface AppState {
   refresh(): Promise<void>;
   connectSharedFolder(folderIdOrUrl: string): Promise<void>;
 
-  createItem(title: string, notes?: string): Promise<ContentItem>;
+  createItem(title: string, notes?: string, type?: ContentType): Promise<ContentItem>;
   updateItem(id: string, patch: Partial<ContentItem>): Promise<void>;
   /** Manda o item para a lixeira (soft delete). */
   deleteItem(id: string): Promise<void>;
@@ -70,6 +74,10 @@ interface AppState {
   uploadToItem(itemId: string, slot: FileSlot, file: File): Promise<void>;
   /** Cria um item por arquivo e enfileira os uploads (concorrência limitada). */
   bulkUploadAsItems(files: File[], slot: Extract<FileSlot, 'raw' | 'edited'>): Promise<void>;
+  /** Sobe imagens para o carrossel de um item e as anexa em ordem. */
+  addCarouselImages(itemId: string, files: File[]): Promise<void>;
+  /** Remove uma imagem do carrossel (do array e do Drive). */
+  removeCarouselImage(itemId: string, fileId: string): Promise<void>;
   loadCover(fileId: string): Promise<void>;
 }
 
@@ -178,8 +186,8 @@ export const useStore = create<AppState>((set, get) => {
       await connect(id);
     },
 
-    async createItem(title, notes) {
-      const item = newContentItem(title);
+    async createItem(title, notes, type) {
+      const item = newContentItem(title, type);
       if (notes) item.notes = notes;
       await mutate((items) => [item, ...items]);
       return item;
@@ -264,7 +272,12 @@ export const useStore = create<AppState>((set, get) => {
       // apaga os arquivos do Drive em paralelo, ignorando os que já sumiram
       await Promise.all(
         targets.flatMap((item) =>
-          [item.rawVideoFileId, item.editedVideoFileId, item.coverFileId]
+          [
+            item.rawVideoFileId,
+            item.editedVideoFileId,
+            item.coverFileId,
+            ...(item.carouselFileIds ?? []),
+          ]
             .filter((id): id is string => !!id)
             .map((fileId) => deleteFile(fileId).catch(() => {})),
         ),
@@ -302,6 +315,34 @@ export const useStore = create<AppState>((set, get) => {
       );
     },
 
+    async addCarouselImages(itemId, files) {
+      const { folders, items } = get();
+      if (!folders) return;
+      const item = items.find((i) => i.id === itemId);
+      if (!item) return;
+      const images = files.filter((f) => f.type.startsWith('image/'));
+      if (images.length === 0) return;
+      await Promise.all(
+        images.map((file) =>
+          uploadLimiter(() => runUpload(itemId, item.title, 'carousel', file)),
+        ),
+      );
+    },
+
+    async removeCarouselImage(itemId, fileId) {
+      await mutate((items) =>
+        items.map((item) =>
+          item.id === itemId
+            ? touch({
+                ...item,
+                carouselFileIds: (item.carouselFileIds ?? []).filter((id) => id !== fileId),
+              })
+            : item,
+        ),
+      );
+      await deleteFile(fileId).catch(() => {});
+    },
+
     async loadCover(fileId) {
       if (get().coverUrls[fileId]) return;
       try {
@@ -313,22 +354,39 @@ export const useStore = create<AppState>((set, get) => {
     },
   };
 
+  /** Anexa uma imagem ao fim do carrossel, lendo sempre o estado mais recente. */
+  function appendCarouselImage(itemId: string, fileId: string): Promise<void> {
+    return mutate((items) =>
+      items.map((item) =>
+        item.id === itemId
+          ? touch({ ...item, carouselFileIds: [...(item.carouselFileIds ?? []), fileId] })
+          : item,
+      ),
+    );
+  }
+
   /** Sobe um arquivo para um item já existente, com tarefa de progresso. */
   async function runUpload(
     itemId: string,
     itemTitle: string,
-    slot: FileSlot,
+    kind: UploadKind,
     file: File,
   ): Promise<void> {
     const { folders } = get();
     if (!folders) return;
     const parentId =
-      slot === 'raw' ? folders.raw : slot === 'edited' ? folders.edited : folders.covers;
+      kind === 'raw'
+        ? folders.raw
+        : kind === 'edited'
+          ? folders.edited
+          : kind === 'carousel'
+            ? folders.carousel
+            : folders.covers;
 
     const task: UploadTask = {
       id: crypto.randomUUID(),
       fileName: file.name,
-      slot,
+      slot: kind,
       itemTitle,
       progress: 0,
     };
@@ -341,11 +399,17 @@ export const useStore = create<AppState>((set, get) => {
 
     try {
       const fileId = await uploadFile(file, parentId, (p) => updateTask({ progress: p }));
-      const patch: Partial<ContentItem> = { [SLOT_FIELD[slot]]: fileId };
-      if (slot === 'raw') patch.rawUploadedAt = new Date().toISOString();
-      if (slot === 'edited') patch.editedUploadedAt = new Date().toISOString();
-      await get().updateItem(itemId, patch);
-      if (slot === 'cover') void get().loadCover(fileId);
+      if (kind === 'carousel') {
+        await appendCarouselImage(itemId, fileId);
+        // pré-carrega a miniatura (a 1ª imagem vira capa na lista/cards)
+        void get().loadCover(fileId);
+      } else {
+        const patch: Partial<ContentItem> = { [SLOT_FIELD[kind]]: fileId };
+        if (kind === 'raw') patch.rawUploadedAt = new Date().toISOString();
+        if (kind === 'edited') patch.editedUploadedAt = new Date().toISOString();
+        await get().updateItem(itemId, patch);
+        if (kind === 'cover') void get().loadCover(fileId);
+      }
       // remove a tarefa concluída após breve pausa para a animação terminar
       setTimeout(() => set({ uploads: get().uploads.filter((u) => u.id !== task.id) }), 1500);
     } catch (error) {

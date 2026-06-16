@@ -2,6 +2,12 @@ import { useState, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { useStore } from '../store/useStore';
 import { getRootFolderId, rootFolderUrl } from '../services/drive';
+import type { ContentType } from '../types';
+
+const TYPE_OPTIONS: { type: ContentType; label: string }[] = [
+  { type: 'video', label: '🎬 Vídeo' },
+  { type: 'carousel', label: '🖼️ Carrossel' },
+];
 
 function ModalShell({ children, onClose }: { children: ReactNode; onClose: () => void }) {
   return (
@@ -36,13 +42,14 @@ export function NewItemModal({
   const createItem = useStore((s) => s.createItem);
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
+  const [type, setType] = useState<ContentType>('video');
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
     if (!title.trim() || busy) return;
     setBusy(true);
     try {
-      const item = await createItem(title.trim(), notes.trim() || undefined);
+      const item = await createItem(title.trim(), notes.trim() || undefined, type);
       onCreated(item.id);
     } finally {
       setBusy(false);
@@ -53,6 +60,21 @@ export function NewItemModal({
     <ModalShell onClose={onClose}>
       <h2>✨ Novo conteúdo</h2>
       <div className="form-grid">
+        <div>
+          <label className="form-label">Tipo de postagem</label>
+          <div className="type-pick">
+            {TYPE_OPTIONS.map((o) => (
+              <button
+                key={o.type}
+                type="button"
+                className={`status-tab ${type === o.type ? 'active' : ''}`}
+                onClick={() => setType(o.type)}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </div>
         <div>
           <label className="form-label">Título</label>
           <input

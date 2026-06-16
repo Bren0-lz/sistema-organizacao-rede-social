@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { itemStage, NETWORKS, type ContentItem } from '../types';
+import { coverFileIdFor, itemStage, itemType, NETWORKS, type ContentItem } from '../types';
 import { useStore } from '../store/useStore';
 import { useInView } from '../lib/concurrency';
 import { NetworkIcon } from './NetworkIcon';
@@ -15,18 +15,18 @@ interface Props {
 export function ContentCard({ item, onOpen }: Props) {
   // assina só a URL desta capa — não o mapa inteiro — para que o carregamento
   // de uma capa não re-renderize todos os cards visíveis
-  const coverUrl = useStore((s) =>
-    item.coverFileId ? s.coverUrls[item.coverFileId] : undefined,
-  );
+  const coverFileId = coverFileIdFor(item);
+  const coverUrl = useStore((s) => (coverFileId ? s.coverUrls[coverFileId] : undefined));
   const loadCover = useStore((s) => s.loadCover);
   const { ref, inView } = useInView<HTMLElement>();
 
   const stage = itemStage(item);
+  const isCarousel = itemType(item) === 'carousel';
 
   useEffect(() => {
     // só baixa a capa quando o card entra na viewport
-    if (inView && item.coverFileId) void loadCover(item.coverFileId);
-  }, [inView, item.coverFileId, loadCover]);
+    if (inView && coverFileId) void loadCover(coverFileId);
+  }, [inView, coverFileId, loadCover]);
 
   return (
     <motion.article
@@ -46,9 +46,12 @@ export function ContentCard({ item, onOpen }: Props) {
           <img src={coverUrl} alt={`Capa de ${item.title}`} />
         ) : (
           <div className="card-cover-placeholder">
-            {item.coverFileId ? '⏳' : '🖼️'}
+            {coverFileId ? '⏳' : isCarousel ? '🖼️' : '🎬'}
           </div>
         )}
+        <span className="card-type-badge" title={isCarousel ? 'Carrossel' : 'Vídeo'}>
+          {isCarousel ? '🖼️ Carrossel' : '🎬 Vídeo'}
+        </span>
       </div>
       <div className="card-body">
         <div className="card-title">{item.title}</div>

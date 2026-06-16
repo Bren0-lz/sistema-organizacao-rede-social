@@ -10,6 +10,9 @@ export const NETWORK_LABELS: Record<Network, string> = {
 
 export type PostStatus = 'none' | 'scheduled' | 'posted';
 
+/** Tipo de postagem: vídeo (fluxo cru→editado) ou carrossel de imagens. */
+export type ContentType = 'video' | 'carousel';
+
 export interface NetworkStatus {
   assigned: boolean;
   status: PostStatus;
@@ -24,6 +27,10 @@ export interface ContentItem {
   notes?: string;
   createdAt: string;
   updatedAt: string;
+  /** Tipo da postagem; ausente = 'video' (itens criados antes do carrossel). */
+  type?: ContentType;
+  /** Imagens do carrossel, em ordem de exibição. A 1ª é usada como capa. */
+  carouselFileIds?: string[];
   rawVideoFileId?: string;
   editedVideoFileId?: string;
   coverFileId?: string;
@@ -58,6 +65,7 @@ export interface AppFolders {
   raw: string;
   edited: string;
   covers: string;
+  carousel: string;
   dbFileId: string;
 }
 
@@ -82,11 +90,13 @@ export function emptyNetworkStatus(): NetworkStatus {
   return { assigned: false, status: 'none' };
 }
 
-export function newContentItem(title: string): ContentItem {
+export function newContentItem(title: string, type: ContentType = 'video'): ContentItem {
   const now = new Date().toISOString();
   return {
     id: crypto.randomUUID(),
     title,
+    type,
+    ...(type === 'carousel' ? { carouselFileIds: [] } : {}),
     createdAt: now,
     updatedAt: now,
     networks: {
@@ -95,6 +105,19 @@ export function newContentItem(title: string): ContentItem {
       youtube: emptyNetworkStatus(),
     },
   };
+}
+
+/** Tipo da postagem, tratando itens antigos (sem `type`) como vídeo. */
+export function itemType(item: ContentItem): ContentType {
+  return item.type ?? 'video';
+}
+
+/**
+ * FileId da miniatura a exibir: no carrossel é a 1ª imagem; no vídeo é a capa.
+ */
+export function coverFileIdFor(item: ContentItem): string | undefined {
+  if (itemType(item) === 'carousel') return item.carouselFileIds?.[0];
+  return item.coverFileId;
 }
 
 /** Estágio do item no pipeline de produção. */
@@ -119,6 +142,10 @@ export function itemStage(item: ContentItem): Stage {
     if (states.every((s) => s.status === 'posted' || (s.status === 'scheduled' && !!s.scheduledAt)))
       return 'scheduled';
     return 'ready';
+  }
+  // Carrossel pula cru/editado: com imagens já está "pronto"; sem imagens, "raw".
+  if (itemType(item) === 'carousel') {
+    return (item.carouselFileIds?.length ?? 0) > 0 ? 'ready' : 'raw';
   }
   if (item.editedVideoFileId) return 'edited';
   return 'raw';

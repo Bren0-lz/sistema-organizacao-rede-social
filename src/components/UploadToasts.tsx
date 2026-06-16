@@ -1,7 +1,12 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useStore } from '../store/useStore';
 
-const SLOT_LABEL = { raw: 'vídeo cru', edited: 'vídeo editado', cover: 'capa' } as const;
+const SLOT_LABEL = {
+  raw: 'vídeo cru',
+  edited: 'vídeo editado',
+  cover: 'capa',
+  carousel: 'imagem do carrossel',
+} as const;
 
 /** Acima deste número, mostra um único toast-resumo em vez de empilhar todos. */
 const AGGREGATE_THRESHOLD = 4;

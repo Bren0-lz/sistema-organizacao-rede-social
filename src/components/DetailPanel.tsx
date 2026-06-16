@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type DragEvent } from 'react';
 import { motion } from 'framer-motion';
 import {
+  itemType,
   NETWORK_LABELS,
   NETWORKS,
   type ContentItem,
@@ -85,6 +86,87 @@ function FileSlotBox({ item, slot }: { item: ContentItem; slot: FileSlot }) {
         hidden
         onChange={(e) => {
           handleFiles(e.target.files);
+          e.target.value = '';
+        }}
+      />
+    </div>
+  );
+}
+
+// Miniatura de uma imagem do carrossel: baixa a thumbnail sob demanda.
+function CarouselThumb({ fileId }: { fileId: string }) {
+  const url = useStore((s) => s.coverUrls[fileId]);
+  const loadCover = useStore((s) => s.loadCover);
+
+  useEffect(() => {
+    void loadCover(fileId);
+  }, [fileId, loadCover]);
+
+  return url ? (
+    <img src={url} alt="" loading="lazy" />
+  ) : (
+    <span className="carousel-thumb-ph">⏳</span>
+  );
+}
+
+// Editor do carrossel: grade ordenada de imagens (a 1ª é a capa) + adicionar/remover.
+function CarouselEditor({ item }: { item: ContentItem }) {
+  const addCarouselImages = useStore((s) => s.addCarouselImages);
+  const removeCarouselImage = useStore((s) => s.removeCarouselImage);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const ids = item.carouselFileIds ?? [];
+
+  const addFiles = (files: FileList | null) => {
+    if (files && files.length > 0) void addCarouselImages(item.id, Array.from(files));
+  };
+
+  const onDrop = (e: DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    addFiles(e.dataTransfer.files);
+  };
+
+  return (
+    <div className="carousel-editor">
+      <div className="carousel-grid">
+        {ids.map((fileId, i) => (
+          <div key={fileId} className="carousel-cell">
+            <CarouselThumb fileId={fileId} />
+            {i === 0 && <span className="carousel-cover-tag">capa</span>}
+            <button
+              className="carousel-remove"
+              title="Remover imagem"
+              onClick={() => void removeCarouselImage(item.id, fileId)}
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+
+        <button
+          type="button"
+          className={`carousel-add ${dragOver ? 'drag-over' : ''}`}
+          onClick={() => inputRef.current?.click()}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragOver(true);
+          }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={onDrop}
+        >
+          <span className="carousel-add-icon">＋</span>
+          <span>adicionar imagens</span>
+        </button>
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        hidden
+        onChange={(e) => {
+          addFiles(e.target.files);
           e.target.value = '';
         }}
       />
@@ -250,6 +332,7 @@ export function DetailPanel({ item, onClose }: Props) {
   const isMobile = useMediaQuery('(max-width: 768px)');
   const hidden = isMobile ? { y: '100%' } : { x: '100%' };
 
+  const isCarousel = itemType(item) === 'carousel';
   const videoToPreview = item.editedVideoFileId ?? item.rawVideoFileId;
 
   return (
@@ -288,18 +371,24 @@ export function DetailPanel({ item, onClose }: Props) {
         </div>
 
         <section className="drawer-section">
-          <h3>Jornada do vídeo</h3>
+          <h3>{isCarousel ? 'Jornada do carrossel' : 'Jornada do vídeo'}</h3>
           <JourneyTrail item={item} />
         </section>
 
         <section className="drawer-section">
-          <h3>Arquivos</h3>
-          <div className="slots">
-            {(['raw', 'edited', 'cover'] as const).map((slot) => (
-              <FileSlotBox key={slot} item={item} slot={slot} />
-            ))}
-          </div>
-          {videoToPreview && <VideoPreview item={item} fileId={videoToPreview} />}
+          <h3>{isCarousel ? 'Imagens do carrossel' : 'Arquivos'}</h3>
+          {isCarousel ? (
+            <CarouselEditor item={item} />
+          ) : (
+            <>
+              <div className="slots">
+                {(['raw', 'edited', 'cover'] as const).map((slot) => (
+                  <FileSlotBox key={slot} item={item} slot={slot} />
+                ))}
+              </div>
+              {videoToPreview && <VideoPreview item={item} fileId={videoToPreview} />}
+            </>
+          )}
         </section>
 
         <section className="drawer-section">

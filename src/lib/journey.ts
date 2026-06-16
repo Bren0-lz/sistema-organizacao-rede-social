@@ -1,5 +1,6 @@
 import {
   itemStage,
+  itemType,
   NETWORKS,
   NETWORK_LABELS,
   STAGE_ORDER,
@@ -11,7 +12,7 @@ import {
 export type NodeState = 'done' | 'current' | 'pending';
 
 export interface TrailStep {
-  key: 'raw' | 'edited' | 'ready' | 'publish' | 'complete';
+  key: 'raw' | 'edited' | 'ready' | 'publish' | 'complete' | 'images';
   stage: Stage; // estágio "dono" da cor (publish→scheduled, complete→posted)
   state: NodeState;
   title: string; // "Vídeo bruto recebido"
@@ -71,18 +72,18 @@ export function formatWhen(iso?: string): string | undefined {
   return `${date} às ${time}`;
 }
 
-function stateForIndex(index: number, progress: number): NodeState {
-  if (index < progress) return 'done';
-  if (index === progress) return 'current';
-  return 'pending';
-}
-
 export function miniTrail(item: ContentItem): { stage: Stage; state: NodeState }[] {
-  const progress = STAGE_ORDER[itemStage(item)];
-  return (['raw', 'edited', 'ready', 'scheduled', 'posted'] as Stage[]).map((stage, i) => ({
-    stage,
-    state: stateForIndex(i, progress),
-  }));
+  const current = STAGE_ORDER[itemStage(item)];
+  // Carrossel pula o estágio "editado": 4 segmentos em vez de 5.
+  const seq: Stage[] =
+    itemType(item) === 'carousel'
+      ? ['raw', 'ready', 'scheduled', 'posted']
+      : ['raw', 'edited', 'ready', 'scheduled', 'posted'];
+  return seq.map((stage) => {
+    const o = STAGE_ORDER[stage];
+    const state: NodeState = o < current ? 'done' : o === current ? 'current' : 'pending';
+    return { stage, state };
+  });
 }
 
 export function buildJourney(item: ContentItem): Journey {
@@ -131,6 +132,26 @@ export function buildJourney(item: ContentItem): Journey {
       state: 'current',
       title: 'Aguardando vídeo bruto',
       detail: 'Arraste o arquivo na seção abaixo',
+    };
+  })();
+
+  // ----- nó images (só carrossel) -----
+  const imagesStep: TrailStep = (() => {
+    const count = item.carouselFileIds?.length ?? 0;
+    if (count > 0) {
+      return {
+        key: 'images',
+        stage: 'raw',
+        state: p > 0 ? 'done' : 'current',
+        title: `${count} ${count === 1 ? 'imagem recebida' : 'imagens recebidas'}`,
+      };
+    }
+    return {
+      key: 'images',
+      stage: 'raw',
+      state: 'current',
+      title: 'Aguardando imagens',
+      detail: 'Adicione as imagens do carrossel na seção abaixo',
     };
   })();
 
@@ -261,7 +282,10 @@ export function buildJourney(item: ContentItem): Journey {
     detail: stage === 'posted' && lastPostedAt ? 'Última publicação em' : undefined,
   };
 
-  const steps: TrailStep[] = [rawStep, editedStep, readyStep, publishStep, completeStep];
+  const steps: TrailStep[] =
+    itemType(item) === 'carousel'
+      ? [imagesStep, readyStep, publishStep, completeStep]
+      : [rawStep, editedStep, readyStep, publishStep, completeStep];
 
   return {
     stage,

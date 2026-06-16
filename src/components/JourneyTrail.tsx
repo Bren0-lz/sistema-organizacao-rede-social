@@ -5,10 +5,12 @@ import { StageIcon } from './StageIcon';
 import { NetworkIcon } from './NetworkIcon';
 
 /** Ícone do nó por passo do tronco (o estado 'done' troca por check). */
-function iconFor(key: TrailStep['key']): Stage | 'check' | 'flag' {
+function iconFor(key: TrailStep['key']): Stage | 'check' | 'flag' | 'images' {
   switch (key) {
     case 'raw':
       return 'raw';
+    case 'images':
+      return 'images';
     case 'edited':
       return 'edited';
     case 'ready':

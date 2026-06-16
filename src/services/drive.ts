@@ -19,6 +19,8 @@ export const SLOT_FOLDER_NAMES: Record<FileSlot, string> = {
   cover: 'Capas',
 };
 
+const CAROUSEL_FOLDER_NAME = 'Imagens de Carrossel';
+
 const FOLDER_ID_KEY = 'org-social:rootFolderId';
 
 async function driveFetch(path: string, init: RequestInit = {}): Promise<Response> {
@@ -111,6 +113,9 @@ export async function ensureAppStructure(explicitRootId?: string): Promise<AppFo
     folders[slot] = found?.id ?? (await createFolder(name, rootId));
   }
 
+  const carouselFound = await findChild(rootId, CAROUSEL_FOLDER_NAME);
+  const carouselId = carouselFound?.id ?? (await createFolder(CAROUSEL_FOLDER_NAME, rootId));
+
   let dbFile = await findChild(rootId, DB_FILE_NAME);
   if (!dbFile) {
     const id = await createDbFile(rootId);
@@ -122,6 +127,7 @@ export async function ensureAppStructure(explicitRootId?: string): Promise<AppFo
     raw: folders.raw!,
     edited: folders.edited!,
     covers: folders.cover!,
+    carousel: carouselId,
     dbFileId: dbFile.id,
   };
 }

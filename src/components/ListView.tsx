@@ -1,6 +1,13 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useWindowVirtualizer } from '@tanstack/react-virtual';
-import { itemStage, NETWORKS, STAGE_ORDER, type ContentItem } from '../types';
+import {
+  coverFileIdFor,
+  itemStage,
+  itemType,
+  NETWORKS,
+  STAGE_ORDER,
+  type ContentItem,
+} from '../types';
 import { useStore } from '../store/useStore';
 import { useInView } from '../lib/concurrency';
 import { NetworkIcon } from './NetworkIcon';
@@ -19,7 +26,7 @@ interface Props {
   onOpen: (id: string) => void;
 }
 
-function LazyThumb({ fileId }: { fileId?: string }) {
+function LazyThumb({ fileId, isCarousel }: { fileId?: string; isCarousel: boolean }) {
   // assina só a URL desta capa — não o mapa inteiro — senão cada capa que
   // carrega re-renderiza todas as linhas visíveis (o grande causador de travamento)
   const url = useStore((s) => (fileId ? s.coverUrls[fileId] : undefined));
@@ -31,12 +38,15 @@ function LazyThumb({ fileId }: { fileId?: string }) {
   }, [inView, fileId, loadCover]);
 
   return (
-    <div className="row-thumb" ref={ref}>
+    <div className="row-thumb" ref={ref} data-type={isCarousel ? 'carousel' : 'video'}>
       {url ? (
         <img src={url} alt="" loading="lazy" />
       ) : (
-        <span className="row-thumb-ph">{fileId ? '⏳' : '🖼️'}</span>
+        <span className="row-thumb-ph">{fileId ? '⏳' : isCarousel ? '🖼️' : '🎬'}</span>
       )}
+      <span className="row-type-badge" title={isCarousel ? 'Carrossel' : 'Vídeo'} aria-hidden>
+        {isCarousel ? '🖼️' : '🎬'}
+      </span>
     </div>
   );
 }
@@ -62,6 +72,7 @@ const ListRow = memo(function ListRow({
   onOpen: (id: string) => void;
 }) {
   const stage = itemStage(item);
+  const isCarousel = itemType(item) === 'carousel';
   return (
     <tr
       data-index={index}
@@ -78,10 +89,13 @@ const ListRow = memo(function ListRow({
         />
       </td>
       <td className="col-thumb">
-        <LazyThumb fileId={item.coverFileId} />
+        <LazyThumb fileId={coverFileIdFor(item)} isCarousel={isCarousel} />
       </td>
       <td className="col-title">
         <span className="row-title">{item.title}</span>
+        <span className="row-type" data-type={isCarousel ? 'carousel' : 'video'}>
+          {isCarousel ? '🖼️ Carrossel' : '🎬 Vídeo'}
+        </span>
       </td>
       <td className="col-nets">
         <div className="row-nets">

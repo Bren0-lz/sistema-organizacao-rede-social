@@ -527,6 +527,21 @@ textarea:focus {
   );
 }
 
+/* selo de tipo sobre a capa do card (carrossel × vídeo) */
+.card-type-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  backdrop-filter: blur(4px);
+}
+
 .card-body {
   padding: 12px 13px 13px;
 }
@@ -726,6 +741,95 @@ textarea:focus {
   text-decoration: underline;
 }
 
+/* ---- editor de carrossel (painel de detalhes) ---- */
+.carousel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 10px;
+}
+
+.carousel-cell {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  display: grid;
+  place-items: center;
+}
+
+.carousel-cell img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.carousel-thumb-ph {
+  font-size: 18px;
+  opacity: 0.5;
+}
+
+.carousel-cover-tag {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--st-edited) 80%, #000);
+  color: #fff;
+}
+
+.carousel-remove {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.carousel-cell:hover .carousel-remove {
+  opacity: 1;
+}
+
+.carousel-add {
+  aspect-ratio: 1 / 1;
+  border: 1.5px dashed var(--line-strong);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--ink-dim);
+  transition: border-color 0.2s, background 0.2s, transform 0.15s;
+}
+
+.carousel-add:hover,
+.carousel-add.drag-over {
+  transform: translateY(-2px);
+  border-color: var(--st-edited);
+  background: rgba(167, 139, 250, 0.06);
+}
+
+.carousel-add-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
 .drawer-preview {
   width: 100%;
   aspect-ratio: 16 / 9;
@@ -878,6 +982,19 @@ textarea:focus {
   border: 1px solid var(--line);
   color: var(--ink-dim);
   transition: all 0.2s;
+}
+
+/* seletor de tipo de postagem (Vídeo / Carrossel) no modal de novo conteúdo */
+.type-pick {
+  display: flex;
+  gap: 8px;
+}
+
+/* estado ativo genérico (usado pelo seletor de tipo e pelo picker de lote) */
+.status-tab.active {
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--ink);
+  border-color: var(--line-strong);
 }
 
 .status-tab.active[data-status='none'] {
@@ -1251,6 +1368,7 @@ textarea:focus {
 }
 
 .row-thumb {
+  position: relative;
   width: 44px;
   height: 30px;
   border-radius: 6px;
@@ -1258,6 +1376,23 @@ textarea:focus {
   background: var(--bg-card);
   display: grid;
   place-items: center;
+}
+
+/* selo de tipo no canto da miniatura (carrossel × vídeo) */
+.row-type-badge {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  font-size: 9px;
+  line-height: 1;
+  padding: 2px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.row-thumb[data-type='carousel'] {
+  outline: 1.5px solid color-mix(in srgb, var(--st-edited) 60%, transparent);
+  outline-offset: -1.5px;
 }
 
 .row-thumb img {
@@ -1274,6 +1409,28 @@ textarea:focus {
 .row-title {
   font-weight: 600;
   color: var(--ink);
+}
+
+/* pílula de tipo ao lado do título */
+.row-type {
+  display: inline-block;
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--st-ready) 14%, transparent);
+  color: var(--st-ready);
+}
+
+.col-title .row-title {
+  display: block;
+}
+
+.row-type[data-type='carousel'] {
+  background: color-mix(in srgb, var(--st-edited) 16%, transparent);
+  color: var(--st-edited);
 }
 
 .row-nets {

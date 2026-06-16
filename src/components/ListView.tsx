@@ -97,8 +97,15 @@ const ListRow = memo(function ListRow({
       </td>
       <td className="col-title">
         <span className="row-title">{item.title}</span>
-        <span className="row-type" data-type={isCarousel ? 'carousel' : 'video'}>
-          <Icon name={isCarousel ? 'carousel' : 'video'} /> {isCarousel ? 'Carrossel' : 'Vídeo'}
+        <span className="row-title-tags">
+          <span className="row-type" data-type={isCarousel ? 'carousel' : 'video'}>
+            <Icon name={isCarousel ? 'carousel' : 'video'} /> {isCarousel ? 'Carrossel' : 'Vídeo'}
+          </span>
+          {isCarousel && item.carouselEditedAt && (
+            <span className="row-edited-badge" title="Carrossel marcado como editado">
+              <Icon name="check" /> editado
+            </span>
+          )}
         </span>
       </td>
       <td className="col-nets">

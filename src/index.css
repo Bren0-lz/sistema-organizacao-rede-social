@@ -415,6 +415,18 @@ input[type='time']::-webkit-calendar-picker-indicator {
   background: var(--st-edited);
 }
 
+.chip.active[data-net='carousel'] {
+  background: var(--st-ready);
+}
+
+.chip.active[data-net='carousel-raw'] {
+  background: var(--st-raw);
+}
+
+.chip.active[data-net='carousel-ready'] {
+  background: var(--st-posted);
+}
+
 .chip.active[data-net='instagram'] {
   background: linear-gradient(45deg, var(--ig-a), var(--ig-b) 55%, var(--ig-c));
 }
@@ -920,6 +932,32 @@ input[type='time']::-webkit-calendar-picker-indicator {
   opacity: 1;
 }
 
+.carousel-download {
+  position: absolute;
+  top: 32px;
+  right: 5px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.carousel-cell:hover .carousel-download {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .carousel-cell .carousel-download {
+    opacity: 1;
+  }
+}
+
 .carousel-add {
   aspect-ratio: 1 / 1;
   border: 1.5px dashed var(--line-strong);
@@ -944,6 +982,17 @@ input[type='time']::-webkit-calendar-picker-indicator {
 .carousel-add-icon {
   font-size: 22px;
   line-height: 1;
+}
+
+.carousel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.carousel-edited-toggle {
+  margin-top: 0;
 }
 
 .drawer-preview {
@@ -1540,7 +1589,16 @@ input[type='time']::-webkit-calendar-picker-indicator {
 }
 
 .col-check {
-  width: 38px;
+  width: 46px;
+}
+
+/* mais folga à esquerda: o checkbox (e seu brilho ao selecionar) não pode
+   encostar na borda recortada do .list-wrap (overflow:hidden) */
+.list-table th.col-check,
+.list-table td.col-check {
+  padding-left: 18px;
+  padding-right: 8px;
+  text-align: center;
 }
 
 .col-check input,
@@ -2464,6 +2522,7 @@ input[type='time']::-webkit-calendar-picker-indicator {
     top: 12px;
     right: 12px;
     width: auto;
+    padding: 0;
   }
   .list-table td.col-check input {
     width: 22px;

@@ -255,6 +255,25 @@ export async function fetchFileBlob(fileId: string): Promise<Blob> {
 }
 
 /**
+ * Baixa o arquivo para o computador do usuário, usando o nome original do Drive.
+ * Cria um link temporário e dispara o clique programaticamente.
+ */
+export async function downloadFile(fileId: string, fallbackName?: string): Promise<void> {
+  const [blob, info] = await Promise.all([
+    fetchFileBlob(fileId),
+    getFileInfo(fileId).catch(() => null),
+  ]);
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = info?.name ?? fallbackName ?? fileId;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+/**
  * Versão leve de {@link fetchBlobUrl} para capas: baixa o `thumbnailLink` do
  * Drive (poucos KB) em vez do arquivo cheio. Se o item não tiver thumbnail
  * disponível, cai de volta para o download completo.

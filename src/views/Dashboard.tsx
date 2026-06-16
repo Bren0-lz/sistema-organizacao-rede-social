@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   itemStage,
+  itemType,
   NETWORK_LABELS,
   NETWORKS,
   type ContentItem,
@@ -22,13 +23,29 @@ import { StageIcon } from '../components/StageIcon';
 import { Icon, type IconName } from '../components/Icon';
 import { STAGE_COLORS, STAGE_LABELS } from '../lib/journey';
 
-type Filter = 'all' | 'raw' | 'edited' | Network;
+type CarouselFilter = 'carousel' | 'carousel-raw' | 'carousel-ready';
+type Filter = 'all' | 'raw' | 'edited' | CarouselFilter | Network;
 type ViewMode = 'board' | 'list';
 
-const STAGE_FILTERS: { filter: 'raw' | 'edited'; icon: IconName; label: string }[] = [
+const STAGE_FILTERS: {
+  filter: 'raw' | 'edited' | CarouselFilter;
+  icon: IconName;
+  label: string;
+}[] = [
   { filter: 'raw', icon: 'video', label: 'Vídeos crus' },
   { filter: 'edited', icon: 'scissors', label: 'Vídeos editados' },
+  { filter: 'carousel', icon: 'carousel', label: 'Carrosséis' },
+  { filter: 'carousel-raw', icon: 'carousel', label: 'Carrosséis crus' },
+  { filter: 'carousel-ready', icon: 'check', label: 'Carrosséis prontos' },
 ];
+
+/** Um item passa pelo filtro de carrossel (geral, cru ou pronto para postar)? */
+function matchesCarouselFilter(item: ContentItem, filter: CarouselFilter): boolean {
+  if (itemType(item) !== 'carousel') return false;
+  if (filter === 'carousel-raw') return !item.carouselEditedAt;
+  if (filter === 'carousel-ready') return !!item.carouselEditedAt;
+  return true;
+}
 
 const STAGES: { stage: Stage; title: string; color: string }[] = [
   { stage: 'raw', title: STAGE_LABELS.raw, color: STAGE_COLORS.raw },
@@ -87,6 +104,8 @@ export function Dashboard() {
     for (const item of searched) {
       let stage: Stage | null;
       if (filter === 'all') stage = itemStage(item);
+      else if (filter === 'carousel' || filter === 'carousel-raw' || filter === 'carousel-ready')
+        stage = matchesCarouselFilter(item, filter) ? itemStage(item) : null;
       else if (filter === 'raw' || filter === 'edited')
         stage = itemStage(item) === filter ? filter : null;
       else stage = stageForNetwork(item, filter);
@@ -106,6 +125,8 @@ export function Dashboard() {
   // na visão lista, o filtro de rede vira só "atribuído àquela rede"
   const listItems = useMemo(() => {
     if (filter === 'all') return searched;
+    if (filter === 'carousel' || filter === 'carousel-raw' || filter === 'carousel-ready')
+      return searched.filter((i) => matchesCarouselFilter(i, filter));
     if (filter === 'raw' || filter === 'edited')
       return searched.filter((i) => itemStage(i) === filter);
     return searched.filter((i) => i.networks[filter].assigned);
@@ -274,7 +295,13 @@ export function Dashboard() {
           {STAGES.filter(({ stage }) => {
             if (filter === 'raw') return stage === 'raw';
             if (filter === 'edited') return stage === 'edited';
-            if (filter === 'all') return true;
+            if (
+              filter === 'all' ||
+              filter === 'carousel' ||
+              filter === 'carousel-raw' ||
+              filter === 'carousel-ready'
+            )
+              return true;
             return stage !== 'raw' && stage !== 'edited';
           }).map(({ stage, title, color }, columnIndex) => {
             const list = byStage.get(stage) ?? [];

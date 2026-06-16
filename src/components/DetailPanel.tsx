@@ -146,28 +146,35 @@ function CarouselEditor({ item }: { item: ContentItem }) {
             className={`carousel-cell${dragIndex === i ? ' dragging' : ''}${
               overIndex === i && dragIndex !== i ? ' drag-target' : ''
             }`}
-            draggable
-            onDragStart={(e) => {
-              setDragIndex(i);
-              e.dataTransfer.effectAllowed = 'move';
-            }}
             onDragOver={(e) => {
               if (dragIndex === null) return;
               e.preventDefault();
-              setOverIndex(i);
+              if (overIndex !== i) setOverIndex(i);
             }}
             onDrop={(e) => {
+              if (dragIndex === null) return;
               e.preventDefault();
-              if (dragIndex !== null && dragIndex !== i) move(dragIndex, i);
-              setDragIndex(null);
-              setOverIndex(null);
-            }}
-            onDragEnd={() => {
+              if (dragIndex !== i) move(dragIndex, i);
               setDragIndex(null);
               setOverIndex(null);
             }}
           >
             <CarouselThumb fileId={fileId} />
+            <span
+              className="carousel-handle"
+              title="Arraste para reordenar"
+              draggable
+              onDragStart={(e) => {
+                setDragIndex(i);
+                e.dataTransfer.effectAllowed = 'move';
+              }}
+              onDragEnd={() => {
+                setDragIndex(null);
+                setOverIndex(null);
+              }}
+            >
+              ⠿
+            </span>
             <span className="carousel-order">{i + 1}</span>
             {i === 0 && <span className="carousel-cover-tag">capa</span>}
             <div className="carousel-move">

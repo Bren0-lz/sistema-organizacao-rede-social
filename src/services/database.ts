@@ -13,7 +13,7 @@ export async function loadDatabase(dbFileId: string): Promise<Database> {
   return { version: lastKnownVersion, items: db.items ?? [] };
 }
 
-function mergeItems(local: ContentItem[], remote: ContentItem[]): ContentItem[] {
+export function mergeItems(local: ContentItem[], remote: ContentItem[]): ContentItem[] {
   const byId = new Map<string, ContentItem>();
   for (const item of remote) byId.set(item.id, item);
   for (const item of local) {

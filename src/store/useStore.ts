@@ -11,7 +11,7 @@ import {
   setSharedRootFolder,
   uploadFile,
 } from '../services/drive';
-import { loadDatabase, saveDatabase } from '../services/database';
+import { loadDatabase, mergeItems, saveDatabase } from '../services/database';
 import { createLimiter } from '../lib/concurrency';
 import {
   isTrashExpired,
@@ -103,7 +103,11 @@ export const useStore = create<AppState>((set, get) => {
     const { folders } = get();
     if (!folders) return;
     const saved = await saveDatabase(folders.dbFileId, items);
-    set({ items: saved });
+    // Reconcilia contra o estado VIVO (não contra o snapshot que mandamos
+    // gravar): se uma edição otimista mais recente aconteceu enquanto esta
+    // gravação rodava, ela vence (updatedAt maior) e não é revertida. O
+    // `saved` ainda traz mudanças de outros membros da equipe.
+    set({ items: mergeItems(get().items, saved) });
   }
 
   /**

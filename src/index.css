@@ -757,12 +757,34 @@ textarea:focus {
   border: 1px solid var(--line);
   display: grid;
   place-items: center;
-  cursor: grab;
   transition: opacity 0.15s, box-shadow 0.15s, transform 0.15s;
 }
 
-.carousel-cell:active {
+.carousel-handle {
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0 8px;
+  height: 18px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  line-height: 1;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.6);
+  cursor: grab;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.carousel-handle:active {
   cursor: grabbing;
+}
+
+.carousel-cell:hover .carousel-handle {
+  opacity: 1;
 }
 
 .carousel-cell.dragging {
@@ -824,6 +846,7 @@ textarea:focus {
 /* Em telas de toque (sem hover), mantém os controles sempre visíveis. */
 @media (hover: none) {
   .carousel-move,
+  .carousel-handle,
   .carousel-cell .carousel-remove {
     opacity: 1;
   }

@@ -13,7 +13,11 @@ import {
   uploadFile,
 } from '../services/drive';
 import { loadDatabase, mergeItems, saveDatabase } from '../services/database';
-import { uploadScheduledVideo } from '../services/youtube';
+import {
+  cancelYoutubePublication as cancelYoutubePublicationApi,
+  deleteYoutubeVideo as deleteYoutubeVideoApi,
+  uploadScheduledVideo,
+} from '../services/youtube';
 import { createLimiter } from '../lib/concurrency';
 import {
   isTrashExpired,
@@ -81,6 +85,8 @@ interface AppState {
       notifySubscribers?: boolean;
     },
   ): Promise<void>;
+  cancelYoutubePublication(id: string): Promise<void>;
+  deleteYoutubePublication(id: string): Promise<void>;
   /** Manda vários itens para a lixeira de uma vez. */
   deleteItems(ids: string[]): Promise<void>;
   /** Tira itens da lixeira, devolvendo-os ao fluxo normal. */
@@ -383,6 +389,65 @@ export const useStore = create<AppState>((set, get) => {
         );
         throw error;
       }
+    },
+
+    async cancelYoutubePublication(id) {
+      const item = get().items.find((current) => current.id === id);
+      const videoId = item?.networks.youtube.youtubeVideoId;
+      if (!videoId) throw new Error('Nenhum video do YouTube vinculado a este item.');
+
+      await cancelYoutubePublicationApi(videoId);
+      await mutate((items) =>
+        items.map((current) =>
+          current.id === id
+            ? touch({
+                ...current,
+                networks: {
+                  ...current.networks,
+                  youtube: {
+                    ...current.networks.youtube,
+                    status: 'none',
+                    scheduledAt: undefined,
+                    postedAt: undefined,
+                    youtubeUploadStatus: 'idle',
+                    youtubeUploadError: undefined,
+                  },
+                },
+              })
+            : current,
+        ),
+      );
+    },
+
+    async deleteYoutubePublication(id) {
+      const item = get().items.find((current) => current.id === id);
+      const videoId = item?.networks.youtube.youtubeVideoId;
+      if (!videoId) throw new Error('Nenhum video do YouTube vinculado a este item.');
+
+      await deleteYoutubeVideoApi(videoId);
+      await mutate((items) =>
+        items.map((current) =>
+          current.id === id
+            ? touch({
+                ...current,
+                networks: {
+                  ...current.networks,
+                  youtube: {
+                    ...current.networks.youtube,
+                    status: 'none',
+                    scheduledAt: undefined,
+                    postedAt: undefined,
+                    postUrl: undefined,
+                    youtubeVideoId: undefined,
+                    youtubeUploadStatus: 'idle',
+                    youtubeUploadProgress: undefined,
+                    youtubeUploadError: undefined,
+                  },
+                },
+              })
+            : current,
+        ),
+      );
     },
 
     async deleteItems(ids) {

@@ -1,6 +1,7 @@
 import { getAccessToken } from './googleAuth';
 
 const UPLOAD_API = 'https://www.googleapis.com/upload/youtube/v3';
+const DATA_API = 'https://www.googleapis.com/youtube/v3';
 
 export interface YouTubeScheduleInput {
   video: Blob;
@@ -21,6 +22,15 @@ export interface YouTubeScheduleInput {
 export interface YouTubeScheduleResult {
   videoId: string;
   url: string;
+}
+
+interface YouTubeVideoStatus {
+  embeddable?: boolean;
+  license?: string;
+  privacyStatus?: string;
+  publicStatsViewable?: boolean;
+  selfDeclaredMadeForKids?: boolean;
+  containsSyntheticMedia?: boolean;
 }
 
 export async function uploadScheduledVideo({
@@ -137,4 +147,66 @@ async function setThumbnail(videoId: string, thumbnail: Blob): Promise<void> {
     const body = await res.text().catch(() => '');
     throw new Error(`Thumbnail YouTube ${res.status}: ${body.slice(0, 300)}`);
   }
+}
+
+export async function cancelYoutubePublication(videoId: string): Promise<void> {
+  const token = await getAccessToken(true);
+  const current = await fetchYoutubeStatus(videoId, token);
+  const status: YouTubeVideoStatus = {
+    privacyStatus: 'private',
+    ...(current.embeddable !== undefined ? { embeddable: current.embeddable } : {}),
+    ...(current.license ? { license: current.license } : {}),
+    ...(current.publicStatsViewable !== undefined
+      ? { publicStatsViewable: current.publicStatsViewable }
+      : {}),
+    ...(current.selfDeclaredMadeForKids !== undefined
+      ? { selfDeclaredMadeForKids: current.selfDeclaredMadeForKids }
+      : {}),
+    ...(current.containsSyntheticMedia !== undefined
+      ? { containsSyntheticMedia: current.containsSyntheticMedia }
+      : {}),
+  };
+
+  const res = await fetch(`${DATA_API}/videos?part=status`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json; charset=UTF-8',
+    },
+    body: JSON.stringify({ id: videoId, status }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`Cancelar YouTube ${res.status}: ${body.slice(0, 300)}`);
+  }
+}
+
+export async function deleteYoutubeVideo(videoId: string): Promise<void> {
+  const token = await getAccessToken(true);
+  const res = await fetch(`${DATA_API}/videos?id=${encodeURIComponent(videoId)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok && res.status !== 404) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`Excluir YouTube ${res.status}: ${body.slice(0, 300)}`);
+  }
+}
+
+async function fetchYoutubeStatus(videoId: string, token: string): Promise<YouTubeVideoStatus> {
+  const res = await fetch(`${DATA_API}/videos?part=status&id=${encodeURIComponent(videoId)}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`YouTube API ${res.status}: ${body.slice(0, 300)}`);
+  }
+
+  const data = (await res.json()) as { items?: Array<{ status?: YouTubeVideoStatus }> };
+  const video = data.items?.[0];
+  if (!video) throw new Error('Video do YouTube nao encontrado.');
+  return video.status ?? {};
 }

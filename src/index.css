@@ -1240,6 +1240,18 @@ input[type='time']::-webkit-calendar-picker-indicator {
   justify-content: center;
 }
 
+.youtube-manage-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.youtube-manage-actions .btn {
+  justify-content: center;
+  padding-inline: 12px;
+  min-height: 38px;
+}
+
 /* ---------- modais ---------- */
 
 .modal-backdrop {

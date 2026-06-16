@@ -7,6 +7,7 @@ import {
   type ContentItem,
   type FileSlot,
   type Network,
+  type NetworkStatus,
 } from '../types';
 import { useStore } from '../store/useStore';
 import { useMediaQuery } from '../lib/useMediaQuery';
@@ -378,8 +379,96 @@ function NetworkRow({ item, network }: { item: ContentItem; network: Network }) 
               </div>
             </>
           )}
+
+          {network === 'youtube' && <YouTubeScheduler item={item} state={state} />}
         </motion.div>
       )}
+    </div>
+  );
+}
+
+function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkStatus }) {
+  const uploadAndScheduleYoutube = useStore((s) => s.uploadAndScheduleYoutube);
+  const [title, setTitle] = useState(item.title);
+  const [description, setDescription] = useState(item.notes ?? '');
+  const [error, setError] = useState<string | null>(null);
+  const busy = state.youtubeUploadStatus === 'uploading';
+  const canSchedule = !!item.editedVideoFileId && !!state.scheduledAt && !busy;
+
+  const submit = async () => {
+    if (!state.scheduledAt) {
+      setError('Defina uma data em Programado antes de enviar ao YouTube.');
+      return;
+    }
+    setError(null);
+    try {
+      await uploadAndScheduleYoutube(item.id, {
+        title: title.trim() || item.title,
+        description: description.trim() || undefined,
+        publishAt: state.scheduledAt,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  return (
+    <div className="youtube-box">
+      <div className="youtube-box-head">
+        <span>Upload e agendamento no YouTube</span>
+        {state.youtubeVideoId && (
+          <a href={state.postUrl} target="_blank" rel="noreferrer">
+            abrir video
+          </a>
+        )}
+      </div>
+      <p className="youtube-help">
+        Usa o video editado do Drive. O YouTube exige que o upload agendado seja privado ate a
+        data de publicacao.
+      </p>
+      <div className="youtube-fields">
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Titulo no YouTube"
+        />
+        <textarea
+          rows={3}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Descricao do video"
+        />
+      </div>
+      {!item.editedVideoFileId && (
+        <p className="youtube-warning">Anexe um video editado para liberar o agendamento.</p>
+      )}
+      {!state.scheduledAt && (
+        <p className="youtube-warning">Marque o status como Programado e escolha uma data.</p>
+      )}
+      {busy && (
+        <div className="youtube-progress">
+          <div className="youtube-progress-title">
+            <span>Enviando para o YouTube</span>
+            <span>{Math.round((state.youtubeUploadProgress ?? 0) * 100)}%</span>
+          </div>
+          <div className="progress-track">
+            <motion.div
+              className="progress-bar"
+              animate={{ width: `${(state.youtubeUploadProgress ?? 0) * 100}%` }}
+              transition={{ ease: 'easeOut', duration: 0.2 }}
+            />
+          </div>
+        </div>
+      )}
+      {(error || state.youtubeUploadError) && (
+        <p className="youtube-error">{error ?? state.youtubeUploadError}</p>
+      )}
+      {state.youtubeUploadStatus === 'scheduled' && state.youtubeVideoId && (
+        <p className="youtube-success">Video enviado e agendado no YouTube.</p>
+      )}
+      <button className="btn btn-primary youtube-action" disabled={!canSchedule} onClick={() => void submit()}>
+        {busy ? 'Enviando...' : state.youtubeVideoId ? 'Reenviar/agendar de novo' : 'Enviar e agendar'}
+      </button>
     </div>
   );
 }

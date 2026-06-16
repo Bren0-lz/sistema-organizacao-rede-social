@@ -249,6 +249,11 @@ export async function fetchBlobUrl(fileId: string): Promise<string> {
   return URL.createObjectURL(blob);
 }
 
+export async function fetchFileBlob(fileId: string): Promise<Blob> {
+  const res = await driveFetch(`/files/${fileId}?alt=media&supportsAllDrives=true`);
+  return res.blob();
+}
+
 /**
  * Versão leve de {@link fetchBlobUrl} para capas: baixa o `thumbnailLink` do
  * Drive (poucos KB) em vez do arquivo cheio. Se o item não tiver thumbnail

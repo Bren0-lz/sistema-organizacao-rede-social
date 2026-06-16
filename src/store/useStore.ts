@@ -7,11 +7,13 @@ import {
 import {
   deleteFile,
   ensureAppStructure,
+  fetchFileBlob,
   fetchThumbnailUrl,
   setSharedRootFolder,
   uploadFile,
 } from '../services/drive';
 import { loadDatabase, mergeItems, saveDatabase } from '../services/database';
+import { uploadScheduledVideo } from '../services/youtube';
 import { createLimiter } from '../lib/concurrency';
 import {
   isTrashExpired,
@@ -64,6 +66,10 @@ interface AppState {
 
   /** Aplica o mesmo patch de rede a vários itens numa única escrita. */
   bulkSetNetwork(ids: string[], network: Network, patch: Partial<NetworkStatus>): Promise<void>;
+  uploadAndScheduleYoutube(
+    id: string,
+    input: { title: string; description?: string; publishAt: string },
+  ): Promise<void>;
   /** Manda vários itens para a lixeira de uma vez. */
   deleteItems(ids: string[]): Promise<void>;
   /** Tira itens da lixeira, devolvendo-os ao fluxo normal. */
@@ -245,6 +251,119 @@ export const useStore = create<AppState>((set, get) => {
             : item,
         ),
       );
+    },
+
+    async uploadAndScheduleYoutube(id, input) {
+      const item = get().items.find((i) => i.id === id);
+      if (!item) return;
+      if (!item.editedVideoFileId) {
+        throw new Error('Anexe um video editado antes de agendar no YouTube.');
+      }
+      if (new Date(input.publishAt).getTime() <= Date.now()) {
+        throw new Error('Escolha uma data futura para o agendamento no YouTube.');
+      }
+
+      await mutate((items) =>
+        items.map((current) =>
+          current.id === id
+            ? touch({
+                ...current,
+                networks: {
+                  ...current.networks,
+                  youtube: {
+                    ...current.networks.youtube,
+                    assigned: true,
+                    status: 'scheduled',
+                    scheduledAt: input.publishAt,
+                    youtubeUploadStatus: 'uploading',
+                    youtubeUploadProgress: 0,
+                    youtubeUploadError: undefined,
+                  },
+                },
+              })
+            : current,
+        ),
+      );
+
+      const setProgress = (progress: number) =>
+        set({
+          items: get().items.map((current) =>
+            current.id === id
+              ? {
+                  ...current,
+                  networks: {
+                    ...current.networks,
+                    youtube: {
+                      ...current.networks.youtube,
+                      youtubeUploadProgress: progress,
+                    },
+                  },
+                }
+              : current,
+          ),
+        });
+
+      try {
+        const fresh = get().items.find((current) => current.id === id) ?? item;
+        const editedVideoFileId = fresh.editedVideoFileId;
+        if (!editedVideoFileId) throw new Error('Anexe um video editado antes de agendar no YouTube.');
+        const video = await fetchFileBlob(editedVideoFileId);
+        const thumbnail = fresh.coverFileId
+          ? await fetchFileBlob(fresh.coverFileId).catch(() => undefined)
+          : undefined;
+        const result = await uploadScheduledVideo({
+          video,
+          thumbnail,
+          title: input.title,
+          description: input.description,
+          publishAt: input.publishAt,
+          onProgress: setProgress,
+        });
+
+        await mutate((items) =>
+          items.map((current) =>
+            current.id === id
+              ? touch({
+                  ...current,
+                  networks: {
+                    ...current.networks,
+                    youtube: {
+                      ...current.networks.youtube,
+                      assigned: true,
+                      status: 'scheduled',
+                      scheduledAt: input.publishAt,
+                      postUrl: result.url,
+                      youtubeVideoId: result.videoId,
+                      youtubeUploadStatus: 'scheduled',
+                      youtubeUploadProgress: 1,
+                      youtubeUploadError: undefined,
+                    },
+                  },
+                })
+              : current,
+          ),
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        await mutate((items) =>
+          items.map((current) =>
+            current.id === id
+              ? touch({
+                  ...current,
+                  networks: {
+                    ...current.networks,
+                    youtube: {
+                      ...current.networks.youtube,
+                      youtubeUploadStatus: 'failed',
+                      youtubeUploadError: message,
+                    },
+                  },
+                })
+              : current,
+          ),
+        );
+        throw error;
+      }
     },
 
     async deleteItems(ids) {

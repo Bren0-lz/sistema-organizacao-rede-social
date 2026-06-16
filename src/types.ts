@@ -19,6 +19,10 @@ export interface NetworkStatus {
   scheduledAt?: string;
   postedAt?: string;
   postUrl?: string;
+  youtubeVideoId?: string;
+  youtubeUploadStatus?: 'idle' | 'uploading' | 'scheduled' | 'failed';
+  youtubeUploadProgress?: number;
+  youtubeUploadError?: string;
 }
 
 export interface ContentItem {

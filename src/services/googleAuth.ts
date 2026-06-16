@@ -2,10 +2,13 @@
 // Escopo drive.file: o app só enxerga arquivos/pastas que ele mesmo criou ou que o
 // usuário abriu pelo app — o mínimo necessário.
 
-const SCOPE = 'https://www.googleapis.com/auth/drive.file';
+const SCOPE = [
+  'https://www.googleapis.com/auth/drive.file',
+  'https://www.googleapis.com/auth/youtube.upload',
+].join(' ');
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
 
-const TOKEN_KEY = 'org-social:token';
+const TOKEN_KEY = 'org-social:token:v2';
 
 interface StoredToken {
   accessToken: string;

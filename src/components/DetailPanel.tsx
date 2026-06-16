@@ -443,6 +443,7 @@ function NetworkRow({ item, network }: { item: ContentItem; network: Network }) 
 
 function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkStatus }) {
   const uploadAndScheduleYoutube = useStore((s) => s.uploadAndScheduleYoutube);
+  const updateYoutubePublication = useStore((s) => s.updateYoutubePublication);
   const cancelYoutubePublication = useStore((s) => s.cancelYoutubePublication);
   const deleteYoutubePublication = useStore((s) => s.deleteYoutubePublication);
   const [title, setTitle] = useState(item.title);
@@ -455,18 +456,23 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
   const [publicStatsViewable, setPublicStatsViewable] = useState(true);
   const [notifySubscribers, setNotifySubscribers] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [youtubeAction, setYoutubeAction] = useState<'cancel' | 'delete' | null>(null);
+  const [youtubeAction, setYoutubeAction] = useState<'save' | 'cancel' | 'delete' | null>(null);
+  const [saveOk, setSaveOk] = useState(false);
   const [confirmYoutubeDelete, setConfirmYoutubeDelete] = useState(false);
-  const busy = state.youtubeUploadStatus === 'uploading' || youtubeAction !== null;
+  const uploading = state.youtubeUploadStatus === 'uploading';
+  const busy = uploading || youtubeAction !== null;
   const selectedVideoFileId = item.editedVideoFileId ?? item.rawVideoFileId;
   const selectedVideoLabel = item.editedVideoFileId ? 'editado' : item.rawVideoFileId ? 'cru' : null;
   const canSchedule = !!selectedVideoFileId && !!state.scheduledAt && !busy;
   const hasYoutubeVideo = !!state.youtubeVideoId;
+  const canSaveMetadata = hasYoutubeVideo && !busy;
   const scheduleTime = state.scheduledAt ? new Date(state.scheduledAt).getTime() : Number.NaN;
   const scheduleHasPassed = Number.isFinite(scheduleTime) && scheduleTime <= Date.now();
   const cancelLabel = scheduleHasPassed ? 'Tornar privado no YouTube' : 'Cancelar agendamento';
   const buttonLabel = busy
-    ? youtubeAction === 'cancel'
+    ? youtubeAction === 'save'
+      ? 'Salvando...'
+      : youtubeAction === 'cancel'
       ? 'Cancelando...'
       : youtubeAction === 'delete'
         ? 'Excluindo...'
@@ -500,6 +506,30 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const saveMetadataOnYoutube = async () => {
+    if (!state.youtubeVideoId) return;
+    setError(null);
+    setSaveOk(false);
+    setYoutubeAction('save');
+    try {
+      await updateYoutubePublication(item.id, {
+        title: title.trim() || item.title,
+        description: description.trim() || undefined,
+        categoryId,
+        tags: parseTags(tagsText),
+        madeForKids,
+        containsSyntheticMedia,
+        embeddable,
+        publicStatsViewable,
+      });
+      setSaveOk(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setYoutubeAction(null);
     }
   };
 
@@ -618,10 +648,10 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
       {!selectedVideoFileId && (
         <p className="youtube-warning">Anexe um video cru ou editado para liberar o agendamento.</p>
       )}
-      {!state.scheduledAt && (
+      {!state.scheduledAt && !hasYoutubeVideo && (
         <p className="youtube-warning">Marque o status como Programado e escolha uma data.</p>
       )}
-      {busy && (
+      {uploading && (
         <div className="youtube-progress">
           <div className="youtube-progress-title">
             <span>Enviando para o YouTube</span>
@@ -641,6 +671,16 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
       )}
       {state.youtubeUploadStatus === 'scheduled' && state.youtubeVideoId && (
         <p className="youtube-success">Video enviado e agendado no YouTube.</p>
+      )}
+      {saveOk && <p className="youtube-success">Alteracoes salvas no YouTube.</p>}
+      {hasYoutubeVideo && (
+        <button
+          className="btn btn-primary youtube-action"
+          disabled={!canSaveMetadata}
+          onClick={() => void saveMetadataOnYoutube()}
+        >
+          {youtubeAction === 'save' ? 'Salvando...' : 'Salvar alteracoes no YouTube'}
+        </button>
       )}
       {hasYoutubeVideo && (
         <div className="youtube-manage-actions">

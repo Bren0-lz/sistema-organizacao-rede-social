@@ -17,6 +17,8 @@ import {
   cancelYoutubePublication as cancelYoutubePublicationApi,
   deleteYoutubeVideo as deleteYoutubeVideoApi,
   uploadScheduledVideo,
+  updateYoutubeVideoMetadata,
+  type YouTubeMetadataInput,
 } from '../services/youtube';
 import { createLimiter } from '../lib/concurrency';
 import {
@@ -85,6 +87,7 @@ interface AppState {
       notifySubscribers?: boolean;
     },
   ): Promise<void>;
+  updateYoutubePublication(id: string, input: YouTubeMetadataInput): Promise<void>;
   cancelYoutubePublication(id: string): Promise<void>;
   deleteYoutubePublication(id: string): Promise<void>;
   /** Manda vários itens para a lixeira de uma vez. */
@@ -389,6 +392,32 @@ export const useStore = create<AppState>((set, get) => {
         );
         throw error;
       }
+    },
+
+    async updateYoutubePublication(id, input) {
+      const item = get().items.find((current) => current.id === id);
+      const videoId = item?.networks.youtube.youtubeVideoId;
+      if (!videoId) throw new Error('Nenhum video do YouTube vinculado a este item.');
+
+      await updateYoutubeVideoMetadata(videoId, input);
+      await mutate((items) =>
+        items.map((current) =>
+          current.id === id
+            ? touch({
+                ...current,
+                title: input.title || current.title,
+                notes: input.description,
+                networks: {
+                  ...current.networks,
+                  youtube: {
+                    ...current.networks.youtube,
+                    youtubeUploadError: undefined,
+                  },
+                },
+              })
+            : current,
+        ),
+      );
     },
 
     async cancelYoutubePublication(id) {

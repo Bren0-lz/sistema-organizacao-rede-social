@@ -348,8 +348,9 @@ export const useStore = create<AppState>((set, get) => {
                     youtube: {
                       ...current.networks.youtube,
                       assigned: true,
-                      status: 'scheduled',
+                      status: 'posted',
                       scheduledAt: input.publishAt,
+                      postedAt: input.publishAt,
                       postUrl: result.url,
                       youtubeVideoId: result.videoId,
                       youtubeUploadStatus: 'scheduled',

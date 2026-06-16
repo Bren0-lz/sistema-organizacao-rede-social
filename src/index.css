@@ -495,7 +495,7 @@ textarea:focus {
 }
 
 .card-cover {
-  aspect-ratio: 16 / 10;
+  aspect-ratio: 9 / 16;
   background: #0d0d14;
   position: relative;
   overflow: hidden;
@@ -924,21 +924,23 @@ textarea:focus {
 }
 
 .drawer-preview {
-  width: 100%;
-  aspect-ratio: 16 / 9;
+  width: auto;
+  max-width: 280px;
+  aspect-ratio: 9 / 16;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: #000;
-  margin-top: 14px;
+  margin: 14px auto 0;
 }
 
 .drawer-preview-poster {
-  width: 100%;
-  aspect-ratio: 16 / 9;
+  width: auto;
+  max-width: 280px;
+  aspect-ratio: 9 / 16;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: #000 center / cover no-repeat;
-  margin-top: 14px;
+  margin: 14px auto 0;
   display: grid;
   place-items: center;
   cursor: pointer;
@@ -1464,8 +1466,8 @@ textarea:focus {
 
 .row-thumb {
   position: relative;
-  width: 44px;
-  height: 30px;
+  aspect-ratio: 9 / 16;
+  height: 58px;
   border-radius: 6px;
   overflow: hidden;
   background: var(--bg-card);
@@ -2260,8 +2262,8 @@ textarea:focus {
     width: 64px;
   }
   .list-table .row-thumb {
-    width: 64px;
-    height: 64px;
+    aspect-ratio: 9 / 16;
+    height: 72px;
   }
   .list-table td.col-title {
     grid-area: title;
@@ -2462,8 +2464,8 @@ textarea:focus {
     grid-template-columns: 56px 1fr;
   }
   .list-table .row-thumb {
-    width: 56px;
-    height: 56px;
+    aspect-ratio: 9 / 16;
+    height: 64px;
   }
   .list-table td.col-stage {
     margin-right: 64px;

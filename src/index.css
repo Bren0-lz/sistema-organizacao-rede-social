@@ -1589,7 +1589,16 @@ input[type='time']::-webkit-calendar-picker-indicator {
 }
 
 .col-check {
-  width: 38px;
+  width: 46px;
+}
+
+/* mais folga à esquerda: o checkbox (e seu brilho ao selecionar) não pode
+   encostar na borda recortada do .list-wrap (overflow:hidden) */
+.list-table th.col-check,
+.list-table td.col-check {
+  padding-left: 18px;
+  padding-right: 8px;
+  text-align: center;
 }
 
 .col-check input,
@@ -2513,6 +2522,7 @@ input[type='time']::-webkit-calendar-picker-indicator {
     top: 12px;
     right: 12px;
     width: auto;
+    padding: 0;
   }
   .list-table td.col-check input {
     width: 22px;

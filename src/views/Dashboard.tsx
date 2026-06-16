@@ -146,7 +146,7 @@ export function Dashboard() {
           onChange={(e) => setQuery(e.target.value)}
         />
 
-        <div className="view-toggle">
+        <div className="view-toggle hide-mobile">
           <button
             className={`view-btn ${view === 'board' ? 'active' : ''}`}
             onClick={() => setView('board')}
@@ -185,7 +185,7 @@ export function Dashboard() {
           </motion.span>
         </button>
         <button
-          className={`icon-btn ${showTrash ? 'active' : ''}`}
+          className={`icon-btn hide-mobile ${showTrash ? 'active' : ''}`}
           title="Lixeira"
           onClick={() => setShowTrash((v) => !v)}
         >
@@ -194,10 +194,10 @@ export function Dashboard() {
         <button className="icon-btn" title="Configurações" onClick={() => setShowSettings(true)}>
           ⚙
         </button>
-        <button className="btn btn-ghost" onClick={() => setShowBulk(true)}>
+        <button className="btn btn-ghost hide-mobile" onClick={() => setShowBulk(true)}>
           📤 Subir em lote
         </button>
-        <button className="btn btn-primary" onClick={() => setShowNew(true)}>
+        <button className="btn btn-primary hide-mobile" onClick={() => setShowNew(true)}>
           + Novo conteúdo
         </button>
       </header>
@@ -321,6 +321,46 @@ export function Dashboard() {
       </AnimatePresence>
 
       <UploadToasts />
+
+      {/* navegação inferior — só aparece no mobile (controlada por CSS) */}
+      <nav className="mobile-nav">
+        <button
+          className={`mobile-nav-btn ${!showTrash && view === 'board' ? 'active' : ''}`}
+          onClick={() => {
+            setShowTrash(false);
+            setView('board');
+          }}
+        >
+          <span className="mobile-nav-icon">▦</span>
+          Quadro
+        </button>
+        <button
+          className={`mobile-nav-btn ${!showTrash && view === 'list' ? 'active' : ''}`}
+          onClick={() => {
+            setShowTrash(false);
+            setView('list');
+          }}
+        >
+          <span className="mobile-nav-icon">☰</span>
+          Lista
+        </button>
+        <button className="mobile-nav-btn" onClick={() => setShowBulk(true)}>
+          <span className="mobile-nav-icon">📤</span>
+          Subir
+        </button>
+        <button
+          className={`mobile-nav-btn ${showTrash ? 'active' : ''}`}
+          onClick={() => setShowTrash((v) => !v)}
+        >
+          <span className="mobile-nav-icon">🗑{trashed.length > 0 ? ` ${trashed.length}` : ''}</span>
+          Lixeira
+        </button>
+      </nav>
+
+      {/* botão flutuante de criação — só aparece no mobile (controlado por CSS) */}
+      <button className="fab" onClick={() => setShowNew(true)} aria-label="Novo conteúdo">
+        +
+      </button>
     </div>
   );
 }

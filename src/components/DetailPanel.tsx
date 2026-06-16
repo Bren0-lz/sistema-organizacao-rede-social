@@ -8,6 +8,7 @@ import {
   type Network,
 } from '../types';
 import { useStore } from '../store/useStore';
+import { useMediaQuery } from '../lib/useMediaQuery';
 import { previewUrl } from '../services/drive';
 import { NetworkIcon } from './NetworkIcon';
 import { JourneyTrail } from './JourneyTrail';
@@ -245,6 +246,10 @@ export function DetailPanel({ item, onClose }: Props) {
   const deleteItem = useStore((s) => s.deleteItem);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  // no mobile o painel sobe de baixo (bottom-sheet); no desktop desliza da direita
+  const isMobile = useMediaQuery('(max-width: 768px)');
+  const hidden = isMobile ? { y: '100%' } : { x: '100%' };
+
   const videoToPreview = item.editedVideoFileId ?? item.rawVideoFileId;
 
   return (
@@ -258,9 +263,9 @@ export function DetailPanel({ item, onClose }: Props) {
       />
       <motion.aside
         className="drawer"
-        initial={{ x: '100%' }}
-        animate={{ x: 0 }}
-        exit={{ x: '100%' }}
+        initial={hidden}
+        animate={{ x: 0, y: 0 }}
+        exit={hidden}
         transition={{ type: 'spring', stiffness: 360, damping: 36 }}
       >
         <div className="drawer-head">

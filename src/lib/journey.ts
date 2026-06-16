@@ -6,6 +6,7 @@ import {
   NETWORKS,
   NETWORK_LABELS,
   STAGE_ORDER,
+  STAGES_SEQ,
   type ContentItem,
   type Network,
   type Stage,
@@ -76,12 +77,8 @@ export function formatWhen(iso?: string): string | undefined {
 
 export function miniTrail(item: ContentItem): { stage: Stage; state: NodeState }[] {
   const current = STAGE_ORDER[itemStage(item)];
-  // Carrossel pula o estágio "editado": 4 segmentos em vez de 5.
-  const seq: Stage[] =
-    itemType(item) === 'carousel'
-      ? ['raw', 'ready', 'scheduled', 'posted']
-      : ['raw', 'edited', 'ready', 'scheduled', 'posted'];
-  return seq.map((stage) => {
+  // Vídeo e carrossel compartilham a mesma sequência de 5 estágios.
+  return STAGES_SEQ.map((stage) => {
     const o = STAGE_ORDER[stage];
     const state: NodeState = o < current ? 'done' : o === current ? 'current' : 'pending';
     return { stage, state };
@@ -159,14 +156,23 @@ export function buildJourney(item: ContentItem): Journey {
 
   // ----- nó edited -----
   const editedStep: TrailStep = (() => {
+    const isCarousel = itemType(item) === 'carousel';
+    const editedAt = isCarousel ? item.carouselEditedAt : item.editedUploadedAt;
+    const detail = isCarousel
+      ? editedAt
+        ? 'Marcado como editado em'
+        : 'Marcado como editado'
+      : editedAt
+        ? 'Versão final anexada em'
+        : 'Versão final anexada';
     if (p > 1) {
       return {
         key: 'edited',
         stage: 'edited',
         state: 'done',
         title: 'Edição concluída',
-        detail: item.editedUploadedAt ? 'Versão final anexada em' : 'Versão final anexada',
-        timestamp: item.editedUploadedAt,
+        detail,
+        timestamp: editedAt,
       };
     }
     if (stage === 'edited') {
@@ -175,8 +181,8 @@ export function buildJourney(item: ContentItem): Journey {
         stage: 'edited',
         state: 'current',
         title: 'Edição concluída',
-        detail: item.editedUploadedAt ? 'Versão final anexada em' : 'Versão final anexada',
-        timestamp: item.editedUploadedAt,
+        detail,
+        timestamp: editedAt,
       };
     }
     return {
@@ -291,7 +297,7 @@ export function buildJourney(item: ContentItem): Journey {
 
   const steps: TrailStep[] =
     itemType(item) === 'carousel'
-      ? [imagesStep, readyStep, publishStep, completeStep]
+      ? [imagesStep, editedStep, readyStep, publishStep, completeStep]
       : [rawStep, editedStep, readyStep, publishStep, completeStep];
 
   return {

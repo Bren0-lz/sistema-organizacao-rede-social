@@ -167,11 +167,18 @@ function CarouselEditor({ item }: { item: ContentItem }) {
   const addCarouselImages = useStore((s) => s.addCarouselImages);
   const removeCarouselImage = useStore((s) => s.removeCarouselImage);
   const reorderCarousel = useStore((s) => s.reorderCarousel);
+  const updateItem = useStore((s) => s.updateItem);
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
   const ids = item.carouselFileIds ?? [];
+  const edited = !!item.carouselEditedAt;
+
+  const toggleEdited = () =>
+    void updateItem(item.id, {
+      carouselEditedAt: edited ? undefined : new Date().toISOString(),
+    });
 
   const addFiles = (files: FileList | null) => {
     if (files && files.length > 0) void addCarouselImages(item.id, Array.from(files));
@@ -271,6 +278,16 @@ function CarouselEditor({ item }: { item: ContentItem }) {
           <span>adicionar imagens</span>
         </button>
       </div>
+      {ids.length > 0 && (
+        <button
+          type="button"
+          className={`btn carousel-edited-toggle ${edited ? 'btn-primary' : 'btn-ghost'}`}
+          onClick={toggleEdited}
+        >
+          <Icon name={edited ? 'check' : 'scissors'} />{' '}
+          {edited ? 'Marcado como editado' : 'Marcar como editado'}
+        </button>
+      )}
       <input
         ref={inputRef}
         type="file"

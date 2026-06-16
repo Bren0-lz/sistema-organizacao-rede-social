@@ -10,7 +10,7 @@ export const NETWORK_LABELS: Record<Network, string> = {
 
 export type PostStatus = 'none' | 'scheduled' | 'posted';
 
-/** Tipo de postagem: vídeo (fluxo cru→editado) ou carrossel de imagens. */
+/** Tipo de postagem: vídeo ou carrossel de imagens; ambos seguem cru→editado. */
 export type ContentType = 'video' | 'carousel';
 
 export interface NetworkStatus {
@@ -42,6 +42,8 @@ export interface ContentItem {
   rawUploadedAt?: string;
   /** Quando o vídeo editado foi anexado. */
   editedUploadedAt?: string;
+  /** Quando o carrossel foi marcado como editado. Presença = estágio "editado". */
+  carouselEditedAt?: string;
   /** Quando o item foi mandado para a lixeira. Ausente = item ativo. */
   deletedAt?: string;
   networks: Record<Network, NetworkStatus>;
@@ -161,9 +163,9 @@ export function itemStage(item: ContentItem): Stage {
       return 'scheduled';
     return 'ready';
   }
-  // Carrossel pula cru/editado: com imagens já está "pronto"; sem imagens, "raw".
+  // Carrossel: "cru" enquanto não marcado; "editado" após o usuário marcar.
   if (itemType(item) === 'carousel') {
-    return (item.carouselFileIds?.length ?? 0) > 0 ? 'ready' : 'raw';
+    return item.carouselEditedAt ? 'edited' : 'raw';
   }
   if (item.editedVideoFileId) return 'edited';
   return 'raw';

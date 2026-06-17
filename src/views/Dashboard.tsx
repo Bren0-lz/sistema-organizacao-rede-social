@@ -630,7 +630,7 @@ export function Dashboard() {
           }}
         >
           <span className="mobile-nav-icon"><Icon name="calendar" /></span>
-          Calendário
+          Agenda
         </button>
         <button
           className={`mobile-nav-btn ${showIdeas ? 'active' : ''}`}

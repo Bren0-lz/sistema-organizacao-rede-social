@@ -430,6 +430,7 @@ function CaptionField({ item, network }: { item: ContentItem; network: Network }
 function NetworkRow({ item, network }: { item: ContentItem; network: Network }) {
   const setNetwork = useStore((s) => s.setNetwork);
   const state = item.networks[network];
+  const isYoutube = network === 'youtube';
 
   return (
     <div className="net-row" data-net={network} data-assigned={state.assigned}>
@@ -458,46 +459,50 @@ function NetworkRow({ item, network }: { item: ContentItem; network: Network }) 
           animate={{ opacity: 1, height: 'auto' }}
           transition={{ duration: 0.25 }}
         >
-          <div className="status-tabs">
-            {(['none', 'scheduled', 'posted'] as const).map((status) => (
-              <button
-                key={status}
-                className={`status-tab ${state.status === status ? 'active' : ''}`}
-                data-status={status}
-                onClick={() =>
-                  void setNetwork(item.id, network, {
-                    status,
-                    ...(status === 'none'
-                      ? { scheduledAt: undefined, postedAt: undefined }
-                      : status === 'scheduled'
-                        ? { postedAt: undefined }
-                        : { scheduledAt: undefined }),
-                    ...(status === 'posted' && !state.postedAt
-                      ? { postedAt: new Date().toISOString() }
-                      : {}),
-                  })
-                }
-              >
-                {status === 'none' ? (
-                  <>
-                    <Icon name="none" /> Sem data
-                  </>
-                ) : status === 'scheduled' ? (
-                  <>
-                    <Icon name="calendar" /> Programado
-                  </>
-                ) : (
-                  <>
-                    <Icon name="check" /> Postado
-                  </>
-                )}
-              </button>
-            ))}
-          </div>
+          {!isYoutube && (
+            <>
+              <div className="status-tabs">
+                {(['none', 'scheduled', 'posted'] as const).map((status) => (
+                  <button
+                    key={status}
+                    className={`status-tab ${state.status === status ? 'active' : ''}`}
+                    data-status={status}
+                    onClick={() =>
+                      void setNetwork(item.id, network, {
+                        status,
+                        ...(status === 'none'
+                          ? { scheduledAt: undefined, postedAt: undefined }
+                          : status === 'scheduled'
+                            ? { postedAt: undefined }
+                            : { scheduledAt: undefined }),
+                        ...(status === 'posted' && !state.postedAt
+                          ? { postedAt: new Date().toISOString() }
+                          : {}),
+                      })
+                    }
+                  >
+                    {status === 'none' ? (
+                      <>
+                        <Icon name="none" /> Sem data
+                      </>
+                    ) : status === 'scheduled' ? (
+                      <>
+                        <Icon name="calendar" /> Programado
+                      </>
+                    ) : (
+                      <>
+                        <Icon name="check" /> Postado
+                      </>
+                    )}
+                  </button>
+                ))}
+              </div>
 
-          {network !== 'youtube' && <CaptionField item={item} network={network} />}
+              <CaptionField item={item} network={network} />
+            </>
+          )}
 
-          {state.status === 'scheduled' && (
+          {!isYoutube && state.status === 'scheduled' && (
             <div className="field-row">
               <label>Data:</label>
               <input
@@ -512,7 +517,7 @@ function NetworkRow({ item, network }: { item: ContentItem; network: Network }) 
             </div>
           )}
 
-          {state.status === 'posted' && (
+          {!isYoutube && state.status === 'posted' && (
             <>
               <div className="field-row">
                 <label>Postado em:</label>
@@ -540,7 +545,7 @@ function NetworkRow({ item, network }: { item: ContentItem; network: Network }) 
             </>
           )}
 
-          {network === 'youtube' && <YouTubeScheduler item={item} state={state} />}
+          {isYoutube && <YouTubeScheduler item={item} state={state} />}
         </motion.div>
       )}
     </div>
@@ -574,16 +579,16 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
   const busy = uploading || youtubeAction !== null;
   const selectedVideoFileId = item.editedVideoFileId ?? item.rawVideoFileId;
   const selectedVideoLabel = item.editedVideoFileId ? 'editado' : item.rawVideoFileId ? 'cru' : null;
-  const lockedToScheduledStatus = state.status === 'scheduled';
-  const effectivePublishMode = lockedToScheduledStatus ? 'schedule' : publishMode;
-  const effectivePublishAt = lockedToScheduledStatus ? (state.scheduledAt ?? '') : publishAt;
   const canSubmit =
-    !!selectedVideoFileId && !busy && (effectivePublishMode === 'now' || !!effectivePublishAt);
+    !!selectedVideoFileId && !busy && (publishMode === 'now' || !!publishAt);
   const hasYoutubeVideo = !!state.youtubeVideoId;
   const canSaveMetadata = hasYoutubeVideo && !busy;
   const scheduleTime = state.scheduledAt ? new Date(state.scheduledAt).getTime() : Number.NaN;
   const scheduleHasPassed = Number.isFinite(scheduleTime) && scheduleTime <= Date.now();
-  const cancelLabel = scheduleHasPassed ? 'Tornar privado no YouTube' : 'Cancelar agendamento';
+  const cancelLabel =
+    state.status === 'scheduled' && !scheduleHasPassed
+      ? 'Cancelar agendamento'
+      : 'Tornar privado no YouTube';
   const buttonLabel = busy
     ? youtubeAction === 'save'
       ? 'Salvando...'
@@ -594,13 +599,9 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
         : 'Enviando...'
     : !selectedVideoFileId
       ? 'Anexe um video'
-      : effectivePublishMode === 'schedule' && !effectivePublishAt
+      : publishMode === 'schedule' && !publishAt
         ? 'Escolha data e hora'
-        : state.youtubeVideoId
-          ? effectivePublishMode === 'now'
-            ? 'Reenviar e publicar'
-            : 'Reenviar e agendar'
-          : effectivePublishMode === 'now'
+        : publishMode === 'now'
             ? 'Enviar agora'
             : 'Enviar e agendar';
 
@@ -612,15 +613,10 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
   }, [state.scheduledAt]);
 
   const submit = async () => {
-    const scheduledPublishAt =
-      effectivePublishMode === 'schedule' ? effectivePublishAt : undefined;
-    if (effectivePublishMode === 'schedule') {
+    const scheduledPublishAt = publishMode === 'schedule' ? publishAt : undefined;
+    if (publishMode === 'schedule') {
       if (!scheduledPublishAt) {
-        setError(
-          lockedToScheduledStatus
-            ? 'Preencha a data do status Programado antes de enviar ao YouTube.'
-            : 'Escolha a data e hora em que o YouTube deve publicar o video.',
-        );
+        setError('Escolha a data e hora em que o YouTube deve publicar o video.');
         return;
       }
       if (new Date(scheduledPublishAt).getTime() <= Date.now()) {
@@ -634,7 +630,7 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
         title: title.trim() || item.title,
         description: description.trim() || undefined,
         publishAt: scheduledPublishAt,
-        publishNow: effectivePublishMode === 'now',
+        publishNow: publishMode === 'now',
         categoryId,
         tags: parseTags(tagsText),
         madeForKids,
@@ -710,8 +706,8 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
         )}
       </div>
       <p className="youtube-help">
-        {lockedToScheduledStatus
-          ? 'Configure o video antes do envio. Como o status esta Programado, o YouTube enviara como privado e liberara na data definida acima.'
+        {hasYoutubeVideo
+          ? 'Atualize titulo, descricao, categoria, tags e opcoes do video ja enviado.'
           : 'Configure o video antes do envio. Enviar agora publica como publico; Agendar envia como privado e libera na data escolhida.'}
       </p>
       <div className="youtube-fields">
@@ -738,7 +734,7 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
           onChange={(e) => setTagsText(e.target.value)}
           placeholder="Tags separadas por virgula"
         />
-        {!lockedToScheduledStatus && (
+        {!hasYoutubeVideo && (
           <div className="youtube-mode" aria-label="Modo de publicacao no YouTube">
             <button
               type="button"
@@ -760,7 +756,7 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
             </button>
           </div>
         )}
-        {!lockedToScheduledStatus && publishMode === 'schedule' && (
+        {!hasYoutubeVideo && publishMode === 'schedule' && (
           <div className="field-row youtube-schedule-row">
             <label>Publicar em:</label>
             <input
@@ -819,12 +815,8 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
       {!selectedVideoFileId && (
         <p className="youtube-warning">Anexe um video cru ou editado para liberar o envio.</p>
       )}
-      {effectivePublishMode === 'schedule' && !effectivePublishAt && !hasYoutubeVideo && (
-        <p className="youtube-warning">
-          {lockedToScheduledStatus
-            ? 'Preencha a Data do status Programado para liberar o agendamento.'
-            : 'Escolha data e hora para liberar o agendamento.'}
-        </p>
+      {publishMode === 'schedule' && !publishAt && !hasYoutubeVideo && (
+        <p className="youtube-warning">Escolha data e hora para liberar o agendamento.</p>
       )}
       {uploading && (
         <div className="youtube-progress">

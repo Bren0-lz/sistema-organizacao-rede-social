@@ -2966,9 +2966,13 @@ input[type='time']::-webkit-calendar-picker-indicator {
   background: color-mix(in srgb, var(--st-raw) 8%, var(--bg-card));
 }
 
-.agenda-row[data-status='recorded'],
-.agenda-row[data-status='canceled'] {
+.agenda-row[data-status='recorded'] {
   opacity: 0.62;
+}
+.agenda-row[data-status='canceled'] {
+  border-color: color-mix(in srgb, var(--st-raw) 42%, var(--line-strong));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--st-raw) 9%, transparent), transparent 90px),
+    color-mix(in srgb, var(--st-raw) 5%, var(--bg-card));
 }
 
 .agenda-row-main {
@@ -2999,6 +3003,9 @@ input[type='time']::-webkit-calendar-picker-indicator {
 .agenda-row[data-status='recorded'] .agenda-when {
   color: var(--st-posted);
 }
+.agenda-row[data-status='canceled'] .agenda-when {
+  color: var(--st-raw);
+}
 
 .agenda-title {
   font-size: 15px;
@@ -3010,6 +3017,7 @@ input[type='time']::-webkit-calendar-picker-indicator {
 }
 .agenda-row[data-status='canceled'] .agenda-title {
   text-decoration: line-through;
+  color: color-mix(in srgb, var(--st-raw) 88%, var(--ink));
 }
 
 .agenda-loc {

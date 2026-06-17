@@ -3149,8 +3149,10 @@ input[type='time']::-webkit-calendar-picker-indicator {
   background: var(--st-edited);
 }
 .filter-dates {
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
+  width: 100%;
   gap: 7px;
   font-size: 13px;
   color: var(--ink-dim);
@@ -3158,9 +3160,13 @@ input[type='time']::-webkit-calendar-picker-indicator {
 .filter-dates svg {
   width: 15px;
   height: 15px;
+  flex: 0 0 auto;
   color: var(--st-scheduled);
 }
 .filter-dates input[type='date'] {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
   background: var(--bg-raised);
   border: 1px solid var(--line-strong);
   border-radius: 10px;

@@ -260,7 +260,7 @@ export function Dashboard() {
             setShowCalendar((v) => !v);
           }}
         >
-          <Icon name="calendar" /> Calendário
+          <Icon name="calendar" /> Agenda
         </button>
         <button
           className={`btn btn-ghost nav-ideas hide-mobile ${showIdeas ? 'active' : ''}`}
@@ -630,7 +630,7 @@ export function Dashboard() {
           }}
         >
           <span className="mobile-nav-icon"><Icon name="calendar" /></span>
-          Agenda
+          Calendário
         </button>
         <button
           className={`mobile-nav-btn ${showIdeas ? 'active' : ''}`}

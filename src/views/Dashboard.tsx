@@ -290,6 +290,8 @@ export function Dashboard() {
         >
           <Icon name="sparkles" /> Ideias
         </button>
+
+        <div className="topbar-spacer" />
         <button
           className="icon-btn nav-refresh"
           title="Sincronizar com o Drive"

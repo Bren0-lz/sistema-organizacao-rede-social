@@ -500,27 +500,6 @@ export function Dashboard() {
             )}
           </AnimatePresence>
         </div>
-        {STAGE_FILTERS.map(({ filter: f, icon, label }) => (
-          <button
-            key={f}
-            className={`chip ${filter === f ? 'active' : ''}`}
-            data-net={f}
-            onClick={() => setFilter(f)}
-          >
-            <Icon name={icon} /> {label}
-          </button>
-        ))}
-        {NETWORKS.map((n) => (
-          <button
-            key={n}
-            className={`chip ${filter === n ? 'active' : ''}`}
-            data-net={n}
-            onClick={() => setFilter(n)}
-          >
-            <NetworkIcon network={n} />
-            {NETWORK_LABELS[n]}
-          </button>
-        ))}
       </nav>
 
       {active.length === 0 ? (

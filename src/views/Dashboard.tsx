@@ -210,14 +210,30 @@ export function Dashboard() {
     setShowCalendar(false);
     setShowIdeas(false);
   }, []);
+  const goHome = useCallback(() => {
+    closeSections();
+    setView('list');
+    setFilter('all');
+    setQuery('');
+    setTagFilter(null);
+    setMissingFilter(null);
+    setDateFrom('');
+    setDateTo('');
+    setShowFilters(false);
+    setSelected(new Set());
+    setOpenItemId(null);
+    setShowNew(false);
+    setShowBulk(false);
+    setShowSettings(false);
+  }, [closeSections]);
 
   return (
     <div className="shell">
       <header className="topbar">
-        <div className="brand">
+        <button className="brand brand-home" type="button" onClick={goHome} aria-label="Ir para a página inicial">
           <span className="brand-dot" />
           ESTÚDIO
-        </div>
+        </button>
 
         <input
           className="search-input"

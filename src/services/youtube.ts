@@ -7,7 +7,7 @@ export interface YouTubeScheduleInput {
   video: Blob;
   title: string;
   description?: string;
-  publishAt: string;
+  publishAt?: string;
   categoryId?: string;
   tags?: string[];
   madeForKids?: boolean;
@@ -81,8 +81,8 @@ export async function uploadScheduledVideo({
       ...(tags.length > 0 ? { tags } : {}),
     },
     status: {
-      privacyStatus: 'private',
-      publishAt,
+      privacyStatus: publishAt ? 'private' : 'public',
+      ...(publishAt ? { publishAt } : {}),
       selfDeclaredMadeForKids: madeForKids,
       containsSyntheticMedia,
       embeddable,

@@ -1403,6 +1403,20 @@ input[type='time']::-webkit-calendar-picker-indicator {
   gap: 8px;
 }
 
+.youtube-mode {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.youtube-schedule-row {
+  align-items: flex-start;
+}
+
+.youtube-schedule-row label {
+  padding-top: 10px;
+}
+
 .youtube-check {
   display: flex;
   align-items: center;

@@ -129,7 +129,8 @@ interface AppState {
     input: {
       title: string;
       description?: string;
-      publishAt: string;
+      publishAt?: string;
+      publishNow?: boolean;
       categoryId?: string;
       tags?: string[];
       madeForKids?: boolean;
@@ -516,9 +517,17 @@ export const useStore = create<AppState>((set, get) => {
       const item = get().items.find((i) => i.id === id);
       if (!item) return;
       if (!item.editedVideoFileId && !item.rawVideoFileId) {
-        throw new Error('Anexe ou selecione um video antes de agendar no YouTube.');
+        throw new Error('Anexe ou selecione um video antes de enviar ao YouTube.');
       }
-      if (new Date(input.publishAt).getTime() <= Date.now()) {
+      const isScheduledUpload = !input.publishNow;
+      if (isScheduledUpload && !input.publishAt) {
+        throw new Error('Escolha a data e hora para agendar no YouTube.');
+      }
+      if (
+        isScheduledUpload &&
+        input.publishAt &&
+        new Date(input.publishAt).getTime() <= Date.now()
+      ) {
         throw new Error('Escolha uma data futura para o agendamento no YouTube.');
       }
 
@@ -532,8 +541,9 @@ export const useStore = create<AppState>((set, get) => {
                   youtube: {
                     ...current.networks.youtube,
                     assigned: true,
-                    status: 'scheduled',
-                    scheduledAt: input.publishAt,
+                    status: isScheduledUpload ? 'scheduled' : 'none',
+                    scheduledAt: isScheduledUpload ? input.publishAt : undefined,
+                    postedAt: undefined,
                     youtubeUploadStatus: 'uploading',
                     youtubeUploadProgress: 0,
                     youtubeUploadError: undefined,
@@ -585,6 +595,7 @@ export const useStore = create<AppState>((set, get) => {
           notifySubscribers: input.notifySubscribers,
           onProgress: setProgress,
         });
+        const postedAt = new Date().toISOString();
 
         await mutate((items) =>
           items.map((current) =>
@@ -596,9 +607,9 @@ export const useStore = create<AppState>((set, get) => {
                     youtube: {
                       ...current.networks.youtube,
                       assigned: true,
-                      status: 'posted',
-                      scheduledAt: input.publishAt,
-                      postedAt: input.publishAt,
+                      status: isScheduledUpload ? 'scheduled' : 'posted',
+                      scheduledAt: isScheduledUpload ? input.publishAt : undefined,
+                      postedAt: isScheduledUpload ? undefined : postedAt,
                       postUrl: result.url,
                       youtubeVideoId: result.videoId,
                       youtubeUploadStatus: 'scheduled',

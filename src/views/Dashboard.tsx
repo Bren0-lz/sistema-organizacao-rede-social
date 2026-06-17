@@ -141,6 +141,7 @@ export function Dashboard() {
   }, [active, query, tagFilter, missingFilter, dateFrom, dateTo]);
 
   const activeSecondaryCount =
+    (filter !== 'all' ? 1 : 0) +
     (missingFilter ? 1 : 0) +
     (tagFilter ? 1 : 0) +
     (dateFrom || dateTo ? 1 : 0);
@@ -353,39 +354,15 @@ export function Dashboard() {
         <TrashView items={trashed} />
       ) : (
       <>
-      <nav className="filters">
-        <button
-          className={`chip ${filter === 'all' ? 'active' : ''}`}
-          data-net="all"
-          onClick={() => setFilter('all')}
-        >
-          ✦ Tudo
-        </button>
-        {STAGE_FILTERS.map(({ filter: f, icon, label }) => (
-          <button
-            key={f}
-            className={`chip ${filter === f ? 'active' : ''}`}
-            data-net={f}
-            onClick={() => setFilter(f)}
-          >
-            <Icon name={icon} /> {label}
-          </button>
-        ))}
-        {NETWORKS.map((n) => (
-          <button
-            key={n}
-            className={`chip ${filter === n ? 'active' : ''}`}
-            data-net={n}
-            onClick={() => setFilter(n)}
-          >
-            <NetworkIcon network={n} />
-            {NETWORK_LABELS[n]}
-          </button>
-        ))}
-      </nav>
-
       <nav className="filters filters-secondary">
         <div className="filters-menu">
+          <button
+            className={`chip ${filter === 'all' ? 'active' : ''}`}
+            data-net="all"
+            onClick={() => setFilter('all')}
+          >
+            ✦ Tudo
+          </button>
           <button
             className={`chip ${activeSecondaryCount > 0 ? 'active' : ''} ${showFilters ? 'open' : ''}`}
             data-net="all"
@@ -411,6 +388,39 @@ export function Dashboard() {
                   exit={{ opacity: 0, y: -6 }}
                   transition={{ duration: 0.15 }}
                 >
+                  <div className="filters-pop-section">
+                    <span className="filters-pop-label">Tipo</span>
+                    <div className="filters-pop-row">
+                      {STAGE_FILTERS.map(({ filter: f, icon, label }) => (
+                        <button
+                          key={f}
+                          className={`chip ${filter === f ? 'active' : ''}`}
+                          data-net={f}
+                          onClick={() => setFilter((cur) => (cur === f ? 'all' : f))}
+                        >
+                          <Icon name={icon} /> {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="filters-pop-section">
+                    <span className="filters-pop-label">Rede</span>
+                    <div className="filters-pop-row">
+                      {NETWORKS.map((n) => (
+                        <button
+                          key={n}
+                          className={`chip ${filter === n ? 'active' : ''}`}
+                          data-net={n}
+                          onClick={() => setFilter((cur) => (cur === n ? 'all' : n))}
+                        >
+                          <NetworkIcon network={n} />
+                          {NETWORK_LABELS[n]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   <div className="filters-pop-section">
                     <span className="filters-pop-label">Pendências</span>
                     <div className="filters-pop-row">
@@ -476,6 +486,7 @@ export function Dashboard() {
                     <button
                       className="btn btn-ghost filters-clear"
                       onClick={() => {
+                        setFilter('all');
                         setMissingFilter(null);
                         setTagFilter(null);
                         setDateFrom('');

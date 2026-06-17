@@ -7,7 +7,7 @@
 // duas juntas, senão uma escrita que conheça só uma delas apagaria a outra.
 
 import { readJsonFile, writeJsonFile } from './drive';
-import type { ContentItem, Database, Recording } from '../types';
+import type { ContentItem, Database, Idea, Recording } from '../types';
 
 let lastKnownVersion = 0;
 
@@ -18,6 +18,7 @@ export async function loadDatabase(dbFileId: string): Promise<Database> {
     version: lastKnownVersion,
     items: db.items ?? [],
     recordings: db.recordings ?? [],
+    ideas: db.ideas ?? [],
   };
 }
 
@@ -41,23 +42,36 @@ export function mergeRecordings(local: Recording[], remote: Recording[]): Record
   return [...byId.values()];
 }
 
+export function mergeIdeas(local: Idea[], remote: Idea[]): Idea[] {
+  const byId = new Map<string, Idea>();
+  for (const idea of remote) byId.set(idea.id, idea);
+  for (const idea of local) {
+    const other = byId.get(idea.id);
+    if (!other || idea.updatedAt >= other.updatedAt) byId.set(idea.id, idea);
+  }
+  return [...byId.values()];
+}
+
 /**
- * Grava itens e gravações no db.json (sempre as duas coleções juntas). Retorna
- * o que foi efetivamente gravado (pode incluir alterações de outro membro da
- * equipe após merge).
+ * Grava itens, gravações e ideias no db.json (sempre as três coleções juntas).
+ * Retorna o que foi efetivamente gravado (pode incluir alterações de outro
+ * membro da equipe após merge).
  */
 export async function saveDatabase(
   dbFileId: string,
   items: ContentItem[],
   recordings: Recording[],
-): Promise<{ items: ContentItem[]; recordings: Recording[] }> {
+  ideas: Idea[],
+): Promise<{ items: ContentItem[]; recordings: Recording[]; ideas: Idea[] }> {
   let itemsToWrite = items;
   let recordingsToWrite = recordings;
+  let ideasToWrite = ideas;
   try {
     const remote = await readJsonFile<Database>(dbFileId);
     if ((remote.version ?? 0) > lastKnownVersion) {
       itemsToWrite = mergeItems(items, remote.items ?? []);
       recordingsToWrite = mergeRecordings(recordings, remote.recordings ?? []);
+      ideasToWrite = mergeIdeas(ideas, remote.ideas ?? []);
     }
     lastKnownVersion = Math.max(lastKnownVersion, remote.version ?? 0);
   } catch {
@@ -67,8 +81,9 @@ export async function saveDatabase(
     version: lastKnownVersion + 1,
     items: itemsToWrite,
     recordings: recordingsToWrite,
+    ideas: ideasToWrite,
   };
   await writeJsonFile(dbFileId, db);
   lastKnownVersion = db.version;
-  return { items: itemsToWrite, recordings: recordingsToWrite };
+  return { items: itemsToWrite, recordings: recordingsToWrite, ideas: ideasToWrite };
 }

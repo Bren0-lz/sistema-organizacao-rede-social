@@ -12,7 +12,13 @@ import {
   setSharedRootFolder,
   uploadFile,
 } from '../services/drive';
-import { loadDatabase, mergeItems, mergeRecordings, saveDatabase } from '../services/database';
+import {
+  loadDatabase,
+  mergeIdeas,
+  mergeItems,
+  mergeRecordings,
+  saveDatabase,
+} from '../services/database';
 import {
   cancelYoutubePublication as cancelYoutubePublicationApi,
   deleteYoutubeVideo as deleteYoutubeVideoApi,
@@ -20,6 +26,11 @@ import {
   updateYoutubeVideoMetadata,
   type YouTubeMetadataInput,
 } from '../services/youtube';
+import {
+  createRecordingEvent,
+  deleteRecordingEvent,
+  updateRecordingEvent,
+} from '../services/googleCalendar';
 import { createLimiter } from '../lib/concurrency';
 import {
   hasScheduledTimeArrived,
@@ -28,9 +39,11 @@ import {
   newContentItem,
   newRecording,
   type AppFolders,
+  newIdea,
   type ContentItem,
   type ContentType,
   type FileSlot,
+  type Idea,
   type Network,
   type NetworkStatus,
   type Recording,
@@ -59,6 +72,7 @@ interface AppState {
   folders?: AppFolders;
   items: ContentItem[];
   recordings: Recording[];
+  ideas: Idea[];
   uploads: UploadTask[];
   /** cache de blob-URLs das capas, por fileId */
   coverUrls: Record<string, string>;
@@ -88,6 +102,19 @@ interface AppState {
    * gravação não estava planejada).
    */
   markRecordingAsRecorded(id: string): Promise<string | undefined>;
+
+  /** Cria uma ideia (rascunho sem data) no banco de ideias. */
+  createIdea(title: string, notes?: string): Promise<Idea>;
+  updateIdea(id: string, patch: Partial<Idea>): Promise<void>;
+  /** Remove a ideia (soft delete). */
+  deleteIdea(id: string): Promise<void>;
+  /** Promove a ideia a uma gravação agendada e a retira do banco de ideias. */
+  convertIdeaToRecording(
+    id: string,
+    input: { scheduledAt: string; location?: string; script?: string },
+  ): Promise<Recording | undefined>;
+  /** Promove a ideia a um ContentItem; retorna o id do item criado. */
+  convertIdeaToItem(id: string): Promise<string | undefined>;
 
   createItem(title: string, notes?: string, type?: ContentType): Promise<ContentItem>;
   updateItem(id: string, patch: Partial<ContentItem>): Promise<void>;
@@ -186,12 +213,13 @@ export const useStore = create<AppState>((set, get) => {
   // escrita disparada por uma alteração de item nunca apaga as gravações (e
   // vice-versa). O merge reconcilia contra mudanças de outro membro da equipe.
   async function persist(): Promise<void> {
-    const { folders, items, recordings } = get();
+    const { folders, items, recordings, ideas } = get();
     if (!folders) return;
-    const saved = await saveDatabase(folders.dbFileId, items, recordings);
+    const saved = await saveDatabase(folders.dbFileId, items, recordings, ideas);
     set({
       items: mergeItems(get().items, saved.items),
       recordings: mergeRecordings(get().recordings, saved.recordings),
+      ideas: mergeIdeas(get().ideas, saved.ideas),
     });
   }
 
@@ -223,6 +251,12 @@ export const useStore = create<AppState>((set, get) => {
     return queuePersist();
   }
 
+  /** Igual ao `mutate`, mas para a coleção de ideias. */
+  function mutateIdeas(updater: (ideas: Idea[]) => Idea[]): Promise<void> {
+    set({ ideas: updater(get().ideas) });
+    return queuePersist();
+  }
+
   const touch = (item: ContentItem): ContentItem => ({
     ...item,
     updatedAt: new Date().toISOString(),
@@ -245,6 +279,7 @@ export const useStore = create<AppState>((set, get) => {
         folders,
         items: normalized.items,
         recordings: db.recordings,
+        ideas: db.ideas,
       });
       if (normalized.changed) void persist();
       // limpa itens que já passaram dos 30 dias na lixeira
@@ -262,6 +297,7 @@ export const useStore = create<AppState>((set, get) => {
     authStatus: 'checking',
     items: [],
     recordings: [],
+    ideas: [],
     uploads: [],
     coverUrls: {},
 
@@ -292,6 +328,7 @@ export const useStore = create<AppState>((set, get) => {
         folders: undefined,
         items: [],
         recordings: [],
+        ideas: [],
         coverUrls: {},
       });
     },
@@ -301,7 +338,7 @@ export const useStore = create<AppState>((set, get) => {
       if (!folders) return;
       const db = await loadDatabase(folders.dbFileId);
       const normalized = markElapsedScheduledPosts(db.items);
-      set({ items: normalized.items, recordings: db.recordings });
+      set({ items: normalized.items, recordings: db.recordings, ideas: db.ideas });
       if (normalized.changed) void persist();
     },
 
@@ -317,6 +354,8 @@ export const useStore = create<AppState>((set, get) => {
       if (input.location) recording.location = input.location;
       if (input.script) recording.script = input.script;
       await mutateRecordings((recordings) => [recording, ...recordings]);
+      // espelha no Google Agenda em segundo plano (não trava a criação)
+      void syncRecordingEvent(recording.id);
       return recording;
     },
 
@@ -328,6 +367,7 @@ export const useStore = create<AppState>((set, get) => {
             : rec,
         ),
       );
+      void syncRecordingEvent(id);
     },
 
     async deleteRecording(id) {
@@ -337,6 +377,8 @@ export const useStore = create<AppState>((set, get) => {
           rec.id === id ? { ...rec, deletedAt: now, updatedAt: now } : rec,
         ),
       );
+      // gravação saiu do "a fazer": remove o evento do Google Agenda
+      void syncRecordingEvent(id);
     },
 
     async cancelRecording(id) {
@@ -346,6 +388,7 @@ export const useStore = create<AppState>((set, get) => {
           rec.id === id ? { ...rec, status: 'canceled', updatedAt: now } : rec,
         ),
       );
+      void syncRecordingEvent(id);
     },
 
     async markRecordingAsRecorded(id) {
@@ -366,6 +409,51 @@ export const useStore = create<AppState>((set, get) => {
         ),
       });
       await queuePersist();
+      // virou conteúdo: tira o lembrete da gravação do Google Agenda
+      void syncRecordingEvent(id);
+      return item.id;
+    },
+
+    async createIdea(title, notes) {
+      const idea = newIdea(title);
+      if (notes) idea.notes = notes;
+      await mutateIdeas((ideas) => [idea, ...ideas]);
+      return idea;
+    },
+
+    async updateIdea(id, patch) {
+      await mutateIdeas((ideas) =>
+        ideas.map((idea) =>
+          idea.id === id ? { ...idea, ...patch, updatedAt: new Date().toISOString() } : idea,
+        ),
+      );
+    },
+
+    async deleteIdea(id) {
+      const now = new Date().toISOString();
+      await mutateIdeas((ideas) =>
+        ideas.map((idea) => (idea.id === id ? { ...idea, deletedAt: now, updatedAt: now } : idea)),
+      );
+    },
+
+    async convertIdeaToRecording(id, input) {
+      const idea = get().ideas.find((i) => i.id === id && !i.deletedAt);
+      if (!idea) return undefined;
+      const recording = await get().createRecording({
+        title: idea.title,
+        scheduledAt: input.scheduledAt,
+        location: input.location,
+        script: input.script ?? idea.notes,
+      });
+      await get().deleteIdea(id);
+      return recording;
+    },
+
+    async convertIdeaToItem(id) {
+      const idea = get().ideas.find((i) => i.id === id && !i.deletedAt);
+      if (!idea) return undefined;
+      const item = await get().createItem(idea.title, idea.notes);
+      await get().deleteIdea(id);
       return item.id;
     },
 
@@ -757,6 +845,45 @@ export const useStore = create<AppState>((set, get) => {
       }
     },
   };
+
+  /** Grava (ou limpa) o id do evento do Google Agenda numa gravação. */
+  function setRecordingEventId(id: string, eventId: string | undefined): Promise<void> {
+    return mutateRecordings((recordings) =>
+      recordings.map((rec) =>
+        rec.id === id
+          ? { ...rec, googleCalendarEventId: eventId, updatedAt: new Date().toISOString() }
+          : rec,
+      ),
+    );
+  }
+
+  /**
+   * Reconcilia o evento da gravação no Google Agenda com o estado local
+   * (melhor-esforço): cria/atualiza enquanto a gravação está "planejada"; remove
+   * quando ela é cancelada, excluída ou virou conteúdo. Falhas são ignoradas.
+   */
+  async function syncRecordingEvent(id: string): Promise<void> {
+    const rec = get().recordings.find((r) => r.id === id);
+    if (!rec) return;
+    try {
+      const active = !rec.deletedAt && rec.status === 'planned';
+      if (!active) {
+        if (rec.googleCalendarEventId) {
+          await deleteRecordingEvent(rec.googleCalendarEventId);
+          await setRecordingEventId(id, undefined);
+        }
+        return;
+      }
+      if (rec.googleCalendarEventId) {
+        await updateRecordingEvent(rec.googleCalendarEventId, rec);
+      } else {
+        const eventId = await createRecordingEvent(rec);
+        await setRecordingEventId(id, eventId);
+      }
+    } catch {
+      // o Google Agenda é uma camada extra: falhar nele não afeta o estado local
+    }
+  }
 
   /** Anexa uma imagem ao fim do carrossel, lendo sempre o estado mais recente. */
   function appendCarouselImage(itemId: string, fileId: string): Promise<void> {

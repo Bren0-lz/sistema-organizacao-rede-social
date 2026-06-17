@@ -3,14 +3,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useStore } from '../store/useStore';
 import { Icon } from '../components/Icon';
 import { RecordingModal } from '../components/RecordingModal';
+import { startOfToday } from '../lib/date';
 import type { Recording } from '../types';
-
-/** Início do dia de hoje (00:00 local) em epoch ms. */
-function startOfToday(): number {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d.getTime();
-}
 
 function formatWhen(iso: string): string {
   const d = new Date(iso);

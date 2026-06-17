@@ -12,12 +12,17 @@ zero backend.
 - 📌 Atribuição de cada conteúdo a Instagram, TikTok e/ou YouTube
 - 📅 Status por rede: **sem programação → programado (com data) → postado (com data e link)**
 - 🗂️ Painel em colunas: Crus / Editados / Sem programação / Programados / Postados, com filtro por rede
+- 🏷️ Filtros por **tag**, por **intervalo de datas** e por **arquivo faltando** (sem capa / sem editado)
+- ✍️ **Legenda/hashtags por rede** (cada rede com seu texto + botão copiar)
+- 📅 Aba **Calendário** unificando gravações agendadas e posts programados
+- 💡 Aba **Ideias** — banco de rascunhos sem data que viram gravação ou conteúdo
+- 🔔 **Vínculo com o Google Agenda**: cada gravação agendada vira um evento (com lembrete) no calendário do usuário
 - 👥 Suporte a equipe via pasta compartilhada do Drive
 - 🔮 Preparado para automação futura de postagem (as APIs das 3 redes exigem auditoria/aprovação — ver plano)
 
 ## Stack
 
-React 19 + TypeScript + Vite · Zustand · Framer Motion · Google Drive API (escopo `drive.file`) · Netlify
+React 19 + TypeScript + Vite · Zustand · Framer Motion · Google Drive API (escopo `drive.file`) · Google Calendar API (`calendar.events`) · Netlify
 
 ## Como rodar
 

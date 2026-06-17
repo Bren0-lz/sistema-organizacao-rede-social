@@ -6,10 +6,12 @@ const SCOPE = [
   'https://www.googleapis.com/auth/drive.file',
   'https://www.googleapis.com/auth/youtube.upload',
   'https://www.googleapis.com/auth/youtube',
+  'https://www.googleapis.com/auth/calendar.events',
 ].join(' ');
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
 
-const TOKEN_KEY = 'org-social:token:v3';
+// v4: incluiu o escopo do Google Agenda — força um novo consentimento.
+const TOKEN_KEY = 'org-social:token:v4';
 
 interface StoredToken {
   accessToken: string;

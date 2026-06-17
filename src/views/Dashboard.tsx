@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
+  coverFileIdFor,
   itemStage,
   itemType,
   NETWORK_LABELS,
@@ -14,6 +15,8 @@ import { ContentCard } from '../components/ContentCard';
 import { ListView } from '../components/ListView';
 import { TrashView } from '../components/TrashView';
 import { RecordingAgenda } from './RecordingAgenda';
+import { CalendarView } from './CalendarView';
+import { IdeasView } from './IdeasView';
 import { BulkActionBar } from '../components/BulkActionBar';
 import { DetailPanel } from '../components/DetailPanel';
 import { NewItemModal, SettingsModal } from '../components/Modals';
@@ -48,6 +51,18 @@ function matchesCarouselFilter(item: ContentItem, filter: CarouselFilter): boole
   return true;
 }
 
+type MissingFilter = 'cover' | 'edited';
+
+/** Item está sem a "etapa final" (vídeo editado ou carrossel marcado como editado)? */
+function isMissingEdited(item: ContentItem): boolean {
+  return itemType(item) === 'carousel' ? !item.carouselEditedAt : !item.editedVideoFileId;
+}
+
+/** Item passa pelo filtro de "arquivo faltando" selecionado? */
+function matchesMissing(item: ContentItem, missing: MissingFilter): boolean {
+  return missing === 'cover' ? !coverFileIdFor(item) : isMissingEdited(item);
+}
+
 const STAGES: { stage: Stage; title: string; color: string }[] = [
   { stage: 'raw', title: STAGE_LABELS.raw, color: STAGE_COLORS.raw },
   { stage: 'edited', title: STAGE_LABELS.edited, color: STAGE_COLORS.edited },
@@ -79,7 +94,13 @@ export function Dashboard() {
   const [view, setView] = useState<ViewMode>('list');
   const [showTrash, setShowTrash] = useState(false);
   const [showAgenda, setShowAgenda] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [showIdeas, setShowIdeas] = useState(false);
   const [query, setQuery] = useState('');
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [missingFilter, setMissingFilter] = useState<MissingFilter | null>(null);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [openItemId, setOpenItemId] = useState<string | null>(null);
   const [showNew, setShowNew] = useState(false);
@@ -91,15 +112,32 @@ export function Dashboard() {
   const active = useMemo(() => items.filter((i) => !i.deletedAt), [items]);
   const trashed = useMemo(() => items.filter((i) => i.deletedAt), [items]);
 
-  // filtro de texto (título/notas), aplicado às duas visões
+  // todas as tags em uso, para montar os chips de filtro
+  const allTags = useMemo(() => {
+    const set = new Set<string>();
+    for (const i of active) for (const t of i.tags ?? []) set.add(t);
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [active]);
+
+  // filtros transversais (texto/tag/arquivo faltando/data), aplicados às duas visões
   const searched = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return active;
-    return active.filter(
-      (i) =>
-        i.title.toLowerCase().includes(q) || (i.notes ?? '').toLowerCase().includes(q),
-    );
-  }, [active, query]);
+    // limites de data em epoch ms (dateTo inclui o dia inteiro)
+    const fromMs = dateFrom ? new Date(`${dateFrom}T00:00`).getTime() : undefined;
+    const toMs = dateTo ? new Date(`${dateTo}T23:59:59`).getTime() : undefined;
+    return active.filter((i) => {
+      if (q && !(i.title.toLowerCase().includes(q) || (i.notes ?? '').toLowerCase().includes(q)))
+        return false;
+      if (tagFilter && !(i.tags ?? []).includes(tagFilter)) return false;
+      if (missingFilter && !matchesMissing(i, missingFilter)) return false;
+      if (fromMs !== undefined || toMs !== undefined) {
+        const updated = new Date(i.updatedAt).getTime();
+        if (fromMs !== undefined && updated < fromMs) return false;
+        if (toMs !== undefined && updated > toMs) return false;
+      }
+      return true;
+    });
+  }, [active, query, tagFilter, missingFilter, dateFrom, dateTo]);
 
   const byStage = useMemo(() => {
     const map = new Map<Stage, ContentItem[]>(STAGES.map(({ stage }) => [stage, []]));
@@ -159,6 +197,16 @@ export function Dashboard() {
 
   const clearSelection = useCallback(() => setSelected(new Set()), []);
 
+  // alguma "seção" (não-quadro/lista) está aberta?
+  const inSection = showTrash || showAgenda || showCalendar || showIdeas;
+  // fecha todas as seções de uma vez (usado na navegação mobile)
+  const closeSections = useCallback(() => {
+    setShowTrash(false);
+    setShowAgenda(false);
+    setShowCalendar(false);
+    setShowIdeas(false);
+  }, []);
+
   return (
     <div className="shell">
       <header className="topbar">
@@ -194,14 +242,40 @@ export function Dashboard() {
 
         <div className="topbar-spacer" />
         <button
+          className={`btn btn-ghost nav-calendar hide-mobile ${showCalendar ? 'active' : ''}`}
+          title="Calendário"
+          onClick={() => {
+            setShowTrash(false);
+            setShowAgenda(false);
+            setShowIdeas(false);
+            setShowCalendar((v) => !v);
+          }}
+        >
+          <Icon name="calendar" /> Calendário
+        </button>
+        <button
           className={`btn btn-ghost nav-agenda hide-mobile ${showAgenda ? 'active' : ''}`}
           title="Agenda de gravações"
           onClick={() => {
             setShowTrash(false);
+            setShowCalendar(false);
+            setShowIdeas(false);
             setShowAgenda((v) => !v);
           }}
         >
-          <Icon name="calendar" /> Agenda
+          <Icon name="video" /> Agenda
+        </button>
+        <button
+          className={`btn btn-ghost nav-ideas hide-mobile ${showIdeas ? 'active' : ''}`}
+          title="Banco de ideias"
+          onClick={() => {
+            setShowTrash(false);
+            setShowCalendar(false);
+            setShowAgenda(false);
+            setShowIdeas((v) => !v);
+          }}
+        >
+          <Icon name="sparkles" /> Ideias
         </button>
         <button
           className="icon-btn nav-refresh"
@@ -228,6 +302,8 @@ export function Dashboard() {
           title="Lixeira"
           onClick={() => {
             setShowAgenda(false);
+            setShowCalendar(false);
+            setShowIdeas(false);
             setShowTrash((v) => !v);
           }}
         >
@@ -249,6 +325,15 @@ export function Dashboard() {
         <RecordingAgenda
           onRecorded={(itemId) => {
             setShowAgenda(false);
+            setOpenItemId(itemId);
+          }}
+        />
+      ) : showCalendar ? (
+        <CalendarView onOpenItem={setOpenItemId} />
+      ) : showIdeas ? (
+        <IdeasView
+          onCreated={(itemId) => {
+            setShowIdeas(false);
             setOpenItemId(itemId);
           }}
         />
@@ -285,6 +370,60 @@ export function Dashboard() {
             {NETWORK_LABELS[n]}
           </button>
         ))}
+      </nav>
+
+      <nav className="filters filters-secondary">
+        <button
+          className={`chip ${missingFilter === 'cover' ? 'active' : ''}`}
+          onClick={() => setMissingFilter((m) => (m === 'cover' ? null : 'cover'))}
+        >
+          <Icon name="carousel" /> Sem capa
+        </button>
+        <button
+          className={`chip ${missingFilter === 'edited' ? 'active' : ''}`}
+          onClick={() => setMissingFilter((m) => (m === 'edited' ? null : 'edited'))}
+        >
+          <Icon name="scissors" /> Sem editado
+        </button>
+
+        {allTags.map((tag) => (
+          <button
+            key={tag}
+            className={`chip chip-tag ${tagFilter === tag ? 'active' : ''}`}
+            onClick={() => setTagFilter((t) => (t === tag ? null : tag))}
+          >
+            #{tag}
+          </button>
+        ))}
+
+        <span className="filter-dates">
+          <Icon name="calendar" />
+          <input
+            type="date"
+            aria-label="Atualizado de"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+          />
+          <span>até</span>
+          <input
+            type="date"
+            aria-label="Atualizado até"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+          />
+          {(dateFrom || dateTo) && (
+            <button
+              className="icon-btn"
+              title="Limpar datas"
+              onClick={() => {
+                setDateFrom('');
+                setDateTo('');
+              }}
+            >
+              ✕
+            </button>
+          )}
+        </span>
       </nav>
 
       {active.length === 0 ? (
@@ -358,7 +497,9 @@ export function Dashboard() {
       </>
       )}
 
-      {!showTrash && !showAgenda && <BulkActionBar ids={[...selected]} onClear={clearSelection} />}
+      {!showTrash && !showAgenda && !showCalendar && !showIdeas && (
+        <BulkActionBar ids={[...selected]} onClear={clearSelection} />
+      )}
 
       <AnimatePresence>
         {openItem && <DetailPanel key="drawer" item={openItem} onClose={() => setOpenItemId(null)} />}
@@ -381,10 +522,9 @@ export function Dashboard() {
       {/* navegação inferior — só aparece no mobile (controlada por CSS) */}
       <nav className="mobile-nav">
         <button
-          className={`mobile-nav-btn ${!showTrash && !showAgenda && view === 'board' ? 'active' : ''}`}
+          className={`mobile-nav-btn ${!inSection && view === 'board' ? 'active' : ''}`}
           onClick={() => {
-            setShowTrash(false);
-            setShowAgenda(false);
+            closeSections();
             setView('board');
           }}
         >
@@ -392,10 +532,9 @@ export function Dashboard() {
           Quadro
         </button>
         <button
-          className={`mobile-nav-btn ${!showTrash && !showAgenda && view === 'list' ? 'active' : ''}`}
+          className={`mobile-nav-btn ${!inSection && view === 'list' ? 'active' : ''}`}
           onClick={() => {
-            setShowTrash(false);
-            setShowAgenda(false);
+            closeSections();
             setView('list');
           }}
         >
@@ -403,23 +542,39 @@ export function Dashboard() {
           Lista
         </button>
         <button
-          className={`mobile-nav-btn ${showAgenda ? 'active' : ''}`}
+          className={`mobile-nav-btn ${showCalendar ? 'active' : ''}`}
           onClick={() => {
-            setShowTrash(false);
-            setShowAgenda((v) => !v);
+            closeSections();
+            setShowCalendar((v) => !v);
           }}
         >
           <span className="mobile-nav-icon"><Icon name="calendar" /></span>
+          Calendário
+        </button>
+        <button
+          className={`mobile-nav-btn ${showAgenda ? 'active' : ''}`}
+          onClick={() => {
+            closeSections();
+            setShowAgenda((v) => !v);
+          }}
+        >
+          <span className="mobile-nav-icon"><Icon name="video" /></span>
           Agenda
         </button>
-        <button className="mobile-nav-btn" onClick={() => setShowBulk(true)}>
-          <span className="mobile-nav-icon"><Icon name="upload" /></span>
-          Subir
+        <button
+          className={`mobile-nav-btn ${showIdeas ? 'active' : ''}`}
+          onClick={() => {
+            closeSections();
+            setShowIdeas((v) => !v);
+          }}
+        >
+          <span className="mobile-nav-icon"><Icon name="sparkles" /></span>
+          Ideias
         </button>
         <button
           className={`mobile-nav-btn ${showTrash ? 'active' : ''}`}
           onClick={() => {
-            setShowAgenda(false);
+            closeSections();
             setShowTrash((v) => !v);
           }}
         >

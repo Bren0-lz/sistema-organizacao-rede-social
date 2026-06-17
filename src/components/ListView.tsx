@@ -106,6 +106,11 @@ const ListRow = memo(function ListRow({
               <Icon name="check" /> editado
             </span>
           )}
+          {(item.tags ?? []).map((tag) => (
+            <span key={tag} className="row-tag">
+              #{tag}
+            </span>
+          ))}
         </span>
       </td>
       <td className="col-nets">

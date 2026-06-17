@@ -18,22 +18,40 @@ function localInputToIso(value: string): string {
   return new Date(value).toISOString();
 }
 
+export interface RecordingFields {
+  title: string;
+  scheduledAt: string;
+  location?: string;
+  script?: string;
+}
+
 export function RecordingModal({
   recording,
+  initialTitle,
+  initialScript,
+  heading,
+  onSubmitOverride,
   onClose,
 }: {
   /** Quando presente, o modal edita esta gravação; senão, cria uma nova. */
   recording?: Recording;
+  /** Valores iniciais ao criar (ex.: ao promover uma ideia). */
+  initialTitle?: string;
+  initialScript?: string;
+  /** Título do modal (sobrescreve o padrão). */
+  heading?: string;
+  /** Se presente, é chamado no lugar de criar a gravação (ex.: converter ideia). */
+  onSubmitOverride?: (fields: RecordingFields) => Promise<void>;
   onClose: () => void;
 }) {
   const createRecording = useStore((s) => s.createRecording);
   const updateRecording = useStore((s) => s.updateRecording);
 
   const editing = !!recording;
-  const [title, setTitle] = useState(recording?.title ?? '');
+  const [title, setTitle] = useState(recording?.title ?? initialTitle ?? '');
   const [when, setWhen] = useState(isoToLocalInput(recording?.scheduledAt));
   const [location, setLocation] = useState(recording?.location ?? '');
-  const [script, setScript] = useState(recording?.script ?? '');
+  const [script, setScript] = useState(recording?.script ?? initialScript ?? '');
   const [busy, setBusy] = useState(false);
 
   const canSubmit = !!title.trim() && !!when && !busy;
@@ -42,13 +60,14 @@ export function RecordingModal({
     if (!canSubmit) return;
     setBusy(true);
     try {
-      const fields = {
+      const fields: RecordingFields = {
         title: title.trim(),
         scheduledAt: localInputToIso(when),
         location: location.trim() || undefined,
         script: script.trim() || undefined,
       };
-      if (editing) await updateRecording(recording.id, fields);
+      if (onSubmitOverride) await onSubmitOverride(fields);
+      else if (editing) await updateRecording(recording.id, fields);
       else await createRecording(fields);
       onClose();
     } finally {
@@ -59,7 +78,7 @@ export function RecordingModal({
   return (
     <ModalShell onClose={onClose}>
       <h2>
-        <Icon name="calendar" /> {editing ? 'Editar gravação' : 'Nova gravação'}
+        <Icon name="calendar" /> {heading ?? (editing ? 'Editar gravação' : 'Nova gravação')}
       </h2>
       <div className="form-grid">
         <div>

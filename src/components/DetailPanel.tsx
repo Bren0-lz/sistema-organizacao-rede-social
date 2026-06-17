@@ -377,6 +377,56 @@ function VideoPreview({ item, fileId }: { item: ContentItem; fileId: string }) {
   );
 }
 
+// Legenda/hashtags próprias da rede, com botão de copiar (cada rede costuma
+// pedir um texto diferente). Persiste no blur, como o campo de "Link do post".
+function CaptionField({ item, network }: { item: ContentItem; network: Network }) {
+  const setNetwork = useStore((s) => s.setNetwork);
+  const state = item.networks[network];
+  const [copied, setCopied] = useState(false);
+
+  const copy = async () => {
+    const text = state.caption?.trim();
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // navegador sem permissão de área de transferência — ignora
+    }
+  };
+
+  return (
+    <div className="caption-field">
+      <div className="caption-head">
+        <label>Legenda / hashtags</label>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          disabled={!state.caption?.trim()}
+          onClick={() => void copy()}
+        >
+          {copied ? (
+            <>
+              <Icon name="check" /> Copiado
+            </>
+          ) : (
+            'Copiar'
+          )}
+        </button>
+      </div>
+      <textarea
+        rows={3}
+        placeholder={`Legenda e hashtags para o ${NETWORK_LABELS[network]}…`}
+        defaultValue={state.caption ?? ''}
+        onBlur={(e) =>
+          void setNetwork(item.id, network, { caption: e.target.value.trim() || undefined })
+        }
+      />
+    </div>
+  );
+}
+
 function NetworkRow({ item, network }: { item: ContentItem; network: Network }) {
   const setNetwork = useStore((s) => s.setNetwork);
   const state = item.networks[network];
@@ -439,6 +489,8 @@ function NetworkRow({ item, network }: { item: ContentItem; network: Network }) 
               </button>
             ))}
           </div>
+
+          <CaptionField item={item} network={network} />
 
           {state.status === 'scheduled' && (
             <div className="field-row">
@@ -779,6 +831,63 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
   );
 }
 
+// Editor de tags: chips removíveis + input que aceita vírgula/Enter.
+function TagsEditor({ item }: { item: ContentItem }) {
+  const updateItem = useStore((s) => s.updateItem);
+  const [draft, setDraft] = useState('');
+  const tags = item.tags ?? [];
+
+  const commit = (next: string[]) =>
+    void updateItem(item.id, { tags: next.length > 0 ? next : undefined });
+
+  const addFrom = (raw: string) => {
+    const parts = raw
+      .split(',')
+      .map((t) => t.trim().replace(/^#/, ''))
+      .filter(Boolean);
+    if (parts.length === 0) return;
+    const next = [...tags];
+    for (const p of parts) if (!next.includes(p)) next.push(p);
+    commit(next);
+    setDraft('');
+  };
+
+  return (
+    <div className="tags-editor">
+      <div className="tags-chips">
+        {tags.map((tag) => (
+          <span key={tag} className="tag-chip">
+            #{tag}
+            <button
+              type="button"
+              className="tag-remove"
+              aria-label={`Remover ${tag}`}
+              onClick={() => commit(tags.filter((t) => t !== tag))}
+            >
+              ✕
+            </button>
+          </span>
+        ))}
+      </div>
+      <input
+        className="tags-input"
+        placeholder="Adicionar tag e Enter (ex.: série-x, patrocinado)"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ',') {
+            e.preventDefault();
+            addFrom(draft);
+          } else if (e.key === 'Backspace' && !draft && tags.length > 0) {
+            commit(tags.slice(0, -1));
+          }
+        }}
+        onBlur={() => addFrom(draft)}
+      />
+    </div>
+  );
+}
+
 export function DetailPanel({ item, onClose }: Props) {
   const updateItem = useStore((s) => s.updateItem);
   const deleteItem = useStore((s) => s.deleteItem);
@@ -854,6 +963,11 @@ export function DetailPanel({ item, onClose }: Props) {
               <NetworkRow key={n} item={item} network={n} />
             ))}
           </div>
+        </section>
+
+        <section className="drawer-section">
+          <h3>Tags</h3>
+          <TagsEditor item={item} />
         </section>
 
         <section className="drawer-section">

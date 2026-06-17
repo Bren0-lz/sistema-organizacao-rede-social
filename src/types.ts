@@ -19,6 +19,8 @@ export interface NetworkStatus {
   scheduledAt?: string;
   postedAt?: string;
   postUrl?: string;
+  /** Legenda/hashtags específicas desta rede. */
+  caption?: string;
   youtubeVideoId?: string;
   youtubeUploadStatus?: 'idle' | 'uploading' | 'scheduled' | 'failed';
   youtubeUploadProgress?: number;
@@ -46,6 +48,8 @@ export interface ContentItem {
   carouselEditedAt?: string;
   /** Quando o item foi mandado para a lixeira. Ausente = item ativo. */
   deletedAt?: string;
+  /** Tags livres para organização/filtro (ex.: "série X", "patrocinado"). */
+  tags?: string[];
   networks: Record<Network, NetworkStatus>;
 }
 
@@ -68,9 +72,25 @@ export interface Recording {
   status: RecordingStatus;
   /** ContentItem criado quando a gravação foi marcada como gravada. */
   linkedItemId?: string;
+  /** Evento espelhado no Google Agenda (para atualizar/remover depois). */
+  googleCalendarEventId?: string;
   createdAt: string;
   updatedAt: string;
   /** Soft delete; ausente = gravação ativa. */
+  deletedAt?: string;
+}
+
+/**
+ * Ideia solta, sem data: um rascunho no banco de ideias. Pode ser promovida a
+ * uma gravação agendada ou a um ContentItem.
+ */
+export interface Idea {
+  id: string;
+  title: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  /** Soft delete / promoção; ausente = ideia ativa. */
   deletedAt?: string;
 }
 
@@ -78,6 +98,7 @@ export interface Database {
   version: number;
   items: ContentItem[];
   recordings: Recording[];
+  ideas: Idea[];
 }
 
 export type FileSlot = 'raw' | 'edited' | 'cover';
@@ -161,6 +182,16 @@ export function newRecording(title: string, scheduledAt: string): Recording {
     title,
     scheduledAt,
     status: 'planned',
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+export function newIdea(title: string): Idea {
+  const now = new Date().toISOString();
+  return {
+    id: crypto.randomUUID(),
+    title,
     createdAt: now,
     updatedAt: now,
   };

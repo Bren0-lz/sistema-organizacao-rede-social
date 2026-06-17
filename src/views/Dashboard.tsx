@@ -231,15 +231,21 @@ export function Dashboard() {
 
         <div className="view-toggle hide-mobile">
           <button
-            className={`view-btn ${view === 'board' ? 'active' : ''}`}
-            onClick={() => setView('board')}
+            className={`view-btn ${!inSection && view === 'board' ? 'active' : ''}`}
+            onClick={() => {
+              closeSections();
+              setView('board');
+            }}
             title="Quadro"
           >
             ▦ Quadro
           </button>
           <button
-            className={`view-btn ${view === 'list' ? 'active' : ''}`}
-            onClick={() => setView('list')}
+            className={`view-btn ${!inSection && view === 'list' ? 'active' : ''}`}
+            onClick={() => {
+              closeSections();
+              setView('list');
+            }}
             title="Lista"
           >
             ☰ Lista

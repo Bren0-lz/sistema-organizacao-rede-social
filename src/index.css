@@ -366,6 +366,63 @@ input[type='time']::-webkit-calendar-picker-indicator {
   padding: 0 10px;
 }
 
+/* ---------- cores por botão da navbar ---------- */
+
+/* Agenda — ciano */
+.nav-agenda {
+  color: var(--tt-cyan);
+}
+.nav-agenda:hover {
+  color: var(--tt-cyan);
+  border-color: color-mix(in srgb, var(--tt-cyan) 55%, transparent);
+}
+.nav-agenda.active {
+  color: var(--tt-cyan);
+  border-color: color-mix(in srgb, var(--tt-cyan) 55%, transparent);
+  background: color-mix(in srgb, var(--tt-cyan) 12%, var(--bg-raised));
+}
+
+/* Sincronizar — verde */
+.nav-refresh {
+  color: var(--st-posted);
+}
+.nav-refresh:hover {
+  color: var(--st-posted);
+  border-color: color-mix(in srgb, var(--st-posted) 55%, transparent);
+}
+
+/* Lixeira — vermelho */
+.nav-trash {
+  color: var(--tt-pink);
+}
+.nav-trash:hover {
+  color: var(--tt-pink);
+  border-color: color-mix(in srgb, var(--tt-pink) 55%, transparent);
+}
+.nav-trash.active {
+  color: var(--tt-pink);
+  border-color: color-mix(in srgb, var(--tt-pink) 55%, transparent);
+  background: color-mix(in srgb, var(--tt-pink) 12%, var(--bg-raised));
+}
+
+/* Configurações — roxo */
+.nav-settings {
+  color: var(--st-edited);
+}
+.nav-settings:hover {
+  color: var(--st-edited);
+  border-color: color-mix(in srgb, var(--st-edited) 55%, transparent);
+}
+
+/* Subir em lote — laranja/Instagram */
+.nav-bulk {
+  color: var(--ig-a);
+}
+.nav-bulk:hover {
+  color: var(--ig-a);
+  border-color: color-mix(in srgb, var(--ig-a) 55%, transparent);
+}
+
 /* ---------- lixeira ---------- */
 
 .trash-banner {

@@ -194,7 +194,7 @@ export function Dashboard() {
 
         <div className="topbar-spacer" />
         <button
-          className={`btn btn-ghost hide-mobile ${showAgenda ? 'active' : ''}`}
+          className={`btn btn-ghost nav-agenda hide-mobile ${showAgenda ? 'active' : ''}`}
           title="Agenda de gravações"
           onClick={() => {
             setShowTrash(false);
@@ -204,7 +204,7 @@ export function Dashboard() {
           <Icon name="calendar" /> Agenda
         </button>
         <button
-          className="icon-btn"
+          className="icon-btn nav-refresh"
           title="Sincronizar com o Drive"
           onClick={async () => {
             setRefreshing(true);
@@ -224,7 +224,7 @@ export function Dashboard() {
           </motion.span>
         </button>
         <button
-          className={`icon-btn hide-mobile ${showTrash ? 'active' : ''}`}
+          className={`icon-btn nav-trash hide-mobile ${showTrash ? 'active' : ''}`}
           title="Lixeira"
           onClick={() => {
             setShowAgenda(false);
@@ -234,10 +234,10 @@ export function Dashboard() {
           <Icon name="trash" size={18} />
           {trashed.length > 0 ? ` ${trashed.length}` : ''}
         </button>
-        <button className="icon-btn" title="Configurações" onClick={() => setShowSettings(true)}>
+        <button className="icon-btn nav-settings" title="Configurações" onClick={() => setShowSettings(true)}>
           <Icon name="settings" size={18} />
         </button>
-        <button className="btn btn-ghost hide-mobile" onClick={() => setShowBulk(true)}>
+        <button className="btn btn-ghost nav-bulk hide-mobile" onClick={() => setShowBulk(true)}>
           <Icon name="upload" /> Subir em lote
         </button>
         <button className="btn btn-primary hide-mobile" onClick={() => setShowNew(true)}>

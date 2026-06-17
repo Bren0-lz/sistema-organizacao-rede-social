@@ -17,7 +17,7 @@ const VIDEO_SLOT_OPTIONS: { slot: VideoSlot; icon: IconName; label: string }[] =
   { slot: 'edited', icon: 'scissors', label: 'Vídeo editado' },
 ];
 
-function ModalShell({ children, onClose }: { children: ReactNode; onClose: () => void }) {
+export function ModalShell({ children, onClose }: { children: ReactNode; onClose: () => void }) {
   return (
     // Backdrop escuro e estático para abrir rápido sem recalcular blur no fundo.
     <div className="modal-backdrop" onClick={onClose}>

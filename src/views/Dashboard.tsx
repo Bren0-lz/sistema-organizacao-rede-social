@@ -13,6 +13,7 @@ import { useStore } from '../store/useStore';
 import { ContentCard } from '../components/ContentCard';
 import { ListView } from '../components/ListView';
 import { TrashView } from '../components/TrashView';
+import { RecordingAgenda } from './RecordingAgenda';
 import { BulkActionBar } from '../components/BulkActionBar';
 import { DetailPanel } from '../components/DetailPanel';
 import { NewItemModal, SettingsModal } from '../components/Modals';
@@ -77,6 +78,7 @@ export function Dashboard() {
   const [filter, setFilter] = useState<Filter>('all');
   const [view, setView] = useState<ViewMode>('list');
   const [showTrash, setShowTrash] = useState(false);
+  const [showAgenda, setShowAgenda] = useState(false);
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [openItemId, setOpenItemId] = useState<string | null>(null);
@@ -212,9 +214,22 @@ export function Dashboard() {
           </motion.span>
         </button>
         <button
+          className={`btn btn-ghost hide-mobile ${showAgenda ? 'active' : ''}`}
+          title="Agenda de gravações"
+          onClick={() => {
+            setShowTrash(false);
+            setShowAgenda((v) => !v);
+          }}
+        >
+          <Icon name="calendar" /> Agenda
+        </button>
+        <button
           className={`icon-btn hide-mobile ${showTrash ? 'active' : ''}`}
           title="Lixeira"
-          onClick={() => setShowTrash((v) => !v)}
+          onClick={() => {
+            setShowAgenda(false);
+            setShowTrash((v) => !v);
+          }}
         >
           <Icon name="trash" size={18} />
           {trashed.length > 0 ? ` ${trashed.length}` : ''}
@@ -230,7 +245,14 @@ export function Dashboard() {
         </button>
       </header>
 
-      {showTrash ? (
+      {showAgenda ? (
+        <RecordingAgenda
+          onRecorded={(itemId) => {
+            setShowAgenda(false);
+            setOpenItemId(itemId);
+          }}
+        />
+      ) : showTrash ? (
         <TrashView items={trashed} />
       ) : (
       <>
@@ -336,7 +358,7 @@ export function Dashboard() {
       </>
       )}
 
-      {!showTrash && <BulkActionBar ids={[...selected]} onClear={clearSelection} />}
+      {!showTrash && !showAgenda && <BulkActionBar ids={[...selected]} onClear={clearSelection} />}
 
       <AnimatePresence>
         {openItem && <DetailPanel key="drawer" item={openItem} onClose={() => setOpenItemId(null)} />}
@@ -359,9 +381,10 @@ export function Dashboard() {
       {/* navegação inferior — só aparece no mobile (controlada por CSS) */}
       <nav className="mobile-nav">
         <button
-          className={`mobile-nav-btn ${!showTrash && view === 'board' ? 'active' : ''}`}
+          className={`mobile-nav-btn ${!showTrash && !showAgenda && view === 'board' ? 'active' : ''}`}
           onClick={() => {
             setShowTrash(false);
+            setShowAgenda(false);
             setView('board');
           }}
         >
@@ -369,14 +392,25 @@ export function Dashboard() {
           Quadro
         </button>
         <button
-          className={`mobile-nav-btn ${!showTrash && view === 'list' ? 'active' : ''}`}
+          className={`mobile-nav-btn ${!showTrash && !showAgenda && view === 'list' ? 'active' : ''}`}
           onClick={() => {
             setShowTrash(false);
+            setShowAgenda(false);
             setView('list');
           }}
         >
           <span className="mobile-nav-icon">☰</span>
           Lista
+        </button>
+        <button
+          className={`mobile-nav-btn ${showAgenda ? 'active' : ''}`}
+          onClick={() => {
+            setShowTrash(false);
+            setShowAgenda((v) => !v);
+          }}
+        >
+          <span className="mobile-nav-icon"><Icon name="calendar" /></span>
+          Agenda
         </button>
         <button className="mobile-nav-btn" onClick={() => setShowBulk(true)}>
           <span className="mobile-nav-icon"><Icon name="upload" /></span>
@@ -384,7 +418,10 @@ export function Dashboard() {
         </button>
         <button
           className={`mobile-nav-btn ${showTrash ? 'active' : ''}`}
-          onClick={() => setShowTrash((v) => !v)}
+          onClick={() => {
+            setShowAgenda(false);
+            setShowTrash((v) => !v);
+          }}
         >
           <span className="mobile-nav-icon">
             <Icon name="trash" />

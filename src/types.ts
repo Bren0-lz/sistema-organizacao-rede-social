@@ -49,9 +49,35 @@ export interface ContentItem {
   networks: Record<Network, NetworkStatus>;
 }
 
+/** Estágio de uma gravação planejada na agenda. */
+export type RecordingStatus = 'planned' | 'recorded' | 'canceled';
+
+/**
+ * Gravação planejada na agenda. Quando marcada como gravada, vira um
+ * ContentItem (vídeo cru) no pipeline, vinculado por `linkedItemId`.
+ */
+export interface Recording {
+  id: string;
+  title: string;
+  /** ISO com data + hora da gravação. */
+  scheduledAt: string;
+  /** Local da gravação (texto livre). */
+  location?: string;
+  /** Roteiro / ideia da gravação. */
+  script?: string;
+  status: RecordingStatus;
+  /** ContentItem criado quando a gravação foi marcada como gravada. */
+  linkedItemId?: string;
+  createdAt: string;
+  updatedAt: string;
+  /** Soft delete; ausente = gravação ativa. */
+  deletedAt?: string;
+}
+
 export interface Database {
   version: number;
   items: ContentItem[];
+  recordings: Recording[];
 }
 
 export type FileSlot = 'raw' | 'edited' | 'cover';
@@ -125,6 +151,18 @@ export function newContentItem(title: string, type: ContentType = 'video'): Cont
       tiktok: emptyNetworkStatus(),
       youtube: emptyNetworkStatus(),
     },
+  };
+}
+
+export function newRecording(title: string, scheduledAt: string): Recording {
+  const now = new Date().toISOString();
+  return {
+    id: crypto.randomUUID(),
+    title,
+    scheduledAt,
+    status: 'planned',
+    createdAt: now,
+    updatedAt: now,
   };
 }
 

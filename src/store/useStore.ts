@@ -12,7 +12,7 @@ import {
   setSharedRootFolder,
   uploadFile,
 } from '../services/drive';
-import { loadDatabase, mergeItems, saveDatabase } from '../services/database';
+import { loadDatabase, mergeItems, mergeRecordings, saveDatabase } from '../services/database';
 import {
   cancelYoutubePublication as cancelYoutubePublicationApi,
   deleteYoutubeVideo as deleteYoutubeVideoApi,
@@ -26,12 +26,14 @@ import {
   isTrashExpired,
   NETWORKS,
   newContentItem,
+  newRecording,
   type AppFolders,
   type ContentItem,
   type ContentType,
   type FileSlot,
   type Network,
   type NetworkStatus,
+  type Recording,
 } from '../types';
 
 /** Capas baixadas no máximo 4 por vez, para não saturar a rede. */
@@ -56,6 +58,7 @@ interface AppState {
   errorMessage?: string;
   folders?: AppFolders;
   items: ContentItem[];
+  recordings: Recording[];
   uploads: UploadTask[];
   /** cache de blob-URLs das capas, por fileId */
   coverUrls: Record<string, string>;
@@ -66,6 +69,25 @@ interface AppState {
   refresh(): Promise<void>;
   reconcileScheduledPosts(): Promise<void>;
   connectSharedFolder(folderIdOrUrl: string): Promise<void>;
+
+  /** Cria uma gravação planejada na agenda. */
+  createRecording(input: {
+    title: string;
+    scheduledAt: string;
+    location?: string;
+    script?: string;
+  }): Promise<Recording>;
+  updateRecording(id: string, patch: Partial<Recording>): Promise<void>;
+  /** Manda a gravação para a lixeira (soft delete). */
+  deleteRecording(id: string): Promise<void>;
+  /** Marca a gravação como cancelada (mantém no histórico). */
+  cancelRecording(id: string): Promise<void>;
+  /**
+   * Marca a gravação como gravada: cria um ContentItem (vídeo cru) herdando
+   * título/roteiro e vincula. Retorna o id do item criado (ou undefined se a
+   * gravação não estava planejada).
+   */
+  markRecordingAsRecorded(id: string): Promise<string | undefined>;
 
   createItem(title: string, notes?: string, type?: ContentType): Promise<ContentItem>;
   updateItem(id: string, patch: Partial<ContentItem>): Promise<void>;
@@ -158,19 +180,31 @@ export const useStore = create<AppState>((set, get) => {
   // juntos leem o mesmo snapshot e um sobrescreve o fileId do outro.
   let chain: Promise<void> = Promise.resolve();
 
-  async function persist(items: ContentItem[]): Promise<void> {
-    const { folders } = get();
+  // Grava SEMPRE as duas coleções juntas (items + recordings), lendo o estado
+  // VIVO no momento da escrita: como cada `set` otimista já rodou antes desta
+  // tarefa na cadeia, `get()` reflete a última versão de ambas. Assim uma
+  // escrita disparada por uma alteração de item nunca apaga as gravações (e
+  // vice-versa). O merge reconcilia contra mudanças de outro membro da equipe.
+  async function persist(): Promise<void> {
+    const { folders, items, recordings } = get();
     if (!folders) return;
-    const saved = await saveDatabase(folders.dbFileId, items);
-    // Reconcilia contra o estado VIVO (não contra o snapshot que mandamos
-    // gravar): se uma edição otimista mais recente aconteceu enquanto esta
-    // gravação rodava, ela vence (updatedAt maior) e não é revertida. O
-    // `saved` ainda traz mudanças de outros membros da equipe.
-    set({ items: mergeItems(get().items, saved) });
+    const saved = await saveDatabase(folders.dbFileId, items, recordings);
+    set({
+      items: mergeItems(get().items, saved.items),
+      recordings: mergeRecordings(get().recordings, saved.recordings),
+    });
+  }
+
+  /** Enfileira uma escrita do par completo, serializada pelo mutex. */
+  function queuePersist(): Promise<void> {
+    const run = chain.then(() => persist());
+    // mantém a cadeia viva mesmo se uma gravação falhar
+    chain = run.catch(() => {});
+    return run;
   }
 
   /**
-   * Aplica `updater` ao estado atual e persiste, serializado pelo mutex.
+   * Aplica `updater` aos itens e persiste, serializado pelo mutex.
    *
    * O patch é refletido no estado local IMEDIATAMENTE (update otimista) para
    * que a UI responda na hora — sem esperar o round-trip de gravação no Drive.
@@ -180,10 +214,13 @@ export const useStore = create<AppState>((set, get) => {
   function mutate(updater: (items: ContentItem[]) => ContentItem[]): Promise<void> {
     const next = markElapsedScheduledPosts(updater(get().items)).items;
     set({ items: next });
-    const run = chain.then(() => persist(next));
-    // mantém a cadeia viva mesmo se uma gravação falhar
-    chain = run.catch(() => {});
-    return run;
+    return queuePersist();
+  }
+
+  /** Igual ao `mutate`, mas para a coleção de gravações da agenda. */
+  function mutateRecordings(updater: (recordings: Recording[]) => Recording[]): Promise<void> {
+    set({ recordings: updater(get().recordings) });
+    return queuePersist();
   }
 
   const touch = (item: ContentItem): ContentItem => ({
@@ -203,8 +240,13 @@ export const useStore = create<AppState>((set, get) => {
       const folders = await ensureAppStructure(explicitRootId);
       const db = await loadDatabase(folders.dbFileId);
       const normalized = markElapsedScheduledPosts(db.items);
-      set({ authStatus: 'ready', folders, items: normalized.items });
-      if (normalized.changed) void persist(normalized.items);
+      set({
+        authStatus: 'ready',
+        folders,
+        items: normalized.items,
+        recordings: db.recordings,
+      });
+      if (normalized.changed) void persist();
       // limpa itens que já passaram dos 30 dias na lixeira
       const expired = normalized.items.filter(isTrashExpired).map((i) => i.id);
       if (expired.length > 0) void get().purgeItems(expired);
@@ -219,6 +261,7 @@ export const useStore = create<AppState>((set, get) => {
   return {
     authStatus: 'checking',
     items: [],
+    recordings: [],
     uploads: [],
     coverUrls: {},
 
@@ -244,7 +287,13 @@ export const useStore = create<AppState>((set, get) => {
 
     signOut() {
       authSignOut();
-      set({ authStatus: 'signedOut', folders: undefined, items: [], coverUrls: {} });
+      set({
+        authStatus: 'signedOut',
+        folders: undefined,
+        items: [],
+        recordings: [],
+        coverUrls: {},
+      });
     },
 
     async refresh() {
@@ -252,8 +301,8 @@ export const useStore = create<AppState>((set, get) => {
       if (!folders) return;
       const db = await loadDatabase(folders.dbFileId);
       const normalized = markElapsedScheduledPosts(db.items);
-      set({ items: normalized.items });
-      if (normalized.changed) void persist(normalized.items);
+      set({ items: normalized.items, recordings: db.recordings });
+      if (normalized.changed) void persist();
     },
 
     reconcileScheduledPosts,
@@ -261,6 +310,63 @@ export const useStore = create<AppState>((set, get) => {
     async connectSharedFolder(folderIdOrUrl) {
       const id = setSharedRootFolder(folderIdOrUrl);
       await connect(id);
+    },
+
+    async createRecording(input) {
+      const recording = newRecording(input.title, input.scheduledAt);
+      if (input.location) recording.location = input.location;
+      if (input.script) recording.script = input.script;
+      await mutateRecordings((recordings) => [recording, ...recordings]);
+      return recording;
+    },
+
+    async updateRecording(id, patch) {
+      await mutateRecordings((recordings) =>
+        recordings.map((rec) =>
+          rec.id === id
+            ? { ...rec, ...patch, updatedAt: new Date().toISOString() }
+            : rec,
+        ),
+      );
+    },
+
+    async deleteRecording(id) {
+      const now = new Date().toISOString();
+      await mutateRecordings((recordings) =>
+        recordings.map((rec) =>
+          rec.id === id ? { ...rec, deletedAt: now, updatedAt: now } : rec,
+        ),
+      );
+    },
+
+    async cancelRecording(id) {
+      const now = new Date().toISOString();
+      await mutateRecordings((recordings) =>
+        recordings.map((rec) =>
+          rec.id === id ? { ...rec, status: 'canceled', updatedAt: now } : rec,
+        ),
+      );
+    },
+
+    async markRecordingAsRecorded(id) {
+      const recording = get().recordings.find((rec) => rec.id === id && !rec.deletedAt);
+      if (!recording || recording.status !== 'planned') return undefined;
+
+      const item = newContentItem(recording.title);
+      if (recording.script) item.notes = recording.script;
+      const now = new Date().toISOString();
+
+      // Grava o item novo e a gravação atualizada numa única escrita atômica.
+      set({
+        items: [item, ...get().items],
+        recordings: get().recordings.map((rec) =>
+          rec.id === id
+            ? { ...rec, status: 'recorded', linkedItemId: item.id, updatedAt: now }
+            : rec,
+        ),
+      });
+      await queuePersist();
+      return item.id;
     },
 
     async createItem(title, notes, type) {

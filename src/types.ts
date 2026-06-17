@@ -9,6 +9,7 @@ export const NETWORK_LABELS: Record<Network, string> = {
 };
 
 export type PostStatus = 'none' | 'scheduled' | 'posted';
+export type YouTubePrivacyStatus = 'public' | 'private' | 'unlisted';
 
 /** Tipo de postagem: vídeo ou carrossel de imagens; ambos seguem cru→editado. */
 export type ContentType = 'video' | 'carousel';
@@ -22,6 +23,7 @@ export interface NetworkStatus {
   /** Legenda/hashtags específicas desta rede. */
   caption?: string;
   youtubeVideoId?: string;
+  youtubePrivacyStatus?: YouTubePrivacyStatus;
   youtubeUploadStatus?: 'idle' | 'uploading' | 'scheduled' | 'failed';
   youtubeUploadProgress?: number;
   youtubeUploadError?: string;

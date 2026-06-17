@@ -47,6 +47,7 @@ import {
   type Network,
   type NetworkStatus,
   type Recording,
+  type YouTubePrivacyStatus,
 } from '../types';
 
 /** Capas baixadas no máximo 4 por vez, para não saturar a rede. */
@@ -138,6 +139,7 @@ interface AppState {
       embeddable?: boolean;
       publicStatsViewable?: boolean;
       notifySubscribers?: boolean;
+      privacyStatus?: YouTubePrivacyStatus;
     },
   ): Promise<void>;
   updateYoutubePublication(id: string, input: YouTubeMetadataInput): Promise<void>;
@@ -544,6 +546,9 @@ export const useStore = create<AppState>((set, get) => {
                     status: isScheduledUpload ? 'scheduled' : 'none',
                     scheduledAt: isScheduledUpload ? input.publishAt : undefined,
                     postedAt: undefined,
+                    youtubePrivacyStatus: isScheduledUpload
+                      ? 'private'
+                      : input.privacyStatus ?? 'public',
                     youtubeUploadStatus: 'uploading',
                     youtubeUploadProgress: 0,
                     youtubeUploadError: undefined,
@@ -593,6 +598,7 @@ export const useStore = create<AppState>((set, get) => {
           embeddable: input.embeddable,
           publicStatsViewable: input.publicStatsViewable,
           notifySubscribers: input.notifySubscribers,
+          privacyStatus: input.privacyStatus,
           onProgress: setProgress,
         });
         const postedAt = new Date().toISOString();
@@ -612,6 +618,9 @@ export const useStore = create<AppState>((set, get) => {
                       postedAt: isScheduledUpload ? undefined : postedAt,
                       postUrl: result.url,
                       youtubeVideoId: result.videoId,
+                      youtubePrivacyStatus: isScheduledUpload
+                        ? 'private'
+                        : input.privacyStatus ?? 'public',
                       youtubeUploadStatus: 'scheduled',
                       youtubeUploadProgress: 1,
                       youtubeUploadError: undefined,
@@ -661,6 +670,9 @@ export const useStore = create<AppState>((set, get) => {
                   ...current.networks,
                   youtube: {
                     ...current.networks.youtube,
+                    ...(input.privacyStatus
+                      ? { youtubePrivacyStatus: input.privacyStatus }
+                      : {}),
                     youtubeUploadError: undefined,
                   },
                 },
@@ -688,6 +700,7 @@ export const useStore = create<AppState>((set, get) => {
                     status: 'none',
                     scheduledAt: undefined,
                     postedAt: undefined,
+                    youtubePrivacyStatus: 'private',
                     youtubeUploadStatus: 'idle',
                     youtubeUploadError: undefined,
                   },
@@ -718,6 +731,7 @@ export const useStore = create<AppState>((set, get) => {
                     postedAt: undefined,
                     postUrl: undefined,
                     youtubeVideoId: undefined,
+                    youtubePrivacyStatus: undefined,
                     youtubeUploadStatus: 'idle',
                     youtubeUploadProgress: undefined,
                     youtubeUploadError: undefined,

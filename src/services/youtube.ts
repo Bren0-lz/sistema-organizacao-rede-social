@@ -1,5 +1,7 @@
 import { getAccessToken } from './googleAuth';
 
+export type YouTubePrivacyStatus = 'public' | 'private' | 'unlisted';
+
 const UPLOAD_API = 'https://www.googleapis.com/upload/youtube/v3';
 const DATA_API = 'https://www.googleapis.com/youtube/v3';
 
@@ -8,6 +10,7 @@ export interface YouTubeScheduleInput {
   title: string;
   description?: string;
   publishAt?: string;
+  privacyStatus?: YouTubePrivacyStatus;
   categoryId?: string;
   tags?: string[];
   madeForKids?: boolean;
@@ -33,6 +36,7 @@ export interface YouTubeMetadataInput {
   containsSyntheticMedia?: boolean;
   embeddable?: boolean;
   publicStatsViewable?: boolean;
+  privacyStatus?: YouTubePrivacyStatus;
 }
 
 interface YouTubeVideoSnippet {
@@ -62,6 +66,7 @@ export async function uploadScheduledVideo({
   title,
   description,
   publishAt,
+  privacyStatus = 'public',
   categoryId = '22',
   tags = [],
   madeForKids = false,
@@ -81,7 +86,7 @@ export async function uploadScheduledVideo({
       ...(tags.length > 0 ? { tags } : {}),
     },
     status: {
-      privacyStatus: publishAt ? 'private' : 'public',
+      privacyStatus: publishAt ? 'private' : privacyStatus,
       ...(publishAt ? { publishAt } : {}),
       selfDeclaredMadeForKids: madeForKids,
       containsSyntheticMedia,
@@ -214,9 +219,12 @@ export async function updateYoutubeVideoMetadata(
   const current = await fetchYoutubeVideo(videoId, token, 'snippet,status');
   const currentSnippet = current.snippet ?? {};
   const currentStatus = current.status ?? {};
+  const isScheduled = !!currentStatus.publishAt;
   const status: YouTubeVideoStatus = {
-    privacyStatus: currentStatus.privacyStatus ?? 'private',
-    ...(currentStatus.privacyStatus === 'private' && currentStatus.publishAt
+    privacyStatus: isScheduled
+      ? 'private'
+      : input.privacyStatus ?? currentStatus.privacyStatus ?? 'private',
+    ...(isScheduled
       ? { publishAt: currentStatus.publishAt }
       : {}),
     ...(input.embeddable !== undefined ? { embeddable: input.embeddable } : {}),

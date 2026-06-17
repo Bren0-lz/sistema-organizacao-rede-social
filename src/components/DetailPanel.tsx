@@ -8,6 +8,7 @@ import {
   type FileSlot,
   type Network,
   type NetworkStatus,
+  type YouTubePrivacyStatus,
 } from '../types';
 import { useStore } from '../store/useStore';
 import { useMediaQuery } from '../lib/useMediaQuery';
@@ -72,6 +73,12 @@ const YOUTUBE_CATEGORY_OPTIONS = [
   { id: '27', label: 'Educacao' },
   { id: '28', label: 'Ciencia e tecnologia' },
   { id: '29', label: 'Sem fins lucrativos' },
+];
+
+const YOUTUBE_PRIVACY_OPTIONS: { value: YouTubePrivacyStatus; label: string }[] = [
+  { value: 'public', label: 'Publico' },
+  { value: 'private', label: 'Privado' },
+  { value: 'unlisted', label: 'Nao listado' },
 ];
 
 function parseTags(value: string): string[] {
@@ -575,6 +582,10 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
     initialPublishAt ? 'schedule' : 'now',
   );
   const [publishAt, setPublishAt] = useState(initialPublishAt);
+  const [privacyStatus, setPrivacyStatus] = useState<YouTubePrivacyStatus | ''>(
+    state.youtubePrivacyStatus ?? (state.youtubeVideoId ? '' : 'public'),
+  );
+  const [privacyTouched, setPrivacyTouched] = useState(false);
   const [madeForKids, setMadeForKids] = useState(false);
   const [containsSyntheticMedia, setContainsSyntheticMedia] = useState(false);
   const [embeddable, setEmbeddable] = useState(true);
@@ -591,6 +602,13 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
   const canSubmit =
     !!selectedVideoFileId && !busy && (publishMode === 'now' || !!publishAt);
   const hasYoutubeVideo = !!state.youtubeVideoId;
+  const privacyLockedForSchedule =
+    (!hasYoutubeVideo && publishMode === 'schedule') ||
+    (hasYoutubeVideo && state.status === 'scheduled');
+  const effectivePrivacyStatus: YouTubePrivacyStatus =
+    privacyLockedForSchedule
+      ? 'private'
+      : privacyStatus || 'public';
   const canSaveMetadata = hasYoutubeVideo && !busy;
   const scheduleTime = state.scheduledAt ? new Date(state.scheduledAt).getTime() : Number.NaN;
   const scheduleHasPassed = Number.isFinite(scheduleTime) && scheduleTime <= Date.now();
@@ -633,6 +651,12 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
     }
   }, [state.scheduledAt]);
 
+  useEffect(() => {
+    if (!privacyTouched) {
+      setPrivacyStatus(state.youtubePrivacyStatus ?? (state.youtubeVideoId ? '' : 'public'));
+    }
+  }, [privacyTouched, state.youtubePrivacyStatus, state.youtubeVideoId]);
+
   const submit = async () => {
     const scheduledPublishAt = publishMode === 'schedule' ? publishAt : undefined;
     if (publishMode === 'schedule') {
@@ -652,6 +676,7 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
         description: description.trim() || undefined,
         publishAt: scheduledPublishAt,
         publishNow: publishMode === 'now',
+        privacyStatus: effectivePrivacyStatus,
         categoryId,
         tags: parseTags(tagsText),
         madeForKids,
@@ -680,6 +705,10 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
         containsSyntheticMedia,
         embeddable,
         publicStatsViewable,
+        privacyStatus:
+          !privacyLockedForSchedule && (privacyTouched || state.youtubePrivacyStatus)
+            ? effectivePrivacyStatus
+            : undefined,
       });
       setSaveOk(true);
     } catch (err) {
@@ -761,6 +790,29 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
           onChange={(e) => setTagsText(e.target.value)}
           placeholder="Tags separadas por virgula"
         />
+        <select
+          value={privacyLockedForSchedule ? 'private' : privacyStatus}
+          disabled={privacyLockedForSchedule}
+          onChange={(e) => {
+            setPrivacyStatus(e.target.value as YouTubePrivacyStatus | '');
+            setPrivacyTouched(true);
+          }}
+          aria-label="Visibilidade no YouTube"
+        >
+          {hasYoutubeVideo && !state.youtubePrivacyStatus && (
+            <option value="">Manter visibilidade atual</option>
+          )}
+          {YOUTUBE_PRIVACY_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        {privacyLockedForSchedule && (
+          <p className="youtube-help">
+            Agendamentos ficam privados ate a data escolhida, conforme regra do YouTube.
+          </p>
+        )}
         {!hasYoutubeVideo && (
           <div className="youtube-mode" aria-label="Modo de publicacao no YouTube">
             <button

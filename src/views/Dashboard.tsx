@@ -194,6 +194,16 @@ export function Dashboard() {
 
         <div className="topbar-spacer" />
         <button
+          className={`btn btn-ghost hide-mobile ${showAgenda ? 'active' : ''}`}
+          title="Agenda de gravações"
+          onClick={() => {
+            setShowTrash(false);
+            setShowAgenda((v) => !v);
+          }}
+        >
+          <Icon name="calendar" /> Agenda
+        </button>
+        <button
           className="icon-btn"
           title="Sincronizar com o Drive"
           onClick={async () => {
@@ -212,16 +222,6 @@ export function Dashboard() {
           >
             ↻
           </motion.span>
-        </button>
-        <button
-          className={`btn btn-ghost hide-mobile ${showAgenda ? 'active' : ''}`}
-          title="Agenda de gravações"
-          onClick={() => {
-            setShowTrash(false);
-            setShowAgenda((v) => !v);
-          }}
-        >
-          <Icon name="calendar" /> Agenda
         </button>
         <button
           className={`icon-btn hide-mobile ${showTrash ? 'active' : ''}`}

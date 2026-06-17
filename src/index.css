@@ -2970,9 +2970,11 @@ input[type='time']::-webkit-calendar-picker-indicator {
   opacity: 0.62;
 }
 .agenda-row[data-status='canceled'] {
-  border-color: color-mix(in srgb, var(--st-raw) 42%, var(--line-strong));
-  background: linear-gradient(180deg, color-mix(in srgb, var(--st-raw) 9%, transparent), transparent 90px),
-    color-mix(in srgb, var(--st-raw) 5%, var(--bg-card));
+  --cancel-red: #ff335f;
+  --cancel-red-soft: #ff6b84;
+  border-color: color-mix(in srgb, var(--cancel-red) 52%, var(--line-strong));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--cancel-red) 11%, transparent), transparent 90px),
+    color-mix(in srgb, var(--cancel-red) 6%, var(--bg-card));
 }
 
 .agenda-row-main {
@@ -3004,7 +3006,7 @@ input[type='time']::-webkit-calendar-picker-indicator {
   color: var(--st-posted);
 }
 .agenda-row[data-status='canceled'] .agenda-when {
-  color: var(--st-raw);
+  color: var(--cancel-red-soft);
 }
 
 .agenda-title {
@@ -3017,7 +3019,7 @@ input[type='time']::-webkit-calendar-picker-indicator {
 }
 .agenda-row[data-status='canceled'] .agenda-title {
   text-decoration: line-through;
-  color: color-mix(in srgb, var(--st-raw) 88%, var(--ink));
+  color: color-mix(in srgb, var(--cancel-red-soft) 90%, var(--ink));
 }
 
 .agenda-loc {

@@ -192,7 +192,7 @@ export function RecordingAgenda({ onRecorded }: { onRecorded: (itemId: string) =
           <Section title="Hoje" color="var(--st-ready)" list={groups.today} onEdit={setEditing} onRecorded={onRecorded} />
           <Section title="Próximas" list={groups.upcoming} onEdit={setEditing} onRecorded={onRecorded} />
           <Section title="Gravadas" list={groups.recorded} onEdit={setEditing} onRecorded={onRecorded} />
-          <Section title="Canceladas" color="var(--st-raw, #ff8d8d)" list={groups.canceled} onEdit={setEditing} onRecorded={onRecorded} />
+          <Section title="Canceladas" color="#ff6b84" list={groups.canceled} onEdit={setEditing} onRecorded={onRecorded} />
         </>
       )}
 

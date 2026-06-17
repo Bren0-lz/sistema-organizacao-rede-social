@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { type WheelEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   coverFileIdFor,
@@ -84,6 +84,117 @@ function nextScheduledAt(item: ContentItem): string {
     .filter((status) => status.assigned && status.status === 'scheduled' && status.scheduledAt)
     .map((status) => status.scheduledAt!);
   return dates.sort()[0] ?? item.updatedAt;
+}
+
+function BoardColumn({
+  stage,
+  title,
+  color,
+  list,
+  columnIndex,
+  onOpen,
+}: {
+  stage: Stage;
+  title: string;
+  color: string;
+  list: ContentItem[];
+  columnIndex: number;
+  onOpen: (id: string) => void;
+}) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const lastWheelAt = useRef(0);
+
+  const hasItems = list.length > 0;
+  const canNavigate = list.length > 1;
+  const currentIndex = hasItems ? Math.min(activeIndex, list.length - 1) : 0;
+  const activeItem = hasItems ? list[currentIndex] : undefined;
+
+  useEffect(() => {
+    setActiveIndex((current) => (list.length === 0 ? 0 : Math.min(current, list.length - 1)));
+  }, [list.length]);
+
+  const goTo = useCallback(
+    (direction: 1 | -1) => {
+      if (!canNavigate) return;
+      setActiveIndex((current) => (current + direction + list.length) % list.length);
+    },
+    [canNavigate, list.length],
+  );
+
+  const handleWheel = useCallback(
+    (event: WheelEvent<HTMLDivElement>) => {
+      if (!canNavigate || Math.abs(event.deltaY) < 18) return;
+
+      const now = Date.now();
+      if (now - lastWheelAt.current < 420) {
+        event.preventDefault();
+        return;
+      }
+
+      lastWheelAt.current = now;
+      event.preventDefault();
+      goTo(event.deltaY > 0 ? 1 : -1);
+    },
+    [canNavigate, goTo],
+  );
+
+  return (
+    <motion.section
+      key={stage}
+      className="column"
+      initial={{ opacity: 0, y: 22 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: columnIndex * 0.06, duration: 0.45, ease: [0.2, 0.8, 0.2, 1] }}
+    >
+      <div className="column-head">
+        <span className="column-glow" style={{ background: color, boxShadow: `0 0 10px ${color}` }} />
+        <span className="column-title" style={{ color }}>
+          <StageIcon stage={stage} /> {title}
+        </span>
+        <span className="column-count">{list.length}</span>
+      </div>
+
+      <div className="column-cards">
+        {activeItem ? (
+          <>
+            <div className="column-card-window" onWheel={handleWheel}>
+              <AnimatePresence mode="wait">
+                <ContentCard key={activeItem.id} item={activeItem} onOpen={onOpen} />
+              </AnimatePresence>
+            </div>
+
+            <div className="column-pager" aria-label={`Navegacao de ${title}`}>
+              <button
+                className="column-nav-btn"
+                type="button"
+                onClick={() => goTo(-1)}
+                disabled={!canNavigate}
+                title="Conteudo anterior"
+                aria-label="Conteudo anterior"
+              >
+                <Icon name="chevronLeft" />
+              </button>
+              <span className="column-position">
+                {currentIndex + 1} / {list.length}
+              </span>
+              <button
+                className="column-nav-btn"
+                type="button"
+                onClick={() => goTo(1)}
+                disabled={!canNavigate}
+                title="Proximo conteudo"
+                aria-label="Proximo conteudo"
+              >
+                <Icon name="chevronRight" />
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="column-empty">nada por aqui</div>
+        )}
+      </div>
+    </motion.section>
+  );
 }
 
 export function Dashboard() {
@@ -543,29 +654,15 @@ export function Dashboard() {
           }).map(({ stage, title, color }, columnIndex) => {
             const list = byStage.get(stage) ?? [];
             return (
-              <motion.section
+              <BoardColumn
                 key={stage}
-                className="column"
-                initial={{ opacity: 0, y: 22 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: columnIndex * 0.06, duration: 0.45, ease: [0.2, 0.8, 0.2, 1] }}
-              >
-                <div className="column-head">
-                  <span className="column-glow" style={{ background: color, boxShadow: `0 0 10px ${color}` }} />
-                  <span className="column-title" style={{ color }}>
-                    <StageIcon stage={stage} /> {title}
-                  </span>
-                  <span className="column-count">{list.length}</span>
-                </div>
-                <div className="column-cards">
-                  <AnimatePresence mode="popLayout">
-                    {list.map((item) => (
-                      <ContentCard key={item.id} item={item} onOpen={setOpenItemId} />
-                    ))}
-                  </AnimatePresence>
-                  {list.length === 0 && <div className="column-empty">nada por aqui</div>}
-                </div>
-              </motion.section>
+                stage={stage}
+                title={title}
+                color={color}
+                list={list}
+                columnIndex={columnIndex}
+                onOpen={setOpenItemId}
+              />
             );
           })}
         </main>

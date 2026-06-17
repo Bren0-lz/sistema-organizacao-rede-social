@@ -22,7 +22,9 @@ export type IconName =
   | 'restore'
   | 'filter' // funil de filtros
   | 'warning'
-  | 'lock';
+  | 'lock'
+  | 'chevronLeft'
+  | 'chevronRight';
 
 const PATHS: Record<IconName, { d: string; evenOdd?: boolean }> = {
   video: {
@@ -75,6 +77,12 @@ const PATHS: Record<IconName, { d: string; evenOdd?: boolean }> = {
   filter: {
     d: 'M3 5a1 1 0 0 1 1-1h16a1 1 0 0 1 .78 1.62L14 13.35V19a1 1 0 0 1-1.45.9l-3-1.5A1 1 0 0 1 9 17.5v-4.15L3.22 5.62A1 1 0 0 1 3 5Zm3.08 1L11 12.15v4.73l1 .5v-5.23L17.92 6H6.08Z',
     evenOdd: true,
+  },
+  chevronLeft: {
+    d: 'M14.7 5.3a1 1 0 0 1 0 1.4L9.4 12l5.3 5.3a1 1 0 1 1-1.4 1.4l-6-6a1 1 0 0 1 0-1.4l6-6a1 1 0 0 1 1.4 0Z',
+  },
+  chevronRight: {
+    d: 'M9.3 18.7a1 1 0 0 1 0-1.4l5.3-5.3-5.3-5.3a1 1 0 0 1 1.4-1.4l6 6a1 1 0 0 1 0 1.4l-6 6a1 1 0 0 1-1.4 0Z',
   },
 };
 

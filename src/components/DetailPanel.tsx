@@ -47,6 +47,15 @@ function localInputValueToIso(value: string): string | undefined {
   return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
 }
 
+function formatLocalDateTime(iso?: string): string {
+  if (!iso) return '';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return `${pad2(date.getDate())}/${pad2(date.getMonth() + 1)}/${date.getFullYear()} ${pad2(
+    date.getHours(),
+  )}:${pad2(date.getMinutes())}`;
+}
+
 const YOUTUBE_CATEGORY_OPTIONS = [
   { id: '1', label: 'Filme e animacao' },
   { id: '2', label: 'Autos e veiculos' },
@@ -585,6 +594,18 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
   const canSaveMetadata = hasYoutubeVideo && !busy;
   const scheduleTime = state.scheduledAt ? new Date(state.scheduledAt).getTime() : Number.NaN;
   const scheduleHasPassed = Number.isFinite(scheduleTime) && scheduleTime <= Date.now();
+  const youtubeWhen =
+    state.status === 'scheduled'
+      ? formatLocalDateTime(state.scheduledAt)
+      : formatLocalDateTime(state.postedAt);
+  const youtubeStateLabel =
+    state.status === 'scheduled'
+      ? youtubeWhen
+        ? `Agendado para ${youtubeWhen}`
+        : 'Agendado'
+      : youtubeWhen
+        ? `Postado em ${youtubeWhen}`
+        : 'Postado';
   const cancelLabel =
     state.status === 'scheduled' && !scheduleHasPassed
       ? 'Cancelar agendamento'
@@ -710,6 +731,12 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
           ? 'Atualize titulo, descricao, categoria, tags e opcoes do video ja enviado.'
           : 'Configure o video antes do envio. Enviar agora publica como publico; Agendar envia como privado e libera na data escolhida.'}
       </p>
+      {hasYoutubeVideo && (
+        <div className="youtube-post-state" data-status={state.status}>
+          <Icon name={state.status === 'scheduled' ? 'calendar' : 'check'} />
+          <span>{youtubeStateLabel}</span>
+        </div>
+      )}
       <div className="youtube-fields">
         <input
           value={title}

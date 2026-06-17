@@ -1391,6 +1391,27 @@ input[type='time']::-webkit-calendar-picker-indicator {
   color: var(--st-posted);
 }
 
+.youtube-post-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 7px 10px;
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  border-radius: 9px;
+  background: rgba(52, 211, 153, 0.1);
+  color: var(--st-posted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.youtube-post-state[data-status='scheduled'] {
+  border-color: rgba(251, 191, 36, 0.4);
+  background: rgba(251, 191, 36, 0.12);
+  color: var(--st-scheduled);
+}
+
 .youtube-fields {
   display: flex;
   flex-direction: column;

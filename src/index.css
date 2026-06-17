@@ -3354,6 +3354,19 @@ input[type='time']::-webkit-calendar-picker-indicator {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 6px;
+  min-width: 0;
+}
+.calendar-agenda-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+  gap: 22px;
+  align-items: start;
+}
+.calendar-agenda {
+  min-width: 0;
+}
+.calendar-agenda-head {
+  margin-bottom: 14px;
 }
 .calendar-weekday {
   font-size: 11px;
@@ -3374,6 +3387,16 @@ input[type='time']::-webkit-calendar-picker-indicator {
   flex-direction: column;
   gap: 4px;
   overflow: hidden;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  appearance: none;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+.calendar-cell:hover {
+  border-color: color-mix(in srgb, var(--st-scheduled) 48%, var(--line));
+  background: color-mix(in srgb, var(--st-scheduled) 6%, var(--bg-card));
+  transform: translateY(-1px);
 }
 .calendar-cell.outside {
   opacity: 0.4;
@@ -3409,6 +3432,7 @@ input[type='time']::-webkit-calendar-picker-indicator {
   color: #fff;
   text-align: left;
   cursor: pointer;
+  min-width: 0;
 }
 .calendar-event svg {
   width: 12px;
@@ -3438,6 +3462,9 @@ input[type='time']::-webkit-calendar-picker-indicator {
 .calendar-event[data-kind='post'][data-net='youtube'] {
   background: var(--yt-red);
 }
+.calendar-empty {
+  padding: 28px 18px;
+}
 
 @media (max-width: 768px) {
   .idea-card {
@@ -3448,8 +3475,12 @@ input[type='time']::-webkit-calendar-picker-indicator {
     justify-content: flex-end;
     flex-wrap: wrap;
   }
+  .calendar-agenda-layout {
+    grid-template-columns: 1fr;
+  }
   .calendar-cell {
     min-height: 70px;
+    padding: 5px;
   }
   .calendar-event-title {
     display: none;

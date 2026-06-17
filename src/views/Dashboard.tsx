@@ -14,7 +14,6 @@ import { useStore } from '../store/useStore';
 import { ContentCard } from '../components/ContentCard';
 import { ListView } from '../components/ListView';
 import { TrashView } from '../components/TrashView';
-import { RecordingAgenda } from './RecordingAgenda';
 import { CalendarView } from './CalendarView';
 import { IdeasView } from './IdeasView';
 import { BulkActionBar } from '../components/BulkActionBar';
@@ -93,7 +92,6 @@ export function Dashboard() {
   const [filter, setFilter] = useState<Filter>('all');
   const [view, setView] = useState<ViewMode>('list');
   const [showTrash, setShowTrash] = useState(false);
-  const [showAgenda, setShowAgenda] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showIdeas, setShowIdeas] = useState(false);
   const [query, setQuery] = useState('');
@@ -205,11 +203,10 @@ export function Dashboard() {
   const clearSelection = useCallback(() => setSelected(new Set()), []);
 
   // alguma "seção" (não-quadro/lista) está aberta?
-  const inSection = showTrash || showAgenda || showCalendar || showIdeas;
+  const inSection = showTrash || showCalendar || showIdeas;
   // fecha todas as seções de uma vez (usado na navegação mobile)
   const closeSections = useCallback(() => {
     setShowTrash(false);
-    setShowAgenda(false);
     setShowCalendar(false);
     setShowIdeas(false);
   }, []);
@@ -259,7 +256,6 @@ export function Dashboard() {
           title="Calendário"
           onClick={() => {
             setShowTrash(false);
-            setShowAgenda(false);
             setShowIdeas(false);
             setShowCalendar((v) => !v);
           }}
@@ -267,24 +263,11 @@ export function Dashboard() {
           <Icon name="calendar" /> Calendário
         </button>
         <button
-          className={`btn btn-ghost nav-agenda hide-mobile ${showAgenda ? 'active' : ''}`}
-          title="Agenda de gravações"
-          onClick={() => {
-            setShowTrash(false);
-            setShowCalendar(false);
-            setShowIdeas(false);
-            setShowAgenda((v) => !v);
-          }}
-        >
-          <Icon name="video" /> Agenda
-        </button>
-        <button
           className={`btn btn-ghost nav-ideas hide-mobile ${showIdeas ? 'active' : ''}`}
           title="Banco de ideias"
           onClick={() => {
             setShowTrash(false);
             setShowCalendar(false);
-            setShowAgenda(false);
             setShowIdeas((v) => !v);
           }}
         >
@@ -316,7 +299,6 @@ export function Dashboard() {
           className={`icon-btn nav-trash hide-mobile ${showTrash ? 'active' : ''}`}
           title="Lixeira"
           onClick={() => {
-            setShowAgenda(false);
             setShowCalendar(false);
             setShowIdeas(false);
             setShowTrash((v) => !v);
@@ -336,15 +318,14 @@ export function Dashboard() {
         </button>
       </header>
 
-      {showAgenda ? (
-        <RecordingAgenda
+      {showCalendar ? (
+        <CalendarView
+          onOpenItem={setOpenItemId}
           onRecorded={(itemId) => {
-            setShowAgenda(false);
+            setShowCalendar(false);
             setOpenItemId(itemId);
           }}
         />
-      ) : showCalendar ? (
-        <CalendarView onOpenItem={setOpenItemId} />
       ) : showIdeas ? (
         <IdeasView
           onCreated={(itemId) => {
@@ -597,7 +578,7 @@ export function Dashboard() {
       </>
       )}
 
-      {!showTrash && !showAgenda && !showCalendar && !showIdeas && (
+      {!showTrash && !showCalendar && !showIdeas && (
         <BulkActionBar ids={[...selected]} onClear={clearSelection} />
       )}
 
@@ -650,16 +631,6 @@ export function Dashboard() {
         >
           <span className="mobile-nav-icon"><Icon name="calendar" /></span>
           Calendário
-        </button>
-        <button
-          className={`mobile-nav-btn ${showAgenda ? 'active' : ''}`}
-          onClick={() => {
-            closeSections();
-            setShowAgenda((v) => !v);
-          }}
-        >
-          <span className="mobile-nav-icon"><Icon name="video" /></span>
-          Agenda
         </button>
         <button
           className={`mobile-nav-btn ${showIdeas ? 'active' : ''}`}

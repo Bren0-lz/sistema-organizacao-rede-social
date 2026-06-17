@@ -461,23 +461,28 @@ input[type='time']::-webkit-calendar-picker-indicator {
 
 .filters {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
   margin-bottom: 30px;
 }
 
 .chip {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
+  min-height: 34px;
   padding: 8px 16px;
   border-radius: 999px;
   border: 1px solid var(--line-strong);
   font-size: 13px;
   font-weight: 600;
+  line-height: 1;
   color: var(--ink-dim);
   background: var(--bg-raised);
   transition: all 0.2s;
+  box-sizing: border-box;
 }
 
 .chip svg {
@@ -3070,14 +3075,11 @@ input[type='time']::-webkit-calendar-picker-indicator {
   background: color-mix(in srgb, var(--st-edited) 12%, var(--bg-raised));
 }
 
-/* ----- segunda linha de filtros (tags / data / arquivos faltando) ----- */
-.filters-secondary {
-  margin-top: -16px;
-  align-items: center;
-}
-
 /* ----- botão único que agrupa os filtros secundários ----- */
 .filters-menu {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
   position: relative;
 }
 .filters-menu > .chip.open {

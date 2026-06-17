@@ -46,7 +46,12 @@ export function BulkUploadModal({ onClose }: { onClose: () => void }) {
 
   return (
     // Backdrop escuro e estático para abrir rápido sem recalcular blur no fundo.
-    <div className="modal-backdrop" onClick={onClose}>
+    <div
+      className="modal-backdrop"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <motion.div
         className="modal modal-wide"
         initial={{ scale: 0.92, y: 18, opacity: 0 }}

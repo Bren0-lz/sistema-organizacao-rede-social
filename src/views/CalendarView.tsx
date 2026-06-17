@@ -13,6 +13,15 @@ type CalEvent =
   | { kind: 'recording'; key: string; iso: string; title: string; recording: Recording }
   | { kind: 'post'; key: string; iso: string; title: string; itemId: string; network: Network };
 
+type RecordingFilter = 'all' | 'scheduled' | 'overdue' | 'canceled';
+
+const RECORDING_FILTERS: { value: RecordingFilter; label: string }[] = [
+  { value: 'all', label: 'Todos' },
+  { value: 'scheduled', label: 'Agendados' },
+  { value: 'overdue', label: 'Atrasados' },
+  { value: 'canceled', label: 'Cancelados' },
+];
+
 function timeLabel(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
@@ -35,6 +44,21 @@ function initialIsoForDay(date: Date): string {
   const d = new Date(date);
   d.setHours(9, 0, 0, 0);
   return d.toISOString();
+}
+
+function matchesAgendaFilter(
+  recording: Recording,
+  filter: RecordingFilter,
+  dateFilter: string,
+  now: number,
+): boolean {
+  if (dateFilter && dayKeyFromIso(recording.scheduledAt) !== dateFilter) return false;
+
+  const isOverdue = recording.status === 'planned' && new Date(recording.scheduledAt).getTime() < now;
+  if (filter === 'scheduled') return recording.status === 'planned' && !isOverdue;
+  if (filter === 'overdue') return isOverdue;
+  if (filter === 'canceled') return recording.status === 'canceled';
+  return true;
 }
 
 interface AgendaRowProps {
@@ -160,6 +184,8 @@ export function CalendarView({
   const [cursor, setCursor] = useState(() => new Date());
   const [editing, setEditing] = useState<Recording | null>(null);
   const [newScheduledAt, setNewScheduledAt] = useState<string | null>(null);
+  const [agendaDateFilter, setAgendaDateFilter] = useState('');
+  const [agendaStatusFilter, setAgendaStatusFilter] = useState<RecordingFilter>('all');
 
   const eventsByDay = useMemo(() => {
     const map = new Map<string, CalEvent[]>();
@@ -203,10 +229,12 @@ export function CalendarView({
   }, [recordings, items]);
 
   const groups = useMemo(() => {
-    const active = recordings.filter((r) => !r.deletedAt);
     const today = startOfToday();
     const tomorrow = today + 24 * 60 * 60 * 1000;
     const now = Date.now();
+    const active = recordings.filter(
+      (r) => !r.deletedAt && matchesAgendaFilter(r, agendaStatusFilter, agendaDateFilter, now),
+    );
     const byDate = (a: Recording, b: Recording) => a.scheduledAt.localeCompare(b.scheduledAt);
 
     const planned = active.filter((r) => r.status === 'planned');
@@ -222,7 +250,7 @@ export function CalendarView({
       recorded: active.filter((r) => r.status === 'recorded').sort((a, b) => byDate(b, a)),
       canceled: active.filter((r) => r.status === 'canceled').sort((a, b) => byDate(b, a)),
     };
-  }, [recordings]);
+  }, [recordings, agendaDateFilter, agendaStatusFilter]);
 
   const weeks = useMemo(() => monthMatrix(cursor), [cursor]);
   const todayKey = dayKey(new Date(startOfToday()));
@@ -233,6 +261,7 @@ export function CalendarView({
     groups.upcoming.length === 0 &&
     groups.recorded.length === 0 &&
     groups.canceled.length === 0;
+  const hasAgendaFilters = agendaDateFilter !== '' || agendaStatusFilter !== 'all';
 
   const move = (delta: number) =>
     setCursor((c) => new Date(c.getFullYear(), c.getMonth() + delta, 1));
@@ -337,13 +366,58 @@ export function CalendarView({
             </h2>
           </div>
 
+          <div className="agenda-filters">
+            <label className="agenda-date-filter">
+              <Icon name="calendar" />
+              <input
+                type="date"
+                value={agendaDateFilter}
+                onChange={(e) => setAgendaDateFilter(e.target.value)}
+                aria-label="Filtrar agendamentos por data"
+              />
+            </label>
+            <div className="agenda-status-filters" aria-label="Filtrar agendamentos por condi&ccedil;&atilde;o">
+              {RECORDING_FILTERS.map((filter) => (
+                <button
+                  key={filter.value}
+                  type="button"
+                  className={`agenda-filter-chip ${agendaStatusFilter === filter.value ? 'active' : ''}`}
+                  onClick={() => setAgendaStatusFilter(filter.value)}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+            {hasAgendaFilters && (
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm agenda-filter-clear"
+                onClick={() => {
+                  setAgendaDateFilter('');
+                  setAgendaStatusFilter('all');
+                }}
+              >
+                Limpar
+              </button>
+            )}
+          </div>
+
           {isAgendaEmpty ? (
             <motion.div className="empty-state calendar-empty" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
-              <h2>Nenhuma grava&ccedil;&atilde;o agendada</h2>
-              <p>Clique em uma data do calend&aacute;rio ou use o bot&atilde;o Nova grava&ccedil;&atilde;o.</p>
-              <button className="btn btn-primary" style={{ marginTop: 18 }} onClick={() => setNewScheduledAt(new Date().toISOString())}>
-                + Agendar primeira grava&ccedil;&atilde;o
-              </button>
+              {hasAgendaFilters ? (
+                <>
+                  <h2>Nenhum agendamento encontrado</h2>
+                  <p>Ajuste a data ou a condi&ccedil;&atilde;o para ampliar a busca.</p>
+                </>
+              ) : (
+                <>
+                  <h2>Nenhuma grava&ccedil;&atilde;o agendada</h2>
+                  <p>Clique em uma data do calend&aacute;rio ou use o bot&atilde;o Nova grava&ccedil;&atilde;o.</p>
+                  <button className="btn btn-primary" style={{ marginTop: 18 }} onClick={() => setNewScheduledAt(new Date().toISOString())}>
+                    + Agendar primeira grava&ccedil;&atilde;o
+                  </button>
+                </>
+              )}
             </motion.div>
           ) : (
             <>

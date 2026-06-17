@@ -3378,6 +3378,74 @@ input[type='time']::-webkit-calendar-picker-indicator {
 .calendar-agenda-head {
   margin-bottom: 14px;
 }
+.agenda-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: -2px 0 18px;
+}
+.agenda-date-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-card);
+  color: var(--ink-dim);
+}
+.agenda-date-filter svg {
+  width: 14px;
+  height: 14px;
+  color: var(--st-scheduled);
+}
+.agenda-date-filter input {
+  width: 124px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 12px;
+  outline: none;
+}
+.agenda-status-filters {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.agenda-filter-chip {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-card) 88%, transparent);
+  color: var(--ink-dim);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.agenda-filter-chip:hover {
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+.agenda-filter-chip.active {
+  color: #fff;
+  border-color: color-mix(in srgb, var(--st-scheduled) 55%, transparent);
+  background: color-mix(in srgb, var(--st-scheduled) 18%, var(--bg-card));
+}
+.agenda-filter-chip.active:nth-child(3) {
+  border-color: color-mix(in srgb, var(--st-raw) 55%, transparent);
+  background: color-mix(in srgb, var(--st-raw) 16%, var(--bg-card));
+}
+.agenda-filter-chip.active:nth-child(4) {
+  border-color: color-mix(in srgb, #ff335f 58%, transparent);
+  background: color-mix(in srgb, #ff335f 17%, var(--bg-card));
+}
+.agenda-filter-clear {
+  margin-left: auto;
+}
 .calendar-weekday {
   font-size: 11px;
   font-weight: 700;

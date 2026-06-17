@@ -935,10 +935,11 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
       {hasYoutubeVideo && (
         <div className="youtube-manage-actions">
           <button
-            className="btn btn-ghost"
+            className="btn youtube-private-action"
             disabled={busy}
             onClick={() => void cancelOnYoutube()}
           >
+            <Icon name="lock" size={16} />
             {cancelLabel}
           </button>
           {confirmYoutubeDelete ? (

@@ -21,7 +21,8 @@ export type IconName =
   | 'sparkles' // novo conteúdo
   | 'restore'
   | 'filter' // funil de filtros
-  | 'warning';
+  | 'warning'
+  | 'lock';
 
 const PATHS: Record<IconName, { d: string; evenOdd?: boolean }> = {
   video: {
@@ -67,6 +68,9 @@ const PATHS: Record<IconName, { d: string; evenOdd?: boolean }> = {
   },
   warning: {
     d: 'M12 3a1 1 0 0 1 .87.5l8.5 14.7A1 1 0 0 1 20.5 20H3.5a1 1 0 0 1-.87-1.5l8.5-14.7A1 1 0 0 1 12 3Zm0 5a1 1 0 0 0-1 1v4a1 1 0 1 0 2 0V9a1 1 0 0 0-1-1Zm0 8.2a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4Z',
+  },
+  lock: {
+    d: 'M8 10V7a4 4 0 1 1 8 0v3h1a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h1Zm2 0h4V7a2 2 0 1 0-4 0v3Zm2 4a1 1 0 0 0-1 1v2a1 1 0 1 0 2 0v-2a1 1 0 0 0-1-1Z',
   },
   filter: {
     d: 'M3 5a1 1 0 0 1 1-1h16a1 1 0 0 1 .78 1.62L14 13.35V19a1 1 0 0 1-1.45.9l-3-1.5A1 1 0 0 1 9 17.5v-4.15L3.22 5.62A1 1 0 0 1 3 5Zm3.08 1L11 12.15v4.73l1 .5v-5.23L17.92 6H6.08Z',

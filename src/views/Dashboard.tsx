@@ -101,6 +101,7 @@ export function Dashboard() {
   const [missingFilter, setMissingFilter] = useState<MissingFilter | null>(null);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [openItemId, setOpenItemId] = useState<string | null>(null);
   const [showNew, setShowNew] = useState(false);
@@ -138,6 +139,11 @@ export function Dashboard() {
       return true;
     });
   }, [active, query, tagFilter, missingFilter, dateFrom, dateTo]);
+
+  const activeSecondaryCount =
+    (missingFilter ? 1 : 0) +
+    (tagFilter ? 1 : 0) +
+    (dateFrom || dateTo ? 1 : 0);
 
   const byStage = useMemo(() => {
     const map = new Map<Stage, ContentItem[]>(STAGES.map(({ stage }) => [stage, []]));
@@ -373,57 +379,111 @@ export function Dashboard() {
       </nav>
 
       <nav className="filters filters-secondary">
-        <button
-          className={`chip ${missingFilter === 'cover' ? 'active' : ''}`}
-          onClick={() => setMissingFilter((m) => (m === 'cover' ? null : 'cover'))}
-        >
-          <Icon name="carousel" /> Sem capa
-        </button>
-        <button
-          className={`chip ${missingFilter === 'edited' ? 'active' : ''}`}
-          onClick={() => setMissingFilter((m) => (m === 'edited' ? null : 'edited'))}
-        >
-          <Icon name="scissors" /> Sem editado
-        </button>
-
-        {allTags.map((tag) => (
+        <div className="filters-menu">
           <button
-            key={tag}
-            className={`chip chip-tag ${tagFilter === tag ? 'active' : ''}`}
-            onClick={() => setTagFilter((t) => (t === tag ? null : tag))}
+            className={`chip ${activeSecondaryCount > 0 ? 'active' : ''} ${showFilters ? 'open' : ''}`}
+            data-net="all"
+            onClick={() => setShowFilters((s) => !s)}
           >
-            #{tag}
+            <Icon name="filter" /> Filtros
+            {activeSecondaryCount > 0 && (
+              <span className="filters-badge">{activeSecondaryCount}</span>
+            )}
           </button>
-        ))}
 
-        <span className="filter-dates">
-          <Icon name="calendar" />
-          <input
-            type="date"
-            aria-label="Atualizado de"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-          />
-          <span>até</span>
-          <input
-            type="date"
-            aria-label="Atualizado até"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-          />
-          {(dateFrom || dateTo) && (
-            <button
-              className="icon-btn"
-              title="Limpar datas"
-              onClick={() => {
-                setDateFrom('');
-                setDateTo('');
-              }}
-            >
-              ✕
-            </button>
-          )}
-        </span>
+          <AnimatePresence>
+            {showFilters && (
+              <>
+                <div
+                  className="filters-backdrop"
+                  onClick={() => setShowFilters(false)}
+                />
+                <motion.div
+                  className="filters-pop"
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <div className="filters-pop-section">
+                    <span className="filters-pop-label">Pendências</span>
+                    <div className="filters-pop-row">
+                      <button
+                        className={`chip ${missingFilter === 'cover' ? 'active' : ''}`}
+                        onClick={() =>
+                          setMissingFilter((m) => (m === 'cover' ? null : 'cover'))
+                        }
+                      >
+                        <Icon name="carousel" /> Sem capa
+                      </button>
+                      <button
+                        className={`chip ${missingFilter === 'edited' ? 'active' : ''}`}
+                        onClick={() =>
+                          setMissingFilter((m) => (m === 'edited' ? null : 'edited'))
+                        }
+                      >
+                        <Icon name="scissors" /> Sem editado
+                      </button>
+                    </div>
+                  </div>
+
+                  {allTags.length > 0 && (
+                    <div className="filters-pop-section">
+                      <span className="filters-pop-label">Tags</span>
+                      <div className="filters-pop-row">
+                        {allTags.map((tag) => (
+                          <button
+                            key={tag}
+                            className={`chip chip-tag ${tagFilter === tag ? 'active' : ''}`}
+                            onClick={() =>
+                              setTagFilter((t) => (t === tag ? null : tag))
+                            }
+                          >
+                            #{tag}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="filters-pop-section">
+                    <span className="filters-pop-label">Período</span>
+                    <span className="filter-dates">
+                      <Icon name="calendar" />
+                      <input
+                        type="date"
+                        aria-label="Atualizado de"
+                        value={dateFrom}
+                        onChange={(e) => setDateFrom(e.target.value)}
+                      />
+                      <span>até</span>
+                      <input
+                        type="date"
+                        aria-label="Atualizado até"
+                        value={dateTo}
+                        onChange={(e) => setDateTo(e.target.value)}
+                      />
+                    </span>
+                  </div>
+
+                  {activeSecondaryCount > 0 && (
+                    <button
+                      className="btn btn-ghost filters-clear"
+                      onClick={() => {
+                        setMissingFilter(null);
+                        setTagFilter(null);
+                        setDateFrom('');
+                        setDateTo('');
+                      }}
+                    >
+                      Limpar filtros
+                    </button>
+                  )}
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
+        </div>
       </nav>
 
       {active.length === 0 ? (

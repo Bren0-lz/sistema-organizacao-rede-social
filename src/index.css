@@ -3075,6 +3075,72 @@ input[type='time']::-webkit-calendar-picker-indicator {
   margin-top: -16px;
   align-items: center;
 }
+
+/* ----- botão único que agrupa os filtros secundários ----- */
+.filters-menu {
+  position: relative;
+}
+.filters-menu > .chip.open {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(120deg, #3b3b4d, #23232f);
+}
+.filters-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--st-edited);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+.filters-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+.filters-pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 41;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: min(340px, 88vw);
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--line-strong);
+  background: var(--bg-raised);
+  box-shadow: 0 18px 48px -16px rgba(0, 0, 0, 0.6);
+}
+.filters-pop-section {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.filters-pop-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-dim);
+}
+.filters-pop-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.filters-clear {
+  align-self: flex-start;
+  padding: 6px 12px;
+  font-size: 12.5px;
+}
 .chip-tag {
   text-transform: none;
   letter-spacing: 0;

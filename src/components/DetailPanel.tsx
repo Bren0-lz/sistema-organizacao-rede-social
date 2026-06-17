@@ -898,13 +898,15 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
           )}
         </div>
       )}
-      <button
-        className="btn btn-primary youtube-action"
-        disabled={!canSubmit}
-        onClick={() => void submit()}
-      >
-        {buttonLabel}
-      </button>
+      {!hasYoutubeVideo && (
+        <button
+          className="btn btn-primary youtube-action"
+          disabled={!canSubmit}
+          onClick={() => void submit()}
+        >
+          {buttonLabel}
+        </button>
+      )}
     </div>
   );
 }

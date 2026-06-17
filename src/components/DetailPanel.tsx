@@ -467,6 +467,11 @@ function NetworkRow({ item, network }: { item: ContentItem; network: Network }) 
                 onClick={() =>
                   void setNetwork(item.id, network, {
                     status,
+                    ...(status === 'none'
+                      ? { scheduledAt: undefined, postedAt: undefined }
+                      : status === 'scheduled'
+                        ? { postedAt: undefined }
+                        : { scheduledAt: undefined }),
                     ...(status === 'posted' && !state.postedAt
                       ? { postedAt: new Date().toISOString() }
                       : {}),
@@ -490,7 +495,7 @@ function NetworkRow({ item, network }: { item: ContentItem; network: Network }) 
             ))}
           </div>
 
-          <CaptionField item={item} network={network} />
+          {network !== 'youtube' && <CaptionField item={item} network={network} />}
 
           {state.status === 'scheduled' && (
             <div className="field-row">
@@ -569,8 +574,11 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
   const busy = uploading || youtubeAction !== null;
   const selectedVideoFileId = item.editedVideoFileId ?? item.rawVideoFileId;
   const selectedVideoLabel = item.editedVideoFileId ? 'editado' : item.rawVideoFileId ? 'cru' : null;
+  const lockedToScheduledStatus = state.status === 'scheduled';
+  const effectivePublishMode = lockedToScheduledStatus ? 'schedule' : publishMode;
+  const effectivePublishAt = lockedToScheduledStatus ? (state.scheduledAt ?? '') : publishAt;
   const canSubmit =
-    !!selectedVideoFileId && !busy && (publishMode === 'now' || !!publishAt);
+    !!selectedVideoFileId && !busy && (effectivePublishMode === 'now' || !!effectivePublishAt);
   const hasYoutubeVideo = !!state.youtubeVideoId;
   const canSaveMetadata = hasYoutubeVideo && !busy;
   const scheduleTime = state.scheduledAt ? new Date(state.scheduledAt).getTime() : Number.NaN;
@@ -586,13 +594,13 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
         : 'Enviando...'
     : !selectedVideoFileId
       ? 'Anexe um video'
-      : publishMode === 'schedule' && !publishAt
+      : effectivePublishMode === 'schedule' && !effectivePublishAt
         ? 'Escolha data e hora'
         : state.youtubeVideoId
-          ? publishMode === 'now'
+          ? effectivePublishMode === 'now'
             ? 'Reenviar e publicar'
             : 'Reenviar e agendar'
-          : publishMode === 'now'
+          : effectivePublishMode === 'now'
             ? 'Enviar agora'
             : 'Enviar e agendar';
 
@@ -604,10 +612,15 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
   }, [state.scheduledAt]);
 
   const submit = async () => {
-    const scheduledPublishAt = publishMode === 'schedule' ? publishAt : undefined;
-    if (publishMode === 'schedule') {
+    const scheduledPublishAt =
+      effectivePublishMode === 'schedule' ? effectivePublishAt : undefined;
+    if (effectivePublishMode === 'schedule') {
       if (!scheduledPublishAt) {
-        setError('Escolha a data e hora em que o YouTube deve publicar o video.');
+        setError(
+          lockedToScheduledStatus
+            ? 'Preencha a data do status Programado antes de enviar ao YouTube.'
+            : 'Escolha a data e hora em que o YouTube deve publicar o video.',
+        );
         return;
       }
       if (new Date(scheduledPublishAt).getTime() <= Date.now()) {
@@ -621,7 +634,7 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
         title: title.trim() || item.title,
         description: description.trim() || undefined,
         publishAt: scheduledPublishAt,
-        publishNow: publishMode === 'now',
+        publishNow: effectivePublishMode === 'now',
         categoryId,
         tags: parseTags(tagsText),
         madeForKids,
@@ -697,8 +710,9 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
         )}
       </div>
       <p className="youtube-help">
-        Configure o video antes do envio. O modo Enviar agora publica como publico; o modo Agendar
-        envia como privado e libera na data escolhida.
+        {lockedToScheduledStatus
+          ? 'Configure o video antes do envio. Como o status esta Programado, o YouTube enviara como privado e liberara na data definida acima.'
+          : 'Configure o video antes do envio. Enviar agora publica como publico; Agendar envia como privado e libera na data escolhida.'}
       </p>
       <div className="youtube-fields">
         <input
@@ -724,27 +738,29 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
           onChange={(e) => setTagsText(e.target.value)}
           placeholder="Tags separadas por virgula"
         />
-        <div className="youtube-mode" aria-label="Modo de publicacao no YouTube">
-          <button
-            type="button"
-            className={`status-tab ${publishMode === 'now' ? 'active' : ''}`}
-            data-status="posted"
-            aria-pressed={publishMode === 'now'}
-            onClick={() => setPublishMode('now')}
-          >
-            <Icon name="upload" /> Enviar agora
-          </button>
-          <button
-            type="button"
-            className={`status-tab ${publishMode === 'schedule' ? 'active' : ''}`}
-            data-status="scheduled"
-            aria-pressed={publishMode === 'schedule'}
-            onClick={() => setPublishMode('schedule')}
-          >
-            <Icon name="calendar" /> Agendar
-          </button>
-        </div>
-        {publishMode === 'schedule' && (
+        {!lockedToScheduledStatus && (
+          <div className="youtube-mode" aria-label="Modo de publicacao no YouTube">
+            <button
+              type="button"
+              className={`status-tab ${publishMode === 'now' ? 'active' : ''}`}
+              data-status="posted"
+              aria-pressed={publishMode === 'now'}
+              onClick={() => setPublishMode('now')}
+            >
+              <Icon name="upload" /> Enviar agora
+            </button>
+            <button
+              type="button"
+              className={`status-tab ${publishMode === 'schedule' ? 'active' : ''}`}
+              data-status="scheduled"
+              aria-pressed={publishMode === 'schedule'}
+              onClick={() => setPublishMode('schedule')}
+            >
+              <Icon name="calendar" /> Agendar
+            </button>
+          </div>
+        )}
+        {!lockedToScheduledStatus && publishMode === 'schedule' && (
           <div className="field-row youtube-schedule-row">
             <label>Publicar em:</label>
             <input
@@ -803,8 +819,12 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
       {!selectedVideoFileId && (
         <p className="youtube-warning">Anexe um video cru ou editado para liberar o envio.</p>
       )}
-      {publishMode === 'schedule' && !publishAt && !hasYoutubeVideo && (
-        <p className="youtube-warning">Escolha data e hora para liberar o agendamento.</p>
+      {effectivePublishMode === 'schedule' && !effectivePublishAt && !hasYoutubeVideo && (
+        <p className="youtube-warning">
+          {lockedToScheduledStatus
+            ? 'Preencha a Data do status Programado para liberar o agendamento.'
+            : 'Escolha data e hora para liberar o agendamento.'}
+        </p>
       )}
       {uploading && (
         <div className="youtube-progress">

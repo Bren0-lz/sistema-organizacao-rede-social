@@ -2136,6 +2136,8 @@ input[type='time']::-webkit-calendar-picker-indicator {
 .carousel-file-preview .carousel-cover-tag {
   top: 6px;
   right: 6px;
+  bottom: auto;
+  left: auto;
 }
 
 .carousel-file-preview .carousel-remove {

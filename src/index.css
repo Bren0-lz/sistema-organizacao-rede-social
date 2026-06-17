@@ -183,6 +183,19 @@ input[type='time']::-webkit-calendar-picker-indicator {
   filter: brightness(1.1);
 }
 
+/* Gravada — verde de etapa concluída */
+.btn-recorded {
+  background: linear-gradient(120deg, var(--st-posted), var(--st-done));
+  border: none;
+  color: #06210f;
+  box-shadow: 0 8px 26px -8px rgba(52, 211, 153, 0.55);
+}
+
+.btn-recorded:hover {
+  border: none;
+  filter: brightness(1.08);
+}
+
 .btn-ghost {
   background: transparent;
   border-color: transparent;

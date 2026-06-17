@@ -70,18 +70,18 @@ function AgendaRow({ recording, onEdit, onRecorded }: RowProps) {
         {isPlanned ? (
           <>
             <button
-              className="btn btn-primary btn-sm"
+              className="btn btn-recorded btn-sm"
               disabled={busy}
               onClick={() => void mark()}
               title="Marcar como gravada e criar o conteúdo"
             >
               <Icon name="video" /> {busy ? 'Gravando…' : 'Gravada'}
             </button>
-            <button className="icon-btn" onClick={() => onEdit(recording)} title="Editar">
+            <button className="icon-btn nav-settings" onClick={() => onEdit(recording)} title="Editar">
               <Icon name="settings" size={16} />
             </button>
             <button
-              className="icon-btn"
+              className="icon-btn nav-trash"
               onClick={() => void cancelRecording(recording.id)}
               title="Cancelar gravação"
             >
@@ -90,7 +90,7 @@ function AgendaRow({ recording, onEdit, onRecorded }: RowProps) {
           </>
         ) : (
           <button
-            className="icon-btn"
+            className="icon-btn nav-trash"
             onClick={() => void deleteRecording(recording.id)}
             title="Excluir da agenda"
           >

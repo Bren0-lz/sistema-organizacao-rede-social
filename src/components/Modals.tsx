@@ -1,4 +1,4 @@
-import { useRef, useState, type DragEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { useStore } from '../store/useStore';
 import { getRootFolderId, rootFolderUrl } from '../services/drive';
@@ -56,6 +56,19 @@ export function NewItemModal({
 
   const isVideo = type === 'video';
   const accept = isVideo ? 'video/*' : 'image/*';
+  const selectedVideo = isVideo ? files[0] : undefined;
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState('');
+
+  useEffect(() => {
+    if (!selectedVideo) {
+      setVideoPreviewUrl('');
+      return;
+    }
+
+    const url = URL.createObjectURL(selectedVideo);
+    setVideoPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [selectedVideo]);
 
   // troca de tipo: zera os arquivos (vídeo aceita só 1; carrossel aceita imagens)
   const changeType = (next: ContentType) => {
@@ -149,7 +162,7 @@ export function NewItemModal({
         <div>
           <label className="form-label">{isVideo ? 'Vídeo' : 'Imagens do carrossel'}</label>
           <div
-            className={`bulk-drop ${dragOver ? 'drag-over' : ''}`}
+            className={`bulk-drop ${videoPreviewUrl ? 'has-preview' : ''} ${dragOver ? 'drag-over' : ''}`}
             onClick={() => inputRef.current?.click()}
             onDragOver={(e) => {
               e.preventDefault();
@@ -158,6 +171,22 @@ export function NewItemModal({
             onDragLeave={() => setDragOver(false)}
             onDrop={onDrop}
           >
+            {videoPreviewUrl && (
+              <div className="video-file-preview">
+                <video
+                  src={videoPreviewUrl}
+                  preload="metadata"
+                  controls
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <div className="video-file-preview-info">
+                  <span className="video-file-preview-title">
+                    <Icon name="video" /> {selectedVideo?.name}
+                  </span>
+                  <span>Clique fora dos controles para trocar</span>
+                </div>
+              </div>
+            )}
             <span className="bulk-drop-icon"><Icon name="upload" /></span>
             <span>
               {isVideo

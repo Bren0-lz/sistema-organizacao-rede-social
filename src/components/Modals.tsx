@@ -58,6 +58,7 @@ export function NewItemModal({
   const accept = isVideo ? 'video/*' : 'image/*';
   const selectedVideo = isVideo ? files[0] : undefined;
   const [videoPreviewUrl, setVideoPreviewUrl] = useState('');
+  const [carouselPreviewUrls, setCarouselPreviewUrls] = useState<string[]>([]);
 
   useEffect(() => {
     if (!selectedVideo) {
@@ -69,6 +70,17 @@ export function NewItemModal({
     setVideoPreviewUrl(url);
     return () => URL.revokeObjectURL(url);
   }, [selectedVideo]);
+
+  useEffect(() => {
+    if (isVideo) {
+      setCarouselPreviewUrls([]);
+      return;
+    }
+
+    const urls = files.map((file) => URL.createObjectURL(file));
+    setCarouselPreviewUrls(urls);
+    return () => urls.forEach((url) => URL.revokeObjectURL(url));
+  }, [files, isVideo]);
 
   // troca de tipo: zera os arquivos (vídeo aceita só 1; carrossel aceita imagens)
   const changeType = (next: ContentType) => {
@@ -205,7 +217,32 @@ export function NewItemModal({
               }}
             />
           </div>
-          {files.length > 0 && (
+          {!isVideo && carouselPreviewUrls.length > 0 && (
+            <div className="carousel-file-preview-grid">
+              {files.map((file, i) => (
+                <div className="carousel-file-preview" key={`${file.name}-${file.lastModified}-${i}`}>
+                  <img src={carouselPreviewUrls[i]} alt={file.name} />
+                  <span className="carousel-order">{i + 1}</span>
+                  {i === 0 && <span className="carousel-cover-tag">capa</span>}
+                  <button
+                    type="button"
+                    className="carousel-remove"
+                    onClick={() => removeFile(i)}
+                    title="Remover"
+                  >
+                    ×
+                  </button>
+                  <div className="carousel-file-preview-info">
+                    <span className="carousel-file-preview-name">{file.name}</span>
+                    <span className="carousel-file-preview-size">
+                      {(file.size / 1024 / 1024).toFixed(1)} MB
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {isVideo && files.length > 0 && (
             <ul className="bulk-file-list">
               {files.map((f, i) => (
                 <li key={`${f.name}-${i}`}>

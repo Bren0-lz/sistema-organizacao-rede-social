@@ -1,4 +1,4 @@
-import { getAccessToken } from './googleAuth';
+import { getYoutubeAccessToken } from './googleAuth';
 
 export type YouTubePrivacyStatus = 'public' | 'private' | 'unlisted';
 
@@ -39,6 +39,12 @@ export interface YouTubeMetadataInput {
   privacyStatus?: YouTubePrivacyStatus;
 }
 
+export interface YouTubeChannelInfo {
+  id: string;
+  title: string;
+  customUrl?: string;
+}
+
 interface YouTubeVideoSnippet {
   title?: string;
   description?: string;
@@ -77,7 +83,7 @@ export async function uploadScheduledVideo({
   thumbnail,
   onProgress,
 }: YouTubeScheduleInput): Promise<YouTubeScheduleResult> {
-  const token = await getAccessToken(true);
+  const token = await getYoutubeAccessToken(true);
   const metadata = {
     snippet: {
       title,
@@ -160,7 +166,7 @@ async function uploadBlob(
 }
 
 async function setThumbnail(videoId: string, thumbnail: Blob): Promise<void> {
-  const token = await getAccessToken(true);
+  const token = await getYoutubeAccessToken(true);
   const res = await fetch(
     `${UPLOAD_API}/thumbnails/set?videoId=${encodeURIComponent(videoId)}&uploadType=media`,
     {
@@ -179,7 +185,7 @@ async function setThumbnail(videoId: string, thumbnail: Blob): Promise<void> {
 }
 
 export async function cancelYoutubePublication(videoId: string): Promise<void> {
-  const token = await getAccessToken(true);
+  const token = await getYoutubeAccessToken(true);
   const current = await fetchYoutubeStatus(videoId, token);
   const status: YouTubeVideoStatus = {
     privacyStatus: 'private',
@@ -215,7 +221,7 @@ export async function updateYoutubeVideoMetadata(
   videoId: string,
   input: YouTubeMetadataInput,
 ): Promise<void> {
-  const token = await getAccessToken(true);
+  const token = await getYoutubeAccessToken(true);
   const current = await fetchYoutubeVideo(videoId, token, 'snippet,status');
   const currentSnippet = current.snippet ?? {};
   const currentStatus = current.status ?? {};
@@ -265,7 +271,7 @@ export async function updateYoutubeVideoMetadata(
 }
 
 export async function deleteYoutubeVideo(videoId: string): Promise<void> {
-  const token = await getAccessToken(true);
+  const token = await getYoutubeAccessToken(true);
   const res = await fetch(`${DATA_API}/videos?id=${encodeURIComponent(videoId)}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
@@ -275,6 +281,34 @@ export async function deleteYoutubeVideo(videoId: string): Promise<void> {
     const body = await res.text().catch(() => '');
     throw new Error(`Excluir YouTube ${res.status}: ${body.slice(0, 300)}`);
   }
+}
+
+export async function getCurrentYoutubeChannel(): Promise<YouTubeChannelInfo> {
+  const token = await getYoutubeAccessToken(true, { forceAccountSelection: true });
+  const res = await fetch(`${DATA_API}/channels?part=snippet&mine=true`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`Conta YouTube ${res.status}: ${body.slice(0, 300)}`);
+  }
+
+  const data = (await res.json()) as {
+    items?: Array<{
+      id?: string;
+      snippet?: { title?: string; customUrl?: string };
+    }>;
+  };
+  const channel = data.items?.[0];
+  if (!channel?.id) {
+    throw new Error('Esta conta Google nao possui um canal do YouTube disponivel.');
+  }
+  return {
+    id: channel.id,
+    title: channel.snippet?.title ?? 'Canal do YouTube',
+    customUrl: channel.snippet?.customUrl,
+  };
 }
 
 async function fetchYoutubeStatus(videoId: string, token: string): Promise<YouTubeVideoStatus> {

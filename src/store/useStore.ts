@@ -1,8 +1,10 @@
 import { create } from 'zustand';
 import {
   hasValidToken,
+  hasValidYoutubeToken,
   signIn as authSignIn,
   signOut as authSignOut,
+  signOutYoutube as authSignOutYoutube,
 } from '../services/googleAuth';
 import {
   deleteFile,
@@ -22,8 +24,10 @@ import {
 import {
   cancelYoutubePublication as cancelYoutubePublicationApi,
   deleteYoutubeVideo as deleteYoutubeVideoApi,
+  getCurrentYoutubeChannel,
   uploadScheduledVideo,
   updateYoutubeVideoMetadata,
+  type YouTubeChannelInfo,
   type YouTubeMetadataInput,
 } from '../services/youtube';
 import {
@@ -69,7 +73,10 @@ export interface UploadTask {
 
 interface AppState {
   authStatus: 'checking' | 'signedOut' | 'connecting' | 'ready' | 'error';
+  youtubeAuthStatus: 'disconnected' | 'connecting' | 'connected' | 'error';
   errorMessage?: string;
+  youtubeAccount?: YouTubeChannelInfo;
+  youtubeErrorMessage?: string;
   folders?: AppFolders;
   items: ContentItem[];
   recordings: Recording[];
@@ -81,6 +88,8 @@ interface AppState {
   init(): Promise<void>;
   signIn(): Promise<void>;
   signOut(): void;
+  connectYoutube(): Promise<void>;
+  disconnectYoutube(): void;
   refresh(): Promise<void>;
   reconcileScheduledPosts(): Promise<void>;
   connectSharedFolder(folderIdOrUrl: string): Promise<void>;
@@ -271,6 +280,31 @@ export const useStore = create<AppState>((set, get) => {
     await mutate(() => result.items);
   }
 
+  async function refreshYoutubeAccount(force = false): Promise<void> {
+    if (!force && !hasValidYoutubeToken()) {
+      set({
+        youtubeAuthStatus: 'disconnected',
+        youtubeAccount: undefined,
+        youtubeErrorMessage: undefined,
+      });
+      return;
+    }
+    set({ youtubeAuthStatus: 'connecting', youtubeErrorMessage: undefined });
+    try {
+      const youtubeAccount = await getCurrentYoutubeChannel();
+      set({ youtubeAuthStatus: 'connected', youtubeAccount });
+    } catch (error) {
+      authSignOutYoutube();
+      const message = error instanceof Error ? error.message : String(error);
+      set({
+        youtubeAuthStatus: 'error',
+        youtubeAccount: undefined,
+        youtubeErrorMessage: message,
+      });
+      if (force) throw error;
+    }
+  }
+
   async function connect(explicitRootId?: string): Promise<void> {
     set({ authStatus: 'connecting', errorMessage: undefined });
     try {
@@ -298,6 +332,7 @@ export const useStore = create<AppState>((set, get) => {
 
   return {
     authStatus: 'checking',
+    youtubeAuthStatus: hasValidYoutubeToken() ? 'connected' : 'disconnected',
     items: [],
     recordings: [],
     ideas: [],
@@ -307,6 +342,7 @@ export const useStore = create<AppState>((set, get) => {
     async init() {
       if (hasValidToken()) {
         await connect();
+        await refreshYoutubeAccount();
       } else {
         set({ authStatus: 'signedOut' });
       }
@@ -316,6 +352,7 @@ export const useStore = create<AppState>((set, get) => {
       try {
         await authSignIn();
         await connect();
+        await refreshYoutubeAccount();
       } catch (error) {
         set({
           authStatus: 'signedOut',
@@ -328,11 +365,28 @@ export const useStore = create<AppState>((set, get) => {
       authSignOut();
       set({
         authStatus: 'signedOut',
+        youtubeAuthStatus: 'disconnected',
         folders: undefined,
         items: [],
         recordings: [],
         ideas: [],
         coverUrls: {},
+        youtubeAccount: undefined,
+        youtubeErrorMessage: undefined,
+      });
+    },
+
+    async connectYoutube() {
+      authSignOutYoutube();
+      await refreshYoutubeAccount(true);
+    },
+
+    disconnectYoutube() {
+      authSignOutYoutube();
+      set({
+        youtubeAuthStatus: 'disconnected',
+        youtubeAccount: undefined,
+        youtubeErrorMessage: undefined,
       });
     },
 
@@ -518,6 +572,9 @@ export const useStore = create<AppState>((set, get) => {
     async uploadAndScheduleYoutube(id, input) {
       const item = get().items.find((i) => i.id === id);
       if (!item) return;
+      if (!hasValidYoutubeToken()) {
+        await refreshYoutubeAccount(true);
+      }
       if (!item.editedVideoFileId && !item.rawVideoFileId) {
         throw new Error('Anexe ou selecione um video antes de enviar ao YouTube.');
       }
@@ -654,6 +711,9 @@ export const useStore = create<AppState>((set, get) => {
     },
 
     async updateYoutubePublication(id, input) {
+      if (!hasValidYoutubeToken()) {
+        await refreshYoutubeAccount(true);
+      }
       const item = get().items.find((current) => current.id === id);
       const videoId = item?.networks.youtube.youtubeVideoId;
       if (!videoId) throw new Error('Nenhum video do YouTube vinculado a este item.');
@@ -683,6 +743,9 @@ export const useStore = create<AppState>((set, get) => {
     },
 
     async cancelYoutubePublication(id) {
+      if (!hasValidYoutubeToken()) {
+        await refreshYoutubeAccount(true);
+      }
       const item = get().items.find((current) => current.id === id);
       const videoId = item?.networks.youtube.youtubeVideoId;
       if (!videoId) throw new Error('Nenhum video do YouTube vinculado a este item.');
@@ -712,6 +775,9 @@ export const useStore = create<AppState>((set, get) => {
     },
 
     async deleteYoutubePublication(id) {
+      if (!hasValidYoutubeToken()) {
+        await refreshYoutubeAccount(true);
+      }
       const item = get().items.find((current) => current.id === id);
       const videoId = item?.networks.youtube.youtubeVideoId;
       if (!videoId) throw new Error('Nenhum video do YouTube vinculado a este item.');

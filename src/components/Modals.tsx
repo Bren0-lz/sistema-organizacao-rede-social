@@ -286,9 +286,15 @@ export function NewItemModal({
 
 export function SettingsModal({ onClose }: { onClose: () => void }) {
   const connectSharedFolder = useStore((s) => s.connectSharedFolder);
+  const connectYoutube = useStore((s) => s.connectYoutube);
+  const disconnectYoutube = useStore((s) => s.disconnectYoutube);
   const signOut = useStore((s) => s.signOut);
+  const youtubeAuthStatus = useStore((s) => s.youtubeAuthStatus);
+  const youtubeAccount = useStore((s) => s.youtubeAccount);
+  const youtubeErrorMessage = useStore((s) => s.youtubeErrorMessage);
   const [folderInput, setFolderInput] = useState('');
   const [busy, setBusy] = useState(false);
+  const [youtubeBusy, setYoutubeBusy] = useState(false);
   const rootId = getRootFolderId();
 
   return (
@@ -322,6 +328,56 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
           />
           <p className="form-help">
             Use isto se outra pessoa da equipe criou a pasta e compartilhou com você.
+          </p>
+        </div>
+        <div>
+          <label className="form-label">Conta do YouTube</label>
+          <p className="form-help" style={{ marginTop: 0 }}>
+            {youtubeAccount
+              ? `Conectado ao canal "${youtubeAccount.title}".`
+              : 'Nenhuma conta do YouTube conectada. O Drive continua usando a conta principal.'}
+            {youtubeAccount?.customUrl ? (
+              <>
+                <br />
+                {youtubeAccount.customUrl}
+              </>
+            ) : null}
+          </p>
+          {youtubeErrorMessage && (
+            <p className="youtube-error" style={{ marginBottom: 10 }}>
+              {youtubeErrorMessage}
+            </p>
+          )}
+          <div className="modal-actions" style={{ justifyContent: 'flex-start', marginTop: 0 }}>
+            <button
+              className="btn btn-primary"
+              disabled={youtubeBusy || youtubeAuthStatus === 'connecting'}
+              onClick={async () => {
+                setYoutubeBusy(true);
+                try {
+                  await connectYoutube();
+                } catch {
+                  // A mensagem ja fica no estado global e aparece abaixo.
+                } finally {
+                  setYoutubeBusy(false);
+                }
+              }}
+            >
+              {youtubeBusy || youtubeAuthStatus === 'connecting'
+                ? 'Conectando...'
+                : youtubeAccount
+                  ? 'Trocar conta do YouTube'
+                  : 'Conectar YouTube'}
+            </button>
+            {youtubeAccount && (
+              <button className="btn btn-ghost" disabled={youtubeBusy} onClick={disconnectYoutube}>
+                Desconectar
+              </button>
+            )}
+          </div>
+          <p className="form-help">
+            Publicacoes, edicoes e exclusoes no YouTube usam somente essa conta. Videos ja enviados
+            por outra conta podem nao aceitar alteracoes depois da troca.
           </p>
         </div>
       </div>

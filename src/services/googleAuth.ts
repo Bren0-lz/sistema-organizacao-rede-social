@@ -1,17 +1,22 @@
-// Autenticação via Google Identity Services (GIS) — token client implícito no navegador.
-// Escopo drive.file: o app só enxerga arquivos/pastas que ele mesmo criou ou que o
-// usuário abriu pelo app — o mínimo necessário.
+// Autenticacao via Google Identity Services (GIS) usando o token client no navegador.
+// Mantemos tokens separados para Drive/Agenda e YouTube, permitindo publicar com
+// uma conta Google diferente da conta usada para armazenar os arquivos no Drive.
 
-const SCOPE = [
+const DRIVE_SCOPE = [
   'https://www.googleapis.com/auth/drive.file',
-  'https://www.googleapis.com/auth/youtube.upload',
-  'https://www.googleapis.com/auth/youtube',
   'https://www.googleapis.com/auth/calendar.events',
 ].join(' ');
+
+const YOUTUBE_SCOPE = [
+  'https://www.googleapis.com/auth/youtube.upload',
+  'https://www.googleapis.com/auth/youtube',
+].join(' ');
+
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
 
-// v4: incluiu o escopo do Google Agenda — força um novo consentimento.
-const TOKEN_KEY = 'org-social:token:v4';
+// v5: removeu escopos do YouTube do login principal.
+const TOKEN_KEY = 'org-social:token:v5';
+const YOUTUBE_TOKEN_KEY = 'org-social:youtube-token:v1';
 
 interface StoredToken {
   accessToken: string;
@@ -19,7 +24,7 @@ interface StoredToken {
 }
 
 interface TokenClient {
-  requestAccessToken(options?: { prompt?: string }): void;
+  requestAccessToken(options?: { prompt?: string; scope?: string }): void;
 }
 
 declare global {
@@ -29,7 +34,7 @@ declare global {
         oauth2: {
           initTokenClient(config: {
             client_id: string;
-            scope: string;
+            scope?: string;
             callback: (response: {
               access_token?: string;
               expires_in?: number;
@@ -59,12 +64,12 @@ function loadGis(): Promise<void> {
   return gisLoaded;
 }
 
-function readStoredToken(): StoredToken | null {
+function readStoredToken(key: string): StoredToken | null {
   try {
-    const raw = sessionStorage.getItem(TOKEN_KEY);
+    const raw = sessionStorage.getItem(key);
     if (!raw) return null;
     const token = JSON.parse(raw) as StoredToken;
-    // margem de 60s para não usar token prestes a expirar no meio de um upload
+    // margem de 60s para nao usar token prestes a expirar no meio de um upload
     if (token.expiresAt - 60_000 < Date.now()) return null;
     return token;
   } catch {
@@ -72,28 +77,26 @@ function readStoredToken(): StoredToken | null {
   }
 }
 
-export function hasValidToken(): boolean {
-  return readStoredToken() !== null;
-}
-
-export function clearToken(): void {
-  sessionStorage.removeItem(TOKEN_KEY);
-}
-
-/**
- * Obtém um access token válido. Com o token client do GIS, a primeira chamada
- * abre o popup do Google; renovações na mesma sessão do navegador costumam
- * resolver sem nova interação (prompt: ''). Se `interactive` for false e não há
- * token guardado, rejeita para a UI mostrar a tela de login.
- */
-export async function getAccessToken(interactive = false): Promise<string> {
-  const stored = readStoredToken();
+async function getScopedAccessToken({
+  storageKey,
+  scope,
+  interactive,
+  prompt,
+  missingSessionMessage,
+}: {
+  storageKey: string;
+  scope: string;
+  interactive: boolean;
+  prompt: string;
+  missingSessionMessage: string;
+}): Promise<string> {
+  const stored = readStoredToken(storageKey);
   if (stored) return stored.accessToken;
-  if (!interactive) throw new Error('Sessão expirada — faça login novamente.');
+  if (!interactive) throw new Error(missingSessionMessage);
 
   if (!CLIENT_ID) {
     throw new Error(
-      'VITE_GOOGLE_CLIENT_ID não configurado. Copie .env.example para .env.local e preencha (veja SETUP.md).',
+      'VITE_GOOGLE_CLIENT_ID nao configurado. Copie .env.example para .env.local e preencha (veja SETUP.md).',
     );
   }
 
@@ -102,7 +105,7 @@ export async function getAccessToken(interactive = false): Promise<string> {
   return new Promise<string>((resolve, reject) => {
     const client = window.google!.accounts.oauth2.initTokenClient({
       client_id: CLIENT_ID,
-      scope: SCOPE,
+      scope,
       callback: (response) => {
         if (response.error || !response.access_token) {
           reject(new Error(response.error ?? 'Login cancelado'));
@@ -112,11 +115,50 @@ export async function getAccessToken(interactive = false): Promise<string> {
           accessToken: response.access_token,
           expiresAt: Date.now() + (response.expires_in ?? 3600) * 1000,
         };
-        sessionStorage.setItem(TOKEN_KEY, JSON.stringify(token));
+        sessionStorage.setItem(storageKey, JSON.stringify(token));
         resolve(token.accessToken);
       },
     });
-    client.requestAccessToken({ prompt: '' });
+    client.requestAccessToken({ prompt });
+  });
+}
+
+export function hasValidToken(): boolean {
+  return readStoredToken(TOKEN_KEY) !== null;
+}
+
+export function hasValidYoutubeToken(): boolean {
+  return readStoredToken(YOUTUBE_TOKEN_KEY) !== null;
+}
+
+export function clearToken(): void {
+  sessionStorage.removeItem(TOKEN_KEY);
+}
+
+export function clearYoutubeToken(): void {
+  sessionStorage.removeItem(YOUTUBE_TOKEN_KEY);
+}
+
+export function getAccessToken(interactive = false): Promise<string> {
+  return getScopedAccessToken({
+    storageKey: TOKEN_KEY,
+    scope: DRIVE_SCOPE,
+    interactive,
+    prompt: '',
+    missingSessionMessage: 'Sessao expirada - faca login novamente.',
+  });
+}
+
+export function getYoutubeAccessToken(
+  interactive = false,
+  options: { forceAccountSelection?: boolean } = {},
+): Promise<string> {
+  return getScopedAccessToken({
+    storageKey: YOUTUBE_TOKEN_KEY,
+    scope: YOUTUBE_SCOPE,
+    interactive,
+    prompt: options.forceAccountSelection ? 'select_account consent' : 'select_account',
+    missingSessionMessage: 'Conecte uma conta do YouTube nas configuracoes antes de publicar.',
   });
 }
 
@@ -124,6 +166,15 @@ export function signIn(): Promise<string> {
   return getAccessToken(true);
 }
 
+export function signInYoutube(options?: { forceAccountSelection?: boolean }): Promise<string> {
+  return getYoutubeAccessToken(true, options);
+}
+
 export function signOut(): void {
   clearToken();
+  clearYoutubeToken();
+}
+
+export function signOutYoutube(): void {
+  clearYoutubeToken();
 }

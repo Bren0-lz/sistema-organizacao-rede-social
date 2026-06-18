@@ -1,4 +1,4 @@
-import { useRef, useState, type DragEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { useStore } from '../store/useStore';
 import { getRootFolderId, rootFolderUrl } from '../services/drive';
@@ -20,7 +20,12 @@ const VIDEO_SLOT_OPTIONS: { slot: VideoSlot; icon: IconName; label: string }[] =
 export function ModalShell({ children, onClose }: { children: ReactNode; onClose: () => void }) {
   return (
     // Backdrop escuro e estático para abrir rápido sem recalcular blur no fundo.
-    <div className="modal-backdrop" onClick={onClose}>
+    <div
+      className="modal-backdrop"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <motion.div
         className="modal"
         initial={{ scale: 0.98, y: 6, opacity: 0 }}
@@ -56,6 +61,31 @@ export function NewItemModal({
 
   const isVideo = type === 'video';
   const accept = isVideo ? 'video/*' : 'image/*';
+  const selectedVideo = isVideo ? files[0] : undefined;
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState('');
+  const [carouselPreviewUrls, setCarouselPreviewUrls] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!selectedVideo) {
+      setVideoPreviewUrl('');
+      return;
+    }
+
+    const url = URL.createObjectURL(selectedVideo);
+    setVideoPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [selectedVideo]);
+
+  useEffect(() => {
+    if (isVideo) {
+      setCarouselPreviewUrls([]);
+      return;
+    }
+
+    const urls = files.map((file) => URL.createObjectURL(file));
+    setCarouselPreviewUrls(urls);
+    return () => urls.forEach((url) => URL.revokeObjectURL(url));
+  }, [files, isVideo]);
 
   // troca de tipo: zera os arquivos (vídeo aceita só 1; carrossel aceita imagens)
   const changeType = (next: ContentType) => {
@@ -149,7 +179,7 @@ export function NewItemModal({
         <div>
           <label className="form-label">{isVideo ? 'Vídeo' : 'Imagens do carrossel'}</label>
           <div
-            className={`bulk-drop ${dragOver ? 'drag-over' : ''}`}
+            className={`bulk-drop ${videoPreviewUrl ? 'has-preview' : ''} ${dragOver ? 'drag-over' : ''}`}
             onClick={() => inputRef.current?.click()}
             onDragOver={(e) => {
               e.preventDefault();
@@ -158,6 +188,22 @@ export function NewItemModal({
             onDragLeave={() => setDragOver(false)}
             onDrop={onDrop}
           >
+            {videoPreviewUrl && (
+              <div className="video-file-preview">
+                <video
+                  src={videoPreviewUrl}
+                  preload="metadata"
+                  controls
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <div className="video-file-preview-info">
+                  <span className="video-file-preview-title">
+                    <Icon name="video" /> {selectedVideo?.name}
+                  </span>
+                  <span>Clique fora dos controles para trocar</span>
+                </div>
+              </div>
+            )}
             <span className="bulk-drop-icon"><Icon name="upload" /></span>
             <span>
               {isVideo
@@ -176,7 +222,32 @@ export function NewItemModal({
               }}
             />
           </div>
-          {files.length > 0 && (
+          {!isVideo && carouselPreviewUrls.length > 0 && (
+            <div className="carousel-file-preview-grid">
+              {files.map((file, i) => (
+                <div className="carousel-file-preview" key={`${file.name}-${file.lastModified}-${i}`}>
+                  <img src={carouselPreviewUrls[i]} alt={file.name} />
+                  <span className="carousel-order">{i + 1}</span>
+                  {i === 0 && <span className="carousel-cover-tag">capa</span>}
+                  <button
+                    type="button"
+                    className="carousel-remove"
+                    onClick={() => removeFile(i)}
+                    title="Remover"
+                  >
+                    ×
+                  </button>
+                  <div className="carousel-file-preview-info">
+                    <span className="carousel-file-preview-name">{file.name}</span>
+                    <span className="carousel-file-preview-size">
+                      {(file.size / 1024 / 1024).toFixed(1)} MB
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {isVideo && files.length > 0 && (
             <ul className="bulk-file-list">
               {files.map((f, i) => (
                 <li key={`${f.name}-${i}`}>

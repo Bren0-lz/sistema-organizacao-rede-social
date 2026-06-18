@@ -8,6 +8,7 @@ import {
   type FileSlot,
   type Network,
   type NetworkStatus,
+  type YouTubePrivacyStatus,
 } from '../types';
 import { useStore } from '../store/useStore';
 import { useMediaQuery } from '../lib/useMediaQuery';
@@ -47,6 +48,15 @@ function localInputValueToIso(value: string): string | undefined {
   return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
 }
 
+function formatLocalDateTime(iso?: string): string {
+  if (!iso) return '';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return `${pad2(date.getDate())}/${pad2(date.getMonth() + 1)}/${date.getFullYear()} ${pad2(
+    date.getHours(),
+  )}:${pad2(date.getMinutes())}`;
+}
+
 const YOUTUBE_CATEGORY_OPTIONS = [
   { id: '1', label: 'Filme e animacao' },
   { id: '2', label: 'Autos e veiculos' },
@@ -63,6 +73,12 @@ const YOUTUBE_CATEGORY_OPTIONS = [
   { id: '27', label: 'Educacao' },
   { id: '28', label: 'Ciencia e tecnologia' },
   { id: '29', label: 'Sem fins lucrativos' },
+];
+
+const YOUTUBE_PRIVACY_OPTIONS: { value: YouTubePrivacyStatus; label: string }[] = [
+  { value: 'public', label: 'Publico' },
+  { value: 'private', label: 'Privado' },
+  { value: 'unlisted', label: 'Nao listado' },
 ];
 
 function parseTags(value: string): string[] {
@@ -430,6 +446,7 @@ function CaptionField({ item, network }: { item: ContentItem; network: Network }
 function NetworkRow({ item, network }: { item: ContentItem; network: Network }) {
   const setNetwork = useStore((s) => s.setNetwork);
   const state = item.networks[network];
+  const isYoutube = network === 'youtube';
 
   return (
     <div className="net-row" data-net={network} data-assigned={state.assigned}>
@@ -458,41 +475,50 @@ function NetworkRow({ item, network }: { item: ContentItem; network: Network }) 
           animate={{ opacity: 1, height: 'auto' }}
           transition={{ duration: 0.25 }}
         >
-          <div className="status-tabs">
-            {(['none', 'scheduled', 'posted'] as const).map((status) => (
-              <button
-                key={status}
-                className={`status-tab ${state.status === status ? 'active' : ''}`}
-                data-status={status}
-                onClick={() =>
-                  void setNetwork(item.id, network, {
-                    status,
-                    ...(status === 'posted' && !state.postedAt
-                      ? { postedAt: new Date().toISOString() }
-                      : {}),
-                  })
-                }
-              >
-                {status === 'none' ? (
-                  <>
-                    <Icon name="none" /> Sem data
-                  </>
-                ) : status === 'scheduled' ? (
-                  <>
-                    <Icon name="calendar" /> Programado
-                  </>
-                ) : (
-                  <>
-                    <Icon name="check" /> Postado
-                  </>
-                )}
-              </button>
-            ))}
-          </div>
+          {!isYoutube && (
+            <>
+              <div className="status-tabs">
+                {(['none', 'scheduled', 'posted'] as const).map((status) => (
+                  <button
+                    key={status}
+                    className={`status-tab ${state.status === status ? 'active' : ''}`}
+                    data-status={status}
+                    onClick={() =>
+                      void setNetwork(item.id, network, {
+                        status,
+                        ...(status === 'none'
+                          ? { scheduledAt: undefined, postedAt: undefined }
+                          : status === 'scheduled'
+                            ? { postedAt: undefined }
+                            : { scheduledAt: undefined }),
+                        ...(status === 'posted' && !state.postedAt
+                          ? { postedAt: new Date().toISOString() }
+                          : {}),
+                      })
+                    }
+                  >
+                    {status === 'none' ? (
+                      <>
+                        <Icon name="none" /> Sem data
+                      </>
+                    ) : status === 'scheduled' ? (
+                      <>
+                        <Icon name="calendar" /> Programado
+                      </>
+                    ) : (
+                      <>
+                        <Icon name="check" /> Postado
+                      </>
+                    )}
+                  </button>
+                ))}
+              </div>
 
-          <CaptionField item={item} network={network} />
+              <CaptionField item={item} network={network} />
+            </>
+          )}
 
-          {state.status === 'scheduled' && (
+          {!isYoutube && state.status === 'scheduled' && (
             <div className="field-row">
               <label>Data:</label>
               <input
@@ -507,7 +533,7 @@ function NetworkRow({ item, network }: { item: ContentItem; network: Network }) 
             </div>
           )}
 
-          {state.status === 'posted' && (
+          {!isYoutube && state.status === 'posted' && (
             <>
               <div className="field-row">
                 <label>Postado em:</label>
@@ -535,7 +561,7 @@ function NetworkRow({ item, network }: { item: ContentItem; network: Network }) 
             </>
           )}
 
-          {network === 'youtube' && <YouTubeScheduler item={item} state={state} />}
+          {isYoutube && <YouTubeScheduler item={item} state={state} />}
         </motion.div>
       )}
     </div>
@@ -547,10 +573,19 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
   const updateYoutubePublication = useStore((s) => s.updateYoutubePublication);
   const cancelYoutubePublication = useStore((s) => s.cancelYoutubePublication);
   const deleteYoutubePublication = useStore((s) => s.deleteYoutubePublication);
+  const initialPublishAt = state.scheduledAt ?? '';
   const [title, setTitle] = useState(item.title);
   const [description, setDescription] = useState(item.notes ?? '');
   const [categoryId, setCategoryId] = useState('22');
   const [tagsText, setTagsText] = useState('');
+  const [publishMode, setPublishMode] = useState<'now' | 'schedule'>(
+    initialPublishAt ? 'schedule' : 'now',
+  );
+  const [publishAt, setPublishAt] = useState(initialPublishAt);
+  const [privacyStatus, setPrivacyStatus] = useState<YouTubePrivacyStatus | ''>(
+    state.youtubePrivacyStatus ?? (state.youtubeVideoId ? '' : 'public'),
+  );
+  const [privacyTouched, setPrivacyTouched] = useState(false);
   const [madeForKids, setMadeForKids] = useState(false);
   const [containsSyntheticMedia, setContainsSyntheticMedia] = useState(false);
   const [embeddable, setEmbeddable] = useState(true);
@@ -564,12 +599,35 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
   const busy = uploading || youtubeAction !== null;
   const selectedVideoFileId = item.editedVideoFileId ?? item.rawVideoFileId;
   const selectedVideoLabel = item.editedVideoFileId ? 'editado' : item.rawVideoFileId ? 'cru' : null;
-  const canSchedule = !!selectedVideoFileId && !!state.scheduledAt && !busy;
+  const canSubmit =
+    !!selectedVideoFileId && !busy && (publishMode === 'now' || !!publishAt);
   const hasYoutubeVideo = !!state.youtubeVideoId;
+  const privacyLockedForSchedule =
+    (!hasYoutubeVideo && publishMode === 'schedule') ||
+    (hasYoutubeVideo && state.status === 'scheduled');
+  const effectivePrivacyStatus: YouTubePrivacyStatus =
+    privacyLockedForSchedule
+      ? 'private'
+      : privacyStatus || 'public';
   const canSaveMetadata = hasYoutubeVideo && !busy;
   const scheduleTime = state.scheduledAt ? new Date(state.scheduledAt).getTime() : Number.NaN;
   const scheduleHasPassed = Number.isFinite(scheduleTime) && scheduleTime <= Date.now();
-  const cancelLabel = scheduleHasPassed ? 'Tornar privado no YouTube' : 'Cancelar agendamento';
+  const youtubeWhen =
+    state.status === 'scheduled'
+      ? formatLocalDateTime(state.scheduledAt)
+      : formatLocalDateTime(state.postedAt);
+  const youtubeStateLabel =
+    state.status === 'scheduled'
+      ? youtubeWhen
+        ? `Agendado para ${youtubeWhen}`
+        : 'Agendado'
+      : youtubeWhen
+        ? `Postado em ${youtubeWhen}`
+        : 'Postado';
+  const cancelLabel =
+    state.status === 'scheduled' && !scheduleHasPassed
+      ? 'Cancelar agendamento'
+      : 'Tornar privado no YouTube';
   const buttonLabel = busy
     ? youtubeAction === 'save'
       ? 'Salvando...'
@@ -580,23 +638,45 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
         : 'Enviando...'
     : !selectedVideoFileId
       ? 'Anexe um video'
-      : !state.scheduledAt
-        ? 'Escolha uma data'
-        : state.youtubeVideoId
-          ? 'Reenviar/agendar de novo'
-          : 'Enviar e agendar';
+      : publishMode === 'schedule' && !publishAt
+        ? 'Escolha data e hora'
+        : publishMode === 'now'
+            ? 'Enviar agora'
+            : 'Enviar e agendar';
+
+  useEffect(() => {
+    if (state.scheduledAt) {
+      setPublishAt(state.scheduledAt);
+      setPublishMode('schedule');
+    }
+  }, [state.scheduledAt]);
+
+  useEffect(() => {
+    if (!privacyTouched) {
+      setPrivacyStatus(state.youtubePrivacyStatus ?? (state.youtubeVideoId ? '' : 'public'));
+    }
+  }, [privacyTouched, state.youtubePrivacyStatus, state.youtubeVideoId]);
 
   const submit = async () => {
-    if (!state.scheduledAt) {
-      setError('Defina uma data em Programado antes de enviar ao YouTube.');
-      return;
+    const scheduledPublishAt = publishMode === 'schedule' ? publishAt : undefined;
+    if (publishMode === 'schedule') {
+      if (!scheduledPublishAt) {
+        setError('Escolha a data e hora em que o YouTube deve publicar o video.');
+        return;
+      }
+      if (new Date(scheduledPublishAt).getTime() <= Date.now()) {
+        setError('Escolha uma data e hora futuras para agendar no YouTube.');
+        return;
+      }
     }
     setError(null);
     try {
       await uploadAndScheduleYoutube(item.id, {
         title: title.trim() || item.title,
         description: description.trim() || undefined,
-        publishAt: state.scheduledAt,
+        publishAt: scheduledPublishAt,
+        publishNow: publishMode === 'now',
+        privacyStatus: effectivePrivacyStatus,
         categoryId,
         tags: parseTags(tagsText),
         madeForKids,
@@ -625,6 +705,10 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
         containsSyntheticMedia,
         embeddable,
         publicStatsViewable,
+        privacyStatus:
+          !privacyLockedForSchedule && (privacyTouched || state.youtubePrivacyStatus)
+            ? effectivePrivacyStatus
+            : undefined,
       });
       setSaveOk(true);
     } catch (err) {
@@ -672,10 +756,16 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
         )}
       </div>
       <p className="youtube-help">
-        Usa o video selecionado no Drive. Quando houver video editado, ele tem prioridade; caso
-        contrario, o video cru sera enviado. O YouTube exige que o upload agendado seja privado ate
-        a data de publicacao.
+        {hasYoutubeVideo
+          ? 'Atualize titulo, descricao, categoria, tags e opcoes do video ja enviado.'
+          : 'Configure o video antes do envio. Enviar agora publica como publico; Agendar envia como privado e libera na data escolhida.'}
       </p>
+      {hasYoutubeVideo && (
+        <div className="youtube-post-state" data-status={state.status}>
+          <Icon name={state.status === 'scheduled' ? 'calendar' : 'check'} />
+          <span>{youtubeStateLabel}</span>
+        </div>
+      )}
       <div className="youtube-fields">
         <input
           value={title}
@@ -700,6 +790,61 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
           onChange={(e) => setTagsText(e.target.value)}
           placeholder="Tags separadas por virgula"
         />
+        <select
+          value={privacyLockedForSchedule ? 'private' : privacyStatus}
+          disabled={privacyLockedForSchedule}
+          onChange={(e) => {
+            setPrivacyStatus(e.target.value as YouTubePrivacyStatus | '');
+            setPrivacyTouched(true);
+          }}
+          aria-label="Visibilidade no YouTube"
+        >
+          {hasYoutubeVideo && !state.youtubePrivacyStatus && (
+            <option value="">Manter visibilidade atual</option>
+          )}
+          {YOUTUBE_PRIVACY_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        {privacyLockedForSchedule && (
+          <p className="youtube-help">
+            Agendamentos ficam privados ate a data escolhida, conforme regra do YouTube.
+          </p>
+        )}
+        {!hasYoutubeVideo && (
+          <div className="youtube-mode" aria-label="Modo de publicacao no YouTube">
+            <button
+              type="button"
+              className={`status-tab ${publishMode === 'now' ? 'active' : ''}`}
+              data-status="posted"
+              aria-pressed={publishMode === 'now'}
+              onClick={() => setPublishMode('now')}
+            >
+              <Icon name="upload" /> Enviar agora
+            </button>
+            <button
+              type="button"
+              className={`status-tab ${publishMode === 'schedule' ? 'active' : ''}`}
+              data-status="scheduled"
+              aria-pressed={publishMode === 'schedule'}
+              onClick={() => setPublishMode('schedule')}
+            >
+              <Icon name="calendar" /> Agendar
+            </button>
+          </div>
+        )}
+        {!hasYoutubeVideo && publishMode === 'schedule' && (
+          <div className="field-row youtube-schedule-row">
+            <label>Publicar em:</label>
+            <input
+              type="datetime-local"
+              value={isoToLocalInputValue(publishAt)}
+              onChange={(e) => setPublishAt(localInputValueToIso(e.target.value) ?? '')}
+            />
+          </div>
+        )}
         <div className="youtube-options">
           <label className="youtube-check">
             <input
@@ -747,10 +892,10 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
         <p className="youtube-help">Video selecionado: {selectedVideoLabel}.</p>
       )}
       {!selectedVideoFileId && (
-        <p className="youtube-warning">Anexe um video cru ou editado para liberar o agendamento.</p>
+        <p className="youtube-warning">Anexe um video cru ou editado para liberar o envio.</p>
       )}
-      {!state.scheduledAt && !hasYoutubeVideo && (
-        <p className="youtube-warning">Marque o status como Programado e escolha uma data.</p>
+      {publishMode === 'schedule' && !publishAt && !hasYoutubeVideo && (
+        <p className="youtube-warning">Escolha data e hora para liberar o agendamento.</p>
       )}
       {uploading && (
         <div className="youtube-progress">
@@ -771,7 +916,11 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
         <p className="youtube-error">{error ?? state.youtubeUploadError}</p>
       )}
       {state.youtubeUploadStatus === 'scheduled' && state.youtubeVideoId && (
-        <p className="youtube-success">Video enviado e agendado no YouTube.</p>
+        <p className="youtube-success">
+          {state.status === 'posted'
+            ? 'Video enviado e publicado no YouTube.'
+            : 'Video enviado e agendado no YouTube.'}
+        </p>
       )}
       {saveOk && <p className="youtube-success">Alteracoes salvas no YouTube.</p>}
       {hasYoutubeVideo && (
@@ -786,10 +935,11 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
       {hasYoutubeVideo && (
         <div className="youtube-manage-actions">
           <button
-            className="btn btn-ghost"
+            className="btn youtube-private-action"
             disabled={busy}
             onClick={() => void cancelOnYoutube()}
           >
+            <Icon name="lock" size={16} />
             {cancelLabel}
           </button>
           {confirmYoutubeDelete ? (
@@ -820,13 +970,15 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
           )}
         </div>
       )}
-      <button
-        className="btn btn-primary youtube-action"
-        disabled={!canSchedule}
-        onClick={() => void submit()}
-      >
-        {buttonLabel}
-      </button>
+      {!hasYoutubeVideo && (
+        <button
+          className="btn btn-primary youtube-action"
+          disabled={!canSubmit}
+          onClick={() => void submit()}
+        >
+          {buttonLabel}
+        </button>
+      )}
     </div>
   );
 }

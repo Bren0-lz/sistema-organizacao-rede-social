@@ -31,7 +31,7 @@ function AgendaRow({ recording, onEdit, onRecorded }: RowProps) {
   const [busy, setBusy] = useState(false);
 
   const isPlanned = recording.status === 'planned';
-  const overdue = isPlanned && new Date(recording.scheduledAt).getTime() < startOfToday();
+  const overdue = isPlanned && new Date(recording.scheduledAt).getTime() < Date.now();
 
   const mark = async () => {
     setBusy(true);
@@ -138,17 +138,18 @@ export function RecordingAgenda({ onRecorded }: { onRecorded: (itemId: string) =
     const active = recordings.filter((r) => !r.deletedAt);
     const today = startOfToday();
     const tomorrow = today + 24 * 60 * 60 * 1000;
+    const now = Date.now();
     const byDate = (a: Recording, b: Recording) => a.scheduledAt.localeCompare(b.scheduledAt);
 
     const planned = active.filter((r) => r.status === 'planned');
     return {
       overdue: planned
-        .filter((r) => new Date(r.scheduledAt).getTime() < today)
+        .filter((r) => new Date(r.scheduledAt).getTime() < now)
         .sort(byDate),
       today: planned
         .filter((r) => {
           const t = new Date(r.scheduledAt).getTime();
-          return t >= today && t < tomorrow;
+          return t >= now && t < tomorrow;
         })
         .sort(byDate),
       upcoming: planned
@@ -191,7 +192,7 @@ export function RecordingAgenda({ onRecorded }: { onRecorded: (itemId: string) =
           <Section title="Hoje" color="var(--st-ready)" list={groups.today} onEdit={setEditing} onRecorded={onRecorded} />
           <Section title="Próximas" list={groups.upcoming} onEdit={setEditing} onRecorded={onRecorded} />
           <Section title="Gravadas" list={groups.recorded} onEdit={setEditing} onRecorded={onRecorded} />
-          <Section title="Canceladas" list={groups.canceled} onEdit={setEditing} onRecorded={onRecorded} />
+          <Section title="Canceladas" color="#ff6b84" list={groups.canceled} onEdit={setEditing} onRecorded={onRecorded} />
         </>
       )}
 

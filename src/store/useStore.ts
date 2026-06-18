@@ -47,6 +47,7 @@ import {
   type Network,
   type NetworkStatus,
   type Recording,
+  type YouTubePrivacyStatus,
 } from '../types';
 
 /** Capas baixadas no máximo 4 por vez, para não saturar a rede. */
@@ -129,7 +130,8 @@ interface AppState {
     input: {
       title: string;
       description?: string;
-      publishAt: string;
+      publishAt?: string;
+      publishNow?: boolean;
       categoryId?: string;
       tags?: string[];
       madeForKids?: boolean;
@@ -137,6 +139,7 @@ interface AppState {
       embeddable?: boolean;
       publicStatsViewable?: boolean;
       notifySubscribers?: boolean;
+      privacyStatus?: YouTubePrivacyStatus;
     },
   ): Promise<void>;
   updateYoutubePublication(id: string, input: YouTubeMetadataInput): Promise<void>;
@@ -516,9 +519,17 @@ export const useStore = create<AppState>((set, get) => {
       const item = get().items.find((i) => i.id === id);
       if (!item) return;
       if (!item.editedVideoFileId && !item.rawVideoFileId) {
-        throw new Error('Anexe ou selecione um video antes de agendar no YouTube.');
+        throw new Error('Anexe ou selecione um video antes de enviar ao YouTube.');
       }
-      if (new Date(input.publishAt).getTime() <= Date.now()) {
+      const isScheduledUpload = !input.publishNow;
+      if (isScheduledUpload && !input.publishAt) {
+        throw new Error('Escolha a data e hora para agendar no YouTube.');
+      }
+      if (
+        isScheduledUpload &&
+        input.publishAt &&
+        new Date(input.publishAt).getTime() <= Date.now()
+      ) {
         throw new Error('Escolha uma data futura para o agendamento no YouTube.');
       }
 
@@ -532,8 +543,12 @@ export const useStore = create<AppState>((set, get) => {
                   youtube: {
                     ...current.networks.youtube,
                     assigned: true,
-                    status: 'scheduled',
-                    scheduledAt: input.publishAt,
+                    status: isScheduledUpload ? 'scheduled' : 'none',
+                    scheduledAt: isScheduledUpload ? input.publishAt : undefined,
+                    postedAt: undefined,
+                    youtubePrivacyStatus: isScheduledUpload
+                      ? 'private'
+                      : input.privacyStatus ?? 'public',
                     youtubeUploadStatus: 'uploading',
                     youtubeUploadProgress: 0,
                     youtubeUploadError: undefined,
@@ -583,8 +598,10 @@ export const useStore = create<AppState>((set, get) => {
           embeddable: input.embeddable,
           publicStatsViewable: input.publicStatsViewable,
           notifySubscribers: input.notifySubscribers,
+          privacyStatus: input.privacyStatus,
           onProgress: setProgress,
         });
+        const postedAt = new Date().toISOString();
 
         await mutate((items) =>
           items.map((current) =>
@@ -596,11 +613,14 @@ export const useStore = create<AppState>((set, get) => {
                     youtube: {
                       ...current.networks.youtube,
                       assigned: true,
-                      status: 'posted',
-                      scheduledAt: input.publishAt,
-                      postedAt: input.publishAt,
+                      status: isScheduledUpload ? 'scheduled' : 'posted',
+                      scheduledAt: isScheduledUpload ? input.publishAt : undefined,
+                      postedAt: isScheduledUpload ? undefined : postedAt,
                       postUrl: result.url,
                       youtubeVideoId: result.videoId,
+                      youtubePrivacyStatus: isScheduledUpload
+                        ? 'private'
+                        : input.privacyStatus ?? 'public',
                       youtubeUploadStatus: 'scheduled',
                       youtubeUploadProgress: 1,
                       youtubeUploadError: undefined,
@@ -650,6 +670,9 @@ export const useStore = create<AppState>((set, get) => {
                   ...current.networks,
                   youtube: {
                     ...current.networks.youtube,
+                    ...(input.privacyStatus
+                      ? { youtubePrivacyStatus: input.privacyStatus }
+                      : {}),
                     youtubeUploadError: undefined,
                   },
                 },
@@ -677,6 +700,7 @@ export const useStore = create<AppState>((set, get) => {
                     status: 'none',
                     scheduledAt: undefined,
                     postedAt: undefined,
+                    youtubePrivacyStatus: 'private',
                     youtubeUploadStatus: 'idle',
                     youtubeUploadError: undefined,
                   },
@@ -707,6 +731,7 @@ export const useStore = create<AppState>((set, get) => {
                     postedAt: undefined,
                     postUrl: undefined,
                     youtubeVideoId: undefined,
+                    youtubePrivacyStatus: undefined,
                     youtubeUploadStatus: 'idle',
                     youtubeUploadProgress: undefined,
                     youtubeUploadError: undefined,

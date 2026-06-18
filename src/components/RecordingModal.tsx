@@ -29,6 +29,7 @@ export function RecordingModal({
   recording,
   initialTitle,
   initialScript,
+  initialScheduledAt,
   heading,
   onSubmitOverride,
   onClose,
@@ -38,6 +39,7 @@ export function RecordingModal({
   /** Valores iniciais ao criar (ex.: ao promover uma ideia). */
   initialTitle?: string;
   initialScript?: string;
+  initialScheduledAt?: string;
   /** Título do modal (sobrescreve o padrão). */
   heading?: string;
   /** Se presente, é chamado no lugar de criar a gravação (ex.: converter ideia). */
@@ -49,7 +51,7 @@ export function RecordingModal({
 
   const editing = !!recording;
   const [title, setTitle] = useState(recording?.title ?? initialTitle ?? '');
-  const [when, setWhen] = useState(isoToLocalInput(recording?.scheduledAt));
+  const [when, setWhen] = useState(isoToLocalInput(recording?.scheduledAt ?? initialScheduledAt));
   const [location, setLocation] = useState(recording?.location ?? '');
   const [script, setScript] = useState(recording?.script ?? initialScript ?? '');
   const [busy, setBusy] = useState(false);

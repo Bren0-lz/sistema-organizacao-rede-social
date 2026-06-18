@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { type WheelEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   coverFileIdFor,
@@ -14,7 +14,6 @@ import { useStore } from '../store/useStore';
 import { ContentCard } from '../components/ContentCard';
 import { ListView } from '../components/ListView';
 import { TrashView } from '../components/TrashView';
-import { RecordingAgenda } from './RecordingAgenda';
 import { CalendarView } from './CalendarView';
 import { IdeasView } from './IdeasView';
 import { BulkActionBar } from '../components/BulkActionBar';
@@ -87,13 +86,123 @@ function nextScheduledAt(item: ContentItem): string {
   return dates.sort()[0] ?? item.updatedAt;
 }
 
+function BoardColumn({
+  stage,
+  title,
+  color,
+  list,
+  columnIndex,
+  onOpen,
+}: {
+  stage: Stage;
+  title: string;
+  color: string;
+  list: ContentItem[];
+  columnIndex: number;
+  onOpen: (id: string) => void;
+}) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const lastWheelAt = useRef(0);
+
+  const hasItems = list.length > 0;
+  const canNavigate = list.length > 1;
+  const currentIndex = hasItems ? Math.min(activeIndex, list.length - 1) : 0;
+  const activeItem = hasItems ? list[currentIndex] : undefined;
+
+  useEffect(() => {
+    setActiveIndex((current) => (list.length === 0 ? 0 : Math.min(current, list.length - 1)));
+  }, [list.length]);
+
+  const goTo = useCallback(
+    (direction: 1 | -1) => {
+      if (!canNavigate) return;
+      setActiveIndex((current) => (current + direction + list.length) % list.length);
+    },
+    [canNavigate, list.length],
+  );
+
+  const handleWheel = useCallback(
+    (event: WheelEvent<HTMLDivElement>) => {
+      if (!canNavigate || Math.abs(event.deltaY) < 18) return;
+
+      const now = Date.now();
+      if (now - lastWheelAt.current < 420) {
+        event.preventDefault();
+        return;
+      }
+
+      lastWheelAt.current = now;
+      event.preventDefault();
+      goTo(event.deltaY > 0 ? 1 : -1);
+    },
+    [canNavigate, goTo],
+  );
+
+  return (
+    <motion.section
+      key={stage}
+      className="column"
+      initial={{ opacity: 0, y: 22 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: columnIndex * 0.06, duration: 0.45, ease: [0.2, 0.8, 0.2, 1] }}
+    >
+      <div className="column-head">
+        <span className="column-glow" style={{ background: color, boxShadow: `0 0 10px ${color}` }} />
+        <span className="column-title" style={{ color }}>
+          <StageIcon stage={stage} /> {title}
+        </span>
+        <span className="column-count">{list.length}</span>
+      </div>
+
+      <div className="column-cards">
+        {activeItem ? (
+          <>
+            <div className="column-card-window" onWheel={handleWheel}>
+              <AnimatePresence mode="wait">
+                <ContentCard key={activeItem.id} item={activeItem} onOpen={onOpen} />
+              </AnimatePresence>
+            </div>
+
+            <div className="column-pager" aria-label={`Navegacao de ${title}`}>
+              <button
+                className="column-nav-btn"
+                type="button"
+                onClick={() => goTo(-1)}
+                disabled={!canNavigate}
+                title="Conteudo anterior"
+                aria-label="Conteudo anterior"
+              >
+                <Icon name="chevronLeft" />
+              </button>
+              <span className="column-position">
+                {currentIndex + 1} / {list.length}
+              </span>
+              <button
+                className="column-nav-btn"
+                type="button"
+                onClick={() => goTo(1)}
+                disabled={!canNavigate}
+                title="Proximo conteudo"
+                aria-label="Proximo conteudo"
+              >
+                <Icon name="chevronRight" />
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="column-empty">nada por aqui</div>
+        )}
+      </div>
+    </motion.section>
+  );
+}
+
 export function Dashboard() {
   const items = useStore((s) => s.items);
   const refresh = useStore((s) => s.refresh);
   const [filter, setFilter] = useState<Filter>('all');
   const [view, setView] = useState<ViewMode>('list');
   const [showTrash, setShowTrash] = useState(false);
-  const [showAgenda, setShowAgenda] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showIdeas, setShowIdeas] = useState(false);
   const [query, setQuery] = useState('');
@@ -205,22 +314,37 @@ export function Dashboard() {
   const clearSelection = useCallback(() => setSelected(new Set()), []);
 
   // alguma "seção" (não-quadro/lista) está aberta?
-  const inSection = showTrash || showAgenda || showCalendar || showIdeas;
+  const inSection = showTrash || showCalendar || showIdeas;
   // fecha todas as seções de uma vez (usado na navegação mobile)
   const closeSections = useCallback(() => {
     setShowTrash(false);
-    setShowAgenda(false);
     setShowCalendar(false);
     setShowIdeas(false);
   }, []);
+  const goHome = useCallback(() => {
+    closeSections();
+    setView('list');
+    setFilter('all');
+    setQuery('');
+    setTagFilter(null);
+    setMissingFilter(null);
+    setDateFrom('');
+    setDateTo('');
+    setShowFilters(false);
+    setSelected(new Set());
+    setOpenItemId(null);
+    setShowNew(false);
+    setShowBulk(false);
+    setShowSettings(false);
+  }, [closeSections]);
 
   return (
     <div className="shell">
       <header className="topbar">
-        <div className="brand">
+        <button className="brand brand-home" type="button" onClick={goHome} aria-label="Ir para a página inicial">
           <span className="brand-dot" />
           ESTÚDIO
-        </div>
+        </button>
 
         <input
           className="search-input"
@@ -259,24 +383,11 @@ export function Dashboard() {
           title="Calendário"
           onClick={() => {
             setShowTrash(false);
-            setShowAgenda(false);
             setShowIdeas(false);
             setShowCalendar((v) => !v);
           }}
         >
-          <Icon name="calendar" /> Calendário
-        </button>
-        <button
-          className={`btn btn-ghost nav-agenda hide-mobile ${showAgenda ? 'active' : ''}`}
-          title="Agenda de gravações"
-          onClick={() => {
-            setShowTrash(false);
-            setShowCalendar(false);
-            setShowIdeas(false);
-            setShowAgenda((v) => !v);
-          }}
-        >
-          <Icon name="video" /> Agenda
+          <Icon name="calendar" /> Agenda
         </button>
         <button
           className={`btn btn-ghost nav-ideas hide-mobile ${showIdeas ? 'active' : ''}`}
@@ -284,7 +395,6 @@ export function Dashboard() {
           onClick={() => {
             setShowTrash(false);
             setShowCalendar(false);
-            setShowAgenda(false);
             setShowIdeas((v) => !v);
           }}
         >
@@ -316,7 +426,6 @@ export function Dashboard() {
           className={`icon-btn nav-trash hide-mobile ${showTrash ? 'active' : ''}`}
           title="Lixeira"
           onClick={() => {
-            setShowAgenda(false);
             setShowCalendar(false);
             setShowIdeas(false);
             setShowTrash((v) => !v);
@@ -336,15 +445,14 @@ export function Dashboard() {
         </button>
       </header>
 
-      {showAgenda ? (
-        <RecordingAgenda
+      {showCalendar ? (
+        <CalendarView
+          onOpenItem={setOpenItemId}
           onRecorded={(itemId) => {
-            setShowAgenda(false);
+            setShowCalendar(false);
             setOpenItemId(itemId);
           }}
         />
-      ) : showCalendar ? (
-        <CalendarView onOpenItem={setOpenItemId} />
       ) : showIdeas ? (
         <IdeasView
           onCreated={(itemId) => {
@@ -546,29 +654,15 @@ export function Dashboard() {
           }).map(({ stage, title, color }, columnIndex) => {
             const list = byStage.get(stage) ?? [];
             return (
-              <motion.section
+              <BoardColumn
                 key={stage}
-                className="column"
-                initial={{ opacity: 0, y: 22 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: columnIndex * 0.06, duration: 0.45, ease: [0.2, 0.8, 0.2, 1] }}
-              >
-                <div className="column-head">
-                  <span className="column-glow" style={{ background: color, boxShadow: `0 0 10px ${color}` }} />
-                  <span className="column-title" style={{ color }}>
-                    <StageIcon stage={stage} /> {title}
-                  </span>
-                  <span className="column-count">{list.length}</span>
-                </div>
-                <div className="column-cards">
-                  <AnimatePresence mode="popLayout">
-                    {list.map((item) => (
-                      <ContentCard key={item.id} item={item} onOpen={setOpenItemId} />
-                    ))}
-                  </AnimatePresence>
-                  {list.length === 0 && <div className="column-empty">nada por aqui</div>}
-                </div>
-              </motion.section>
+                stage={stage}
+                title={title}
+                color={color}
+                list={list}
+                columnIndex={columnIndex}
+                onOpen={setOpenItemId}
+              />
             );
           })}
         </main>
@@ -576,7 +670,7 @@ export function Dashboard() {
       </>
       )}
 
-      {!showTrash && !showAgenda && !showCalendar && !showIdeas && (
+      {!showTrash && !showCalendar && !showIdeas && (
         <BulkActionBar ids={[...selected]} onClear={clearSelection} />
       )}
 
@@ -629,16 +723,6 @@ export function Dashboard() {
         >
           <span className="mobile-nav-icon"><Icon name="calendar" /></span>
           Calendário
-        </button>
-        <button
-          className={`mobile-nav-btn ${showAgenda ? 'active' : ''}`}
-          onClick={() => {
-            closeSections();
-            setShowAgenda((v) => !v);
-          }}
-        >
-          <span className="mobile-nav-icon"><Icon name="video" /></span>
-          Agenda
         </button>
         <button
           className={`mobile-nav-btn ${showIdeas ? 'active' : ''}`}

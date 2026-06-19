@@ -1633,6 +1633,7 @@ input[type='time']::-webkit-calendar-picker-indicator {
   position: absolute;
   top: 14px;
   right: 14px;
+  z-index: 2;
   display: grid;
   place-items: center;
   width: 36px;
@@ -3076,7 +3077,7 @@ input[type='time']::-webkit-calendar-picker-indicator {
   /* ----- modais: colados ao rodapé, alvos maiores ----- */
   .modal-backdrop {
     align-items: flex-end;
-    padding: 0;
+    padding: calc(52px + env(safe-area-inset-top)) 0 0;
     height: 100dvh;
   }
   .modal {
@@ -3085,12 +3086,16 @@ input[type='time']::-webkit-calendar-picker-indicator {
     padding: 24px 20px calc(28px + env(safe-area-inset-bottom));
     /* Reserva uma faixa do backdrop para fechar ao tocar fora e acompanha
        barras dinâmicas do navegador no mobile. */
-    max-height: calc(100vh - 32px);
-    max-height: calc(100dvh - 32px);
+    max-height: calc(100vh - 52px - env(safe-area-inset-top));
+    max-height: calc(100dvh - 52px - env(safe-area-inset-top));
     min-height: 0;
     overflow-y: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
+  }
+  .modal-close {
+    z-index: 3;
+    background: var(--bg-raised);
   }
 
   /* ----- barra de ações em massa: acima da nav inferior ----- */

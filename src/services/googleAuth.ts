@@ -139,7 +139,10 @@ function startIOSRedirectSignIn(clientId: string): Promise<string> {
 
   const params = new URLSearchParams({
     client_id: clientId,
-    redirect_uri: window.location.origin + window.location.pathname,
+    // O cliente OAuth deste projeto cadastra a origem sem a barra final.
+    // O Google compara o redirect_uri literalmente e rejeita `...app/` quando
+    // apenas `...app` está autorizado.
+    redirect_uri: window.location.origin,
     response_type: 'token',
     scope: DRIVE_SCOPE,
     include_granted_scopes: 'true',

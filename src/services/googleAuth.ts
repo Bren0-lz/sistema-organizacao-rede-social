@@ -218,7 +218,9 @@ export function getAccessToken(interactive = false): Promise<string> {
     scope: DRIVE_SCOPE,
     clientId: CLIENT_ID,
     interactive,
-    prompt: '',
+    // Sempre deixa o usuário decidir qual conta será usada no Drive/Agenda,
+    // em vez de reutilizar silenciosamente a última sessão do navegador.
+    prompt: 'select_account',
     missingSessionMessage: 'Sessao expirada - faca login novamente.',
   });
 }

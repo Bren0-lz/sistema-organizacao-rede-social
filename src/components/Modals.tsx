@@ -285,7 +285,6 @@ export function NewItemModal({
 }
 
 export function SettingsModal({ onClose }: { onClose: () => void }) {
-  const connectSharedFolder = useStore((s) => s.connectSharedFolder);
   const connectYoutube = useStore((s) => s.connectYoutube);
   const disconnectYoutube = useStore((s) => s.disconnectYoutube);
   const saveYoutubeClientId = useStore((s) => s.saveYoutubeClientId);
@@ -294,8 +293,6 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
   const youtubeAccount = useStore((s) => s.youtubeAccount);
   const youtubeErrorMessage = useStore((s) => s.youtubeErrorMessage);
   const youtubeClientId = useStore((s) => s.youtubeClientId);
-  const [folderInput, setFolderInput] = useState('');
-  const [busy, setBusy] = useState(false);
   const [youtubeBusy, setYoutubeBusy] = useState(false);
   const [clientIdInput, setClientIdInput] = useState(youtubeClientId ?? '');
   const [clientIdBusy, setClientIdBusy] = useState(false);
@@ -328,21 +325,10 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
               </a>
               <br />
               Para trabalhar em equipe, compartilhe essa pasta com os e-mails do time (permissão
-              de editor) e peça para cada um colar o link dela aqui no app.
+              de editor).
             </p>
           </div>
         )}
-        <div>
-          <label className="form-label">Conectar a uma pasta compartilhada</label>
-          <input
-            placeholder="Cole o link ou ID da pasta…"
-            value={folderInput}
-            onChange={(e) => setFolderInput(e.target.value)}
-          />
-          <p className="form-help">
-            Use isto se outra pessoa da equipe criou a pasta e compartilhou com você.
-          </p>
-        </div>
         <div>
           <label className="form-label">Client ID do YouTube (OAuth)</label>
           <input
@@ -436,21 +422,6 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
         </button>
         <button className="btn btn-ghost" onClick={onClose}>
           Fechar
-        </button>
-        <button
-          className="btn btn-primary"
-          disabled={!folderInput.trim() || busy}
-          onClick={async () => {
-            setBusy(true);
-            try {
-              await connectSharedFolder(folderInput.trim());
-              onClose();
-            } finally {
-              setBusy(false);
-            }
-          }}
-        >
-          {busy ? 'Conectando…' : 'Conectar'}
         </button>
       </div>
     </ModalShell>

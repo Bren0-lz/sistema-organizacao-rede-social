@@ -1202,19 +1202,43 @@ input[type='time']::-webkit-calendar-picker-indicator {
 }
 
 .drawer-preview {
-  width: auto;
-  max-width: 280px;
-  aspect-ratio: 9 / 16;
+  display: block;
+  width: 100%;
+  max-width: 620px;
+  height: auto;
+  max-height: calc(100vh - 180px);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: #000;
   margin: 14px auto 0;
 }
 
-.drawer-preview-poster {
-  width: auto;
+.drawer-preview[data-orientation='portrait'] {
   max-width: 280px;
-  aspect-ratio: 9 / 16;
+}
+
+.drawer-preview:not(video) {
+  aspect-ratio: 16 / 9;
+}
+
+.drawer-preview-loading {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  max-width: 620px;
+  min-height: 180px;
+  margin: 14px auto 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #000;
+  color: var(--ink-dim);
+  font-size: 13px;
+}
+
+.drawer-preview-poster {
+  width: 100%;
+  max-width: 620px;
+  aspect-ratio: 16 / 9;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: #000 center / cover no-repeat;

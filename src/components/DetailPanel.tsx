@@ -12,7 +12,7 @@ import {
 } from '../types';
 import { useStore } from '../store/useStore';
 import { useMediaQuery } from '../lib/useMediaQuery';
-import { downloadFile, previewUrl } from '../services/drive';
+import { downloadFile, fetchBlobUrl, previewUrl } from '../services/drive';
 import { NetworkIcon } from './NetworkIcon';
 import { Icon, type IconName } from './Icon';
 import { JourneyTrail } from './JourneyTrail';
@@ -359,19 +359,71 @@ function VideoPreview({ item, fileId }: { item: ContentItem; fileId: string }) {
   );
   const loadCover = useStore((s) => s.loadCover);
   const [playing, setPlaying] = useState(false);
+  const [videoUrl, setVideoUrl] = useState<string>();
+  const [aspectRatio, setAspectRatio] = useState<number>();
+  const [useDrivePreview, setUseDrivePreview] = useState(false);
+
+  useEffect(() => {
+    setPlaying(false);
+    setVideoUrl(undefined);
+    setAspectRatio(undefined);
+    setUseDrivePreview(false);
+  }, [fileId]);
 
   useEffect(() => {
     if (!playing && item.coverFileId) void loadCover(item.coverFileId);
   }, [playing, item.coverFileId, loadCover]);
 
+  // O player nativo respeita a rotação presente nos metadados de vídeos do iPhone.
+  useEffect(() => {
+    if (!playing || useDrivePreview) return;
+
+    let active = true;
+    let url: string | undefined;
+    void fetchBlobUrl(fileId)
+      .then((blobUrl) => {
+        url = blobUrl;
+        if (active) setVideoUrl(blobUrl);
+        else URL.revokeObjectURL(blobUrl);
+      })
+      .catch(() => {
+        if (active) setUseDrivePreview(true);
+      });
+
+    return () => {
+      active = false;
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [fileId, playing, useDrivePreview]);
+
   if (playing) {
+    if (useDrivePreview) {
+      return (
+        <iframe
+          className="drawer-preview"
+          src={previewUrl(fileId)}
+          title="Preview do vídeo"
+          allow="autoplay"
+          loading="lazy"
+        />
+      );
+    }
+
+    if (!videoUrl) return <div className="drawer-preview-loading">Carregando vídeo…</div>;
+
     return (
-      <iframe
+      <video
         className="drawer-preview"
-        src={previewUrl(fileId)}
-        title="Preview do vídeo"
-        allow="autoplay"
-        loading="lazy"
+        data-orientation={aspectRatio && aspectRatio < 1 ? 'portrait' : 'landscape'}
+        src={videoUrl}
+        controls
+        autoPlay
+        playsInline
+        onLoadedMetadata={(event) => {
+          const { videoWidth, videoHeight } = event.currentTarget;
+          if (videoWidth && videoHeight) setAspectRatio(videoWidth / videoHeight);
+        }}
+        onError={() => setUseDrivePreview(true)}
       />
     );
   }

@@ -3420,7 +3420,7 @@ input[type='time']::-webkit-calendar-picker-indicator {
 }
 .filter-dates {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-columns: auto auto minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   width: 100%;
   gap: 7px;
@@ -3453,6 +3453,11 @@ input[type='time']::-webkit-calendar-picker-indicator {
 .filter-dates input[type='date']::-webkit-calendar-picker-indicator {
   cursor: pointer;
   opacity: 0;
+}
+.filter-date-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-dim);
 }
 
 /* ----- tags no DetailPanel ----- */
@@ -3929,9 +3934,15 @@ input[type='time']::-webkit-calendar-picker-indicator {
     grid-template-columns: 1fr;
     gap: 8px;
   }
-  .filter-dates svg,
-  .filter-dates > span {
+  .filter-dates svg {
     display: none;
+  }
+  .filter-date-label {
+    display: block;
+    margin-top: 2px;
+  }
+  .filter-date-label:first-of-type {
+    margin-top: 0;
   }
   .filter-dates input[type='date'] {
     min-height: 40px;

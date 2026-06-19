@@ -844,11 +844,18 @@ input[type='time']::-webkit-calendar-picker-indicator {
 }
 
 .drawer-head {
+  position: sticky;
+  top: -28px;
+  z-index: 2;
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  margin-bottom: 24px;
+  margin: -28px -28px 24px;
+  padding: 28px 28px 16px;
   min-width: 0;
+  background: color-mix(in srgb, var(--bg-raised) 94%, transparent);
+  border-bottom: 1px solid transparent;
+  backdrop-filter: blur(14px);
 }
 
 .drawer-title-input {
@@ -2962,7 +2969,10 @@ input[type='time']::-webkit-calendar-picker-indicator {
     background: var(--line-strong);
   }
   .drawer-head {
-    margin-top: 10px;
+    top: -24px;
+    margin: -24px -20px 24px;
+    padding: 34px 20px 14px;
+    border-bottom-color: var(--line);
   }
 
   /* ----- modais: colados ao rodapé, alvos maiores ----- */

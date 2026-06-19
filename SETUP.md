@@ -17,7 +17,11 @@ Siga estes passos uma única vez para colocar o Estúdio no ar.
    - **Origens JavaScript autorizadas**:
      - `http://localhost:5173`
      - `https://SEU-SITE.netlify.app` (adicione depois que souber o domínio)
-   - Não precisa de URI de redirecionamento (o app usa o fluxo de token do GIS).
+   - **URIs de redirecionamento autorizados** (obrigatório — o login redireciona a
+     página inteira para o Google e volta; sem isso dá `redirect_uri_mismatch`):
+     - `http://localhost:5173/`
+     - `https://SEU-SITE.netlify.app/` (adicione depois que souber o domínio)
+   - Atenção: o URI de redirecionamento precisa bater **exatamente**, com a barra final `/`.
    - Copie o **Client ID** gerado (termina com `.apps.googleusercontent.com`).
 
 ## 2. Rodar localmente
@@ -40,7 +44,9 @@ arquivo `db.json` (banco de metadados).
 3. Em **Site configuration → Environment variables**, adicione:
    - `VITE_GOOGLE_CLIENT_ID` = seu Client ID.
 4. Faça o deploy, copie o domínio final (ex.: `https://meu-estudio.netlify.app`) e **volte ao
-   Google Cloud** para adicioná-lo nas Origens JavaScript autorizadas da credencial OAuth.
+   Google Cloud** para adicioná-lo na credencial OAuth, em **dois** lugares:
+   - **Origens JavaScript autorizadas**: `https://meu-estudio.netlify.app`
+   - **URIs de redirecionamento autorizados**: `https://meu-estudio.netlify.app/` (com a barra final)
 
 ## 4. Trabalhar em equipe
 
@@ -63,9 +69,10 @@ vídeos em um canal de uma conta Google **diferente** da conta usada para o Driv
      app já serve.
    - **Client ID OAuth próprio para o YouTube**: se a conta-alvo pertence a outro projeto
      OAuth (ou a equipe quer publicar pelo próprio projeto), crie um **ID do cliente OAuth**
-     tipo **Aplicativo da Web** (com as mesmas Origens JavaScript autorizadas do passo 1.4),
-     copie o Client ID e cole no app em **Configurações → "Client ID do YouTube (OAuth)"**.
-     Deixe esse campo **vazio** para publicar com o projeto padrão do app.
+     tipo **Aplicativo da Web** (com as mesmas **Origens JavaScript autorizadas** E os mesmos
+     **URIs de redirecionamento autorizados** do passo 1.4 — a conexão do YouTube também
+     redireciona a página), copie o Client ID e cole no app em **Configurações → "Client ID
+     do YouTube (OAuth)"**. Deixe esse campo **vazio** para publicar com o projeto padrão do app.
 3. No app, abra **Configurações → Conta do YouTube → "Conectar YouTube"** e escolha a conta
    desejada na tela `select_account` do Google. Publicações, edições e exclusões no YouTube
    usam somente essa conta.
@@ -79,5 +86,7 @@ vídeos em um canal de uma conta Google **diferente** da conta usada para o Driv
 - **"VITE_GOOGLE_CLIENT_ID não configurado"** → faltou o `.env.local` (local) ou a variável de ambiente (Netlify; refaça o deploy após criar a variável).
 - **Erro 403 `access_denied` ao conectar o YouTube** → o e-mail dessa conta não está em Test users do projeto OAuth usado, ou faltou ativar a YouTube Data API v3 (veja o passo 5).
 - **Erro 403 `access_denied` no login** → o e-mail não está em Test users.
-- **Popup do Google bloqueado** → permita popups para o domínio do app.
+- **Erro `redirect_uri_mismatch` ao logar** → faltou cadastrar o **URI de redirecionamento**
+  exato (com a barra final `/`) na credencial OAuth, ou ele não bate com a URL do app
+  (passos 1.4 e 3.4). Confira `http(s)://DOMÍNIO/`.
 - **Membro da equipe não vê os conteúdos** → confira se a pasta foi compartilhada como Editor e se ele colou o link da pasta nas Configurações.

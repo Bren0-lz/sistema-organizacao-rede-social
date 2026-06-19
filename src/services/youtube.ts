@@ -83,7 +83,7 @@ export async function uploadScheduledVideo({
   thumbnail,
   onProgress,
 }: YouTubeScheduleInput): Promise<YouTubeScheduleResult> {
-  const token = await getYoutubeAccessToken(true);
+  const token = await getYoutubeAccessToken();
   const metadata = {
     snippet: {
       title,
@@ -166,7 +166,7 @@ async function uploadBlob(
 }
 
 async function setThumbnail(videoId: string, thumbnail: Blob): Promise<void> {
-  const token = await getYoutubeAccessToken(true);
+  const token = await getYoutubeAccessToken();
   const res = await fetch(
     `${UPLOAD_API}/thumbnails/set?videoId=${encodeURIComponent(videoId)}&uploadType=media`,
     {
@@ -185,7 +185,7 @@ async function setThumbnail(videoId: string, thumbnail: Blob): Promise<void> {
 }
 
 export async function cancelYoutubePublication(videoId: string): Promise<void> {
-  const token = await getYoutubeAccessToken(true);
+  const token = await getYoutubeAccessToken();
   const current = await fetchYoutubeStatus(videoId, token);
   const status: YouTubeVideoStatus = {
     privacyStatus: 'private',
@@ -221,7 +221,7 @@ export async function updateYoutubeVideoMetadata(
   videoId: string,
   input: YouTubeMetadataInput,
 ): Promise<void> {
-  const token = await getYoutubeAccessToken(true);
+  const token = await getYoutubeAccessToken();
   const current = await fetchYoutubeVideo(videoId, token, 'snippet,status');
   const currentSnippet = current.snippet ?? {};
   const currentStatus = current.status ?? {};
@@ -271,7 +271,7 @@ export async function updateYoutubeVideoMetadata(
 }
 
 export async function deleteYoutubeVideo(videoId: string): Promise<void> {
-  const token = await getYoutubeAccessToken(true);
+  const token = await getYoutubeAccessToken();
   const res = await fetch(`${DATA_API}/videos?id=${encodeURIComponent(videoId)}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
@@ -284,7 +284,7 @@ export async function deleteYoutubeVideo(videoId: string): Promise<void> {
 }
 
 export async function getCurrentYoutubeChannel(): Promise<YouTubeChannelInfo> {
-  const token = await getYoutubeAccessToken(true, { forceAccountSelection: true });
+  const token = await getYoutubeAccessToken();
   const res = await fetch(`${DATA_API}/channels?part=snippet&mine=true`, {
     headers: { Authorization: `Bearer ${token}` },
   });

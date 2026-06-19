@@ -1,10 +1,11 @@
 import { create } from 'zustand';
 import {
+  consumeRedirectResult,
   hasValidToken,
   hasValidYoutubeToken,
-  preloadAuth,
   setYoutubeClientId,
   signIn as authSignIn,
+  signInYoutube as authSignInYoutube,
   signOut as authSignOut,
   signOutYoutube as authSignOutYoutube,
 } from '../services/googleAuth';
@@ -354,22 +355,28 @@ export const useStore = create<AppState>((set, get) => {
     coverUrls: {},
 
     async init() {
-      // Carrega o GIS já na abertura: quando o usuário tocar em "Entrar", o popup
-      // do OAuth abre dentro do gesto (o Safari do iPhone bloqueia popups tardios).
-      preloadAuth();
+      // Processa o retorno do Google (login por redirecionamento), se houver.
+      const redirect = consumeRedirectResult();
+      if (redirect && 'error' in redirect) {
+        set({ authStatus: 'signedOut', errorMessage: redirect.error });
+        return;
+      }
       if (hasValidToken()) {
         await connect();
-        await refreshYoutubeAccount();
+        // Após voltar de uma conexão de YouTube, força a leitura do canal para
+        // já refletir "conectado" (ou o erro) sem outro clique. O erro já fica no
+        // estado (youtubeErrorMessage); o catch evita virar rejeição global.
+        await refreshYoutubeAccount(redirect?.kind === 'youtube').catch(() => {});
       } else {
         set({ authStatus: 'signedOut' });
       }
     },
 
     async signIn() {
+      // Redireciona a página para o Google; nada roda depois (a página descarrega).
+      // O único erro síncrono possível é o Client ID ausente.
       try {
-        await authSignIn();
-        await connect();
-        await refreshYoutubeAccount();
+        authSignIn();
       } catch (error) {
         set({
           authStatus: 'signedOut',
@@ -396,8 +403,17 @@ export const useStore = create<AppState>((set, get) => {
     },
 
     async connectYoutube() {
-      authSignOutYoutube();
-      await refreshYoutubeAccount(true);
+      // Redireciona a página para o Google escolher a conta do YouTube. Ao voltar,
+      // `init()` detecta o token e chama refreshYoutubeAccount automaticamente.
+      try {
+        authSignOutYoutube();
+        authSignInYoutube({ forceAccountSelection: true });
+      } catch (error) {
+        set({
+          youtubeAuthStatus: 'error',
+          youtubeErrorMessage: error instanceof Error ? error.message : String(error),
+        });
+      }
     },
 
     disconnectYoutube() {

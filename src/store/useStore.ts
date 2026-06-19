@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import {
-  hasValidToken,
   hasValidYoutubeToken,
   preloadAuth,
   restoreIOSRedirectSignIn,
@@ -8,6 +7,7 @@ import {
   signIn as authSignIn,
   signOut as authSignOut,
   signOutYoutube as authSignOutYoutube,
+  restoreSession,
 } from '../services/googleAuth';
 import {
   deleteFile,
@@ -360,7 +360,7 @@ export const useStore = create<AppState>((set, get) => {
       preloadAuth();
       try {
         restoreIOSRedirectSignIn();
-        if (hasValidToken()) {
+        if (await restoreSession()) {
           await connect();
           await refreshYoutubeAccount();
         } else {

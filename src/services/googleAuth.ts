@@ -118,7 +118,10 @@ function saveToken(key: string, accessToken: string, expiresIn: number): void {
     expiresAt: Date.now() + expiresIn * 1000,
   };
   try {
-    sessionStorage.setItem(key, JSON.stringify(token));
+    // `sessionStorage` é apagado ao fechar a aba. Mantemos apenas o token de
+    // curta duração no navegador para que a próxima abertura possa renová-lo
+    // silenciosamente com a sessão já existente do Google.
+    localStorage.setItem(key, JSON.stringify(token));
   } catch {
     // armazenamento indisponível (ex.: modo privado): segue só em memória
   }
@@ -181,7 +184,7 @@ export function consumeIOSRedirectSignIn(): OAuthRedirectResult | null {
 
 function readStoredToken(key: string): StoredToken | null {
   try {
-    const raw = sessionStorage.getItem(key);
+    const raw = localStorage.getItem(key);
     if (!raw) return null;
     const token = JSON.parse(raw) as StoredToken;
     // margem de 60s para nao usar token prestes a expirar no meio de um upload
@@ -282,11 +285,35 @@ export function hasValidYoutubeToken(): boolean {
 }
 
 export function clearToken(): void {
-  sessionStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(TOKEN_KEY);
 }
 
 export function clearYoutubeToken(): void {
-  sessionStorage.removeItem(YOUTUBE_TOKEN_KEY);
+  localStorage.removeItem(YOUTUBE_TOKEN_KEY);
+}
+
+/**
+ * Restaura a sessão sem exibir o seletor de contas. Se o token salvo já venceu,
+ * o Google emite outro enquanto a sessão Google do navegador continuar ativa.
+ */
+export async function restoreSession(): Promise<boolean> {
+  if (hasValidToken()) return true;
+  if (!CLIENT_ID) return false;
+
+  try {
+    await getScopedAccessToken({
+      storageKey: TOKEN_KEY,
+      scope: DRIVE_SCOPE,
+      clientId: CLIENT_ID,
+      interactive: true,
+      prompt: '',
+      missingSessionMessage: 'Sessao expirada - faca login novamente.',
+    });
+    return true;
+  } catch {
+    // Sem uma sessão Google válida, o login continua sendo uma ação explícita.
+    return false;
+  }
 }
 
 export function getAccessToken(interactive = false): Promise<string> {

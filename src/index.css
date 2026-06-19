@@ -3827,6 +3827,29 @@ input[type='time']::-webkit-calendar-picker-indicator {
 }
 
 @media (max-width: 768px) {
+  .topbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 44px 44px;
+    align-items: center;
+    gap: 10px 12px;
+  }
+  .brand {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .search-input {
+    order: 0;
+    grid-column: 1 / -1;
+    width: 100%;
+    min-width: 0;
+    flex-basis: auto;
+  }
+  .topbar .icon-btn {
+    width: 44px;
+    min-width: 44px;
+    padding: 0;
+  }
   .idea-card {
     flex-wrap: wrap;
   }

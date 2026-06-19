@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import {
   hasValidToken,
   hasValidYoutubeToken,
+  preloadAuth,
   setYoutubeClientId,
   signIn as authSignIn,
   signOut as authSignOut,
@@ -353,6 +354,9 @@ export const useStore = create<AppState>((set, get) => {
     coverUrls: {},
 
     async init() {
+      // Carrega o GIS já na abertura: quando o usuário tocar em "Entrar", o popup
+      // do OAuth abre dentro do gesto (o Safari do iPhone bloqueia popups tardios).
+      preloadAuth();
       if (hasValidToken()) {
         await connect();
         await refreshYoutubeAccount();

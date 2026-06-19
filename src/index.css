@@ -48,6 +48,8 @@ html,
 body {
   margin: 0;
   padding: 0;
+  width: 100%;
+  min-width: 0;
 }
 
 body {
@@ -58,6 +60,11 @@ body {
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
+}
+
+#root {
+  min-width: 0;
+  overflow-x: clip;
 }
 
 /* grain sutil por cima de tudo */
@@ -2759,6 +2766,9 @@ input[type='time']::-webkit-calendar-picker-indicator {
   /* ----- estrutura / respiro para a barra inferior fixa ----- */
   .shell {
     padding: 18px 16px calc(86px + env(safe-area-inset-bottom));
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip;
   }
 
   /* ----- topbar enxuta: marca + busca (cheia) + ⚙ ----- */
@@ -2817,16 +2827,24 @@ input[type='time']::-webkit-calendar-picker-indicator {
     background: transparent;
     border-radius: 0;
     overflow: visible;
+    width: 100%;
+    max-width: 100%;
   }
   .list-table,
   .list-table tbody,
   .list-table tr,
   .list-table td {
     display: block;
-    width: auto;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
   }
   .list-table {
     table-layout: auto;
+  }
+  .list-table tbody {
+    display: flex;
+    flex-direction: column;
   }
   .list-table thead {
     display: none;
@@ -2856,6 +2874,9 @@ input[type='time']::-webkit-calendar-picker-indicator {
     column-gap: 10px;
     row-gap: 8px;
     align-items: center;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
   }
   .list-table tbody tr:last-child td {
     border-bottom: none; /* anula a regra de tabela do desktop */
@@ -2876,6 +2897,8 @@ input[type='time']::-webkit-calendar-picker-indicator {
   .list-table td.col-title {
     grid-area: title;
     align-self: end;
+    min-width: 0;
+    padding-right: 28px;
   }
   .list-table .row-title {
     font-size: 15px;
@@ -2884,6 +2907,7 @@ input[type='time']::-webkit-calendar-picker-indicator {
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+    overflow-wrap: anywhere;
   }
 
   /* linha de metadados: cada um na sua coluna do grid (sem sobreposição) */
@@ -2902,6 +2926,13 @@ input[type='time']::-webkit-calendar-picker-indicator {
     grid-area: stage;
     align-self: center;
     width: auto;
+    justify-self: start;
+    min-width: 0;
+  }
+  .list-table td.col-stage .stage-tag {
+    max-width: 100%;
+    white-space: normal;
+    line-height: 1.2;
   }
   .list-table td.col-date {
     grid-area: date;
@@ -2909,6 +2940,7 @@ input[type='time']::-webkit-calendar-picker-indicator {
     width: auto;
     font-size: 12px;
     white-space: nowrap;
+    justify-self: end;
   }
   /* deixa explícito que essa data é a da última atualização
      (no desktop o cabeçalho "Atualizado" cumpre esse papel) */
@@ -2925,10 +2957,18 @@ input[type='time']::-webkit-calendar-picker-indicator {
     margin-top: 2px;
     padding-top: 10px;
     border-top: 1px solid var(--line);
+    min-width: 0;
   }
   /* pílulas de data com mais respiro no toque */
   .list-table td.col-files .row-branches {
     gap: 6px 10px;
+    grid-template-columns: 16px minmax(0, 1fr);
+    width: 100%;
+  }
+  .list-table td.col-files .row-net-pill {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
   /* checkbox flutua no canto superior direito do cartão */
   .list-table td.col-check {
@@ -3042,6 +3082,7 @@ input[type='time']::-webkit-calendar-picker-indicator {
   }
   .mobile-nav-btn {
     flex: 1;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -3061,6 +3102,10 @@ input[type='time']::-webkit-calendar-picker-indicator {
   .mobile-nav-btn .mobile-nav-icon {
     font-size: 19px;
     line-height: 1;
+  }
+  .mobile-nav-btn svg {
+    width: 18px;
+    height: 18px;
   }
   .mobile-nav-btn.active {
     color: var(--tt-cyan);
@@ -3094,19 +3139,39 @@ input[type='time']::-webkit-calendar-picker-indicator {
 /* telas bem estreitas: ajustes finos */
 @media (max-width: 400px) {
   .list-table tbody tr {
-    grid-template-columns: 56px 1fr auto;
+    grid-template-columns: 56px minmax(0, 1fr) auto;
     grid-template-areas:
       'thumb title title'
-      'thumb nets  stage'
-      'thumb date  date'
+      'thumb nets  nets'
+      'thumb stage date'
       'files files files';
+    padding: 12px;
+    column-gap: 10px;
   }
+  .list-table td.col-title {
+    padding-right: 26px;
+  }
+  .list-table td.col-nets,
+  .list-table td.col-stage,
   .list-table td.col-date {
     justify-self: start;
+  }
+  .list-table td.col-date {
+    justify-self: end;
   }
   .list-table .row-thumb {
     aspect-ratio: 9 / 16;
     height: 64px;
+  }
+  .stage-tag {
+    font-size: 11px;
+  }
+  .mobile-nav {
+    padding-inline: 4px;
+  }
+  .mobile-nav-btn {
+    padding-inline: 2px;
+    font-size: 9px;
   }
 }
 

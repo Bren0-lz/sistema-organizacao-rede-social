@@ -14,6 +14,14 @@ const YOUTUBE_SCOPE = [
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
 
+// Client ID OAuth dedicado ao YouTube, carregado do config.json no Drive (ver useStore).
+// Vazio = cai no CLIENT_ID padrão. Permite publicar com uma conta/projeto OAuth diferente.
+let youtubeClientId: string | undefined;
+
+export function setYoutubeClientId(id?: string): void {
+  youtubeClientId = id?.trim() || undefined;
+}
+
 // v5: removeu escopos do YouTube do login principal.
 const TOKEN_KEY = 'org-social:token:v5';
 const YOUTUBE_TOKEN_KEY = 'org-social:youtube-token:v1';
@@ -80,12 +88,14 @@ function readStoredToken(key: string): StoredToken | null {
 async function getScopedAccessToken({
   storageKey,
   scope,
+  clientId,
   interactive,
   prompt,
   missingSessionMessage,
 }: {
   storageKey: string;
   scope: string;
+  clientId: string | undefined;
   interactive: boolean;
   prompt: string;
   missingSessionMessage: string;
@@ -94,7 +104,7 @@ async function getScopedAccessToken({
   if (stored) return stored.accessToken;
   if (!interactive) throw new Error(missingSessionMessage);
 
-  if (!CLIENT_ID) {
+  if (!clientId) {
     throw new Error(
       'VITE_GOOGLE_CLIENT_ID nao configurado. Copie .env.example para .env.local e preencha (veja SETUP.md).',
     );
@@ -104,7 +114,7 @@ async function getScopedAccessToken({
 
   return new Promise<string>((resolve, reject) => {
     const client = window.google!.accounts.oauth2.initTokenClient({
-      client_id: CLIENT_ID,
+      client_id: clientId,
       scope,
       callback: (response) => {
         if (response.error || !response.access_token) {
@@ -143,6 +153,7 @@ export function getAccessToken(interactive = false): Promise<string> {
   return getScopedAccessToken({
     storageKey: TOKEN_KEY,
     scope: DRIVE_SCOPE,
+    clientId: CLIENT_ID,
     interactive,
     prompt: '',
     missingSessionMessage: 'Sessao expirada - faca login novamente.',
@@ -156,6 +167,7 @@ export function getYoutubeAccessToken(
   return getScopedAccessToken({
     storageKey: YOUTUBE_TOKEN_KEY,
     scope: YOUTUBE_SCOPE,
+    clientId: youtubeClientId ?? CLIENT_ID,
     interactive,
     prompt: options.forceAccountSelection ? 'select_account consent' : 'select_account',
     missingSessionMessage: 'Conecte uma conta do YouTube nas configuracoes antes de publicar.',

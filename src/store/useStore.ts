@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import {
   hasValidToken,
   hasValidYoutubeToken,
+  setYoutubeClientId,
   signIn as authSignIn,
   signOut as authSignOut,
   signOutYoutube as authSignOutYoutube,
@@ -11,8 +12,10 @@ import {
   ensureAppStructure,
   fetchFileBlob,
   fetchThumbnailUrl,
+  readJsonFile,
   setSharedRootFolder,
   uploadFile,
+  writeJsonFile,
 } from '../services/drive';
 import {
   loadDatabase,
@@ -42,6 +45,7 @@ import {
   NETWORKS,
   newContentItem,
   newRecording,
+  type AppConfig,
   type AppFolders,
   newIdea,
   type ContentItem,
@@ -77,6 +81,8 @@ interface AppState {
   errorMessage?: string;
   youtubeAccount?: YouTubeChannelInfo;
   youtubeErrorMessage?: string;
+  /** Client ID OAuth do YouTube salvo no Drive (vazio = usa o padrão do build). */
+  youtubeClientId?: string;
   folders?: AppFolders;
   items: ContentItem[];
   recordings: Recording[];
@@ -90,6 +96,8 @@ interface AppState {
   signOut(): void;
   connectYoutube(): Promise<void>;
   disconnectYoutube(): void;
+  /** Salva no Drive o Client ID OAuth usado para o YouTube e força reconexão. */
+  saveYoutubeClientId(id: string): Promise<void>;
   refresh(): Promise<void>;
   reconcileScheduledPosts(): Promise<void>;
   connectSharedFolder(folderIdOrUrl: string): Promise<void>;
@@ -309,11 +317,16 @@ export const useStore = create<AppState>((set, get) => {
     set({ authStatus: 'connecting', errorMessage: undefined });
     try {
       const folders = await ensureAppStructure(explicitRootId);
+      const config = await readJsonFile<AppConfig>(folders.configFileId).catch(
+        () => ({}) as AppConfig,
+      );
+      setYoutubeClientId(config.youtubeClientId);
       const db = await loadDatabase(folders.dbFileId);
       const normalized = markElapsedScheduledPosts(db.items);
       set({
         authStatus: 'ready',
         folders,
+        youtubeClientId: config.youtubeClientId,
         items: normalized.items,
         recordings: db.recordings,
         ideas: db.ideas,
@@ -363,6 +376,7 @@ export const useStore = create<AppState>((set, get) => {
 
     signOut() {
       authSignOut();
+      setYoutubeClientId(undefined);
       set({
         authStatus: 'signedOut',
         youtubeAuthStatus: 'disconnected',
@@ -373,6 +387,7 @@ export const useStore = create<AppState>((set, get) => {
         coverUrls: {},
         youtubeAccount: undefined,
         youtubeErrorMessage: undefined,
+        youtubeClientId: undefined,
       });
     },
 
@@ -384,6 +399,23 @@ export const useStore = create<AppState>((set, get) => {
     disconnectYoutube() {
       authSignOutYoutube();
       set({
+        youtubeAuthStatus: 'disconnected',
+        youtubeAccount: undefined,
+        youtubeErrorMessage: undefined,
+      });
+    },
+
+    async saveYoutubeClientId(id) {
+      const { folders } = get();
+      if (!folders) throw new Error('Conecte-se ao Drive antes de salvar o Client ID.');
+      const youtubeClientId = id.trim() || undefined;
+      const config: AppConfig = { youtubeClientId };
+      await writeJsonFile(folders.configFileId, config);
+      setYoutubeClientId(youtubeClientId);
+      // O ID trocou de projeto OAuth: invalida o token atual e exige reconexão.
+      authSignOutYoutube();
+      set({
+        youtubeClientId,
         youtubeAuthStatus: 'disconnected',
         youtubeAccount: undefined,
         youtubeErrorMessage: undefined,

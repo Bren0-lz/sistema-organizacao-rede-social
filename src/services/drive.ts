@@ -10,6 +10,7 @@ const UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3';
 
 const ROOT_FOLDER_NAME = 'Organizador de Conteúdo';
 const DB_FILE_NAME = 'db.json';
+const CONFIG_FILE_NAME = 'config.json';
 const APP_TAG = { key: 'app', value: 'org-social' };
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
 
@@ -118,8 +119,14 @@ export async function ensureAppStructure(explicitRootId?: string): Promise<AppFo
 
   let dbFile = await findChild(rootId, DB_FILE_NAME);
   if (!dbFile) {
-    const id = await createDbFile(rootId);
+    const id = await createJsonFile(rootId, DB_FILE_NAME, { version: 0, items: [] });
     dbFile = { id, name: DB_FILE_NAME, mimeType: 'application/json' };
+  }
+
+  let configFile = await findChild(rootId, CONFIG_FILE_NAME);
+  if (!configFile) {
+    const id = await createJsonFile(rootId, CONFIG_FILE_NAME, {});
+    configFile = { id, name: CONFIG_FILE_NAME, mimeType: 'application/json' };
   }
 
   return {
@@ -129,12 +136,13 @@ export async function ensureAppStructure(explicitRootId?: string): Promise<AppFo
     covers: folders.cover!,
     carousel: carouselId,
     dbFileId: dbFile.id,
+    configFileId: configFile.id,
   };
 }
 
-async function createDbFile(parentId: string): Promise<string> {
+async function createJsonFile(parentId: string, name: string, initial: unknown): Promise<string> {
   const metadata = {
-    name: DB_FILE_NAME,
+    name,
     parents: [parentId],
     appProperties: { [APP_TAG.key]: APP_TAG.value },
   };
@@ -143,7 +151,7 @@ async function createDbFile(parentId: string): Promise<string> {
     `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` +
     `${JSON.stringify(metadata)}\r\n` +
     `--${boundary}\r\nContent-Type: application/json\r\n\r\n` +
-    `${JSON.stringify({ version: 0, items: [] })}\r\n--${boundary}--`;
+    `${JSON.stringify(initial)}\r\n--${boundary}--`;
   const res = await driveFetch(
     `${UPLOAD_API}/files?uploadType=multipart&supportsAllDrives=true`,
     {

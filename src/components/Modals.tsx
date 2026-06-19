@@ -288,14 +288,27 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
   const connectSharedFolder = useStore((s) => s.connectSharedFolder);
   const connectYoutube = useStore((s) => s.connectYoutube);
   const disconnectYoutube = useStore((s) => s.disconnectYoutube);
+  const saveYoutubeClientId = useStore((s) => s.saveYoutubeClientId);
   const signOut = useStore((s) => s.signOut);
   const youtubeAuthStatus = useStore((s) => s.youtubeAuthStatus);
   const youtubeAccount = useStore((s) => s.youtubeAccount);
   const youtubeErrorMessage = useStore((s) => s.youtubeErrorMessage);
+  const youtubeClientId = useStore((s) => s.youtubeClientId);
   const [folderInput, setFolderInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [youtubeBusy, setYoutubeBusy] = useState(false);
+  const [clientIdInput, setClientIdInput] = useState(youtubeClientId ?? '');
+  const [clientIdBusy, setClientIdBusy] = useState(false);
+  const [prevYoutubeClientId, setPrevYoutubeClientId] = useState(youtubeClientId);
   const rootId = getRootFolderId();
+
+  // O config.json do Drive carrega de forma assíncrona (e muda ao salvar): mantém o
+  // campo em sincronia com o valor do store ajustando o estado durante o render
+  // (padrão recomendado do React, sem effect).
+  if (youtubeClientId !== prevYoutubeClientId) {
+    setPrevYoutubeClientId(youtubeClientId);
+    setClientIdInput(youtubeClientId ?? '');
+  }
 
   return (
     <ModalShell onClose={onClose}>
@@ -328,6 +341,35 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
           />
           <p className="form-help">
             Use isto se outra pessoa da equipe criou a pasta e compartilhou com você.
+          </p>
+        </div>
+        <div>
+          <label className="form-label">Client ID do YouTube (OAuth)</label>
+          <input
+            placeholder="000000-xxxx.apps.googleusercontent.com"
+            value={clientIdInput}
+            onChange={(e) => setClientIdInput(e.target.value)}
+          />
+          <div className="modal-actions" style={{ justifyContent: 'flex-start', marginTop: 8 }}>
+            <button
+              className="btn btn-ghost"
+              disabled={clientIdBusy || clientIdInput.trim() === (youtubeClientId ?? '')}
+              onClick={async () => {
+                setClientIdBusy(true);
+                try {
+                  await saveYoutubeClientId(clientIdInput);
+                } finally {
+                  setClientIdBusy(false);
+                }
+              }}
+            >
+              {clientIdBusy ? 'Salvando…' : 'Salvar Client ID'}
+            </button>
+          </div>
+          <p className="form-help">
+            Deixe vazio para publicar com a conta/projeto padrão do app. Para usar outra conta,
+            crie um Client ID OAuth (tipo "Web") no Google Cloud, autorize a origem deste site e
+            cole o ID aqui. Ao salvar um novo ID será preciso reconectar a conta abaixo.
           </p>
         </div>
         <div>

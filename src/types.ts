@@ -122,6 +122,13 @@ export interface AppFolders {
   covers: string;
   carousel: string;
   dbFileId: string;
+  configFileId: string;
+}
+
+/** Configuração do app guardada no Drive (config.json), compartilhável com a equipe. */
+export interface AppConfig {
+  /** Client ID OAuth usado só no fluxo do YouTube; vazio = usa o VITE_GOOGLE_CLIENT_ID. */
+  youtubeClientId?: string;
 }
 
 /** Dias que um item permanece na lixeira antes de ser excluído de vez. */

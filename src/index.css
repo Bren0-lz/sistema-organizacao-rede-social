@@ -3043,13 +3043,20 @@ input[type='time']::-webkit-calendar-picker-indicator {
   .modal-backdrop {
     align-items: flex-end;
     padding: 0;
+    height: 100dvh;
   }
   .modal {
     width: 100%;
     border-radius: 22px 22px 0 0;
     padding: 24px 20px calc(28px + env(safe-area-inset-bottom));
-    max-height: 92vh;
+    /* Reserva uma faixa do backdrop para fechar ao tocar fora e acompanha
+       barras dinâmicas do navegador no mobile. */
+    max-height: calc(100vh - 32px);
+    max-height: calc(100dvh - 32px);
+    min-height: 0;
     overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
   }
 
   /* ----- barra de ações em massa: acima da nav inferior ----- */

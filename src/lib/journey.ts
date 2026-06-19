@@ -281,8 +281,10 @@ export function buildJourney(item: ContentItem): Journey {
   const lastPostedAt = assigned
     .map((n) => item.networks[n].postedAt)
     .filter((t): t is string => !!t)
-    .sort()
-    .at(-1);
+    .sort();
+  // `Array.prototype.at` não existe em versões mais antigas do Safari/iOS.
+  // Este trecho roda na primeira renderização do dashboard, logo após o login.
+  const lastPostedAtValue = lastPostedAt[lastPostedAt.length - 1];
   const completeStep: TrailStep = {
     key: 'complete',
     stage: 'posted',
@@ -291,8 +293,8 @@ export function buildJourney(item: ContentItem): Journey {
       stage === 'posted'
         ? 'Jornada concluída — publicado em todas as redes'
         : 'Jornada concluída',
-    timestamp: stage === 'posted' ? lastPostedAt : undefined,
-    detail: stage === 'posted' && lastPostedAt ? 'Última publicação em' : undefined,
+    timestamp: stage === 'posted' ? lastPostedAtValue : undefined,
+    detail: stage === 'posted' && lastPostedAtValue ? 'Última publicação em' : undefined,
   };
 
   const steps: TrailStep[] =

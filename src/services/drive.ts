@@ -24,6 +24,32 @@ const CAROUSEL_FOLDER_NAME = 'Imagens de Carrossel';
 
 const FOLDER_ID_KEY = 'org-social:rootFolderId';
 
+// O Safari pode indisponibilizar o localStorage em alguns contextos de
+// privacidade. Isso não deve impedir a abertura do app após o OAuth.
+function readLocalStorage(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeLocalStorage(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // A pasta será localizada novamente na próxima abertura.
+  }
+}
+
+function removeLocalStorage(key: string): void {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // Nada para limpar quando o armazenamento não está disponível.
+  }
+}
+
 async function driveFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const token = await getAccessToken();
   const response = await fetch(path.startsWith('http') ? path : `${API}${path}`, {
@@ -82,7 +108,7 @@ async function findChild(parentId: string, name: string): Promise<DriveFileInfo 
  * (inclui pastas compartilhadas pela equipe) → cria do zero.
  */
 export async function ensureAppStructure(explicitRootId?: string): Promise<AppFolders> {
-  let rootId = explicitRootId ?? localStorage.getItem(FOLDER_ID_KEY) ?? undefined;
+  let rootId = explicitRootId ?? readLocalStorage(FOLDER_ID_KEY) ?? undefined;
 
   if (rootId) {
     // valida que a pasta ainda existe/está acessível
@@ -90,7 +116,7 @@ export async function ensureAppStructure(explicitRootId?: string): Promise<AppFo
       await driveFetch(`/files/${rootId}?fields=id&supportsAllDrives=true`);
     } catch {
       rootId = undefined;
-      localStorage.removeItem(FOLDER_ID_KEY);
+      removeLocalStorage(FOLDER_ID_KEY);
     }
   }
 
@@ -105,7 +131,7 @@ export async function ensureAppStructure(explicitRootId?: string): Promise<AppFo
   if (!rootId) {
     rootId = await createFolder(ROOT_FOLDER_NAME);
   }
-  localStorage.setItem(FOLDER_ID_KEY, rootId);
+  writeLocalStorage(FOLDER_ID_KEY, rootId);
 
   const folders: Partial<Record<FileSlot, string>> = {};
   for (const slot of Object.keys(SLOT_FOLDER_NAMES) as FileSlot[]) {
@@ -306,12 +332,12 @@ export function setSharedRootFolder(folderIdOrUrl: string): string {
   // aceita tanto o ID puro quanto a URL https://drive.google.com/drive/folders/<id>
   const match = folderIdOrUrl.match(/folders\/([\w-]+)/);
   const id = match ? match[1] : folderIdOrUrl.trim();
-  localStorage.setItem(FOLDER_ID_KEY, id);
+  writeLocalStorage(FOLDER_ID_KEY, id);
   return id;
 }
 
 export function getRootFolderId(): string | null {
-  return localStorage.getItem(FOLDER_ID_KEY);
+  return readLocalStorage(FOLDER_ID_KEY);
 }
 
 export function rootFolderUrl(rootId: string): string {

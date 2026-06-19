@@ -25,6 +25,7 @@ export function setYoutubeClientId(id?: string): void {
 // v5: removeu escopos do YouTube do login principal.
 const TOKEN_KEY = 'org-social:token:v5';
 const YOUTUBE_TOKEN_KEY = 'org-social:youtube-token:v1';
+const OAUTH_STATE_KEY = 'org-social:oauth-state:v1';
 
 // Limite para o usuário concluir o login na janela do Google. Se o callback do
 // GIS não disparar nesse tempo (popup bloqueado, aba descartada pelo iOS, etc.),
@@ -34,6 +35,11 @@ const TOKEN_REQUEST_TIMEOUT_MS = 90_000;
 interface StoredToken {
   accessToken: string;
   expiresAt: number; // epoch ms
+}
+
+interface OAuthRedirectResult {
+  accessToken: string;
+  expiresIn: number;
 }
 
 interface TokenClient {
@@ -92,6 +98,82 @@ export function preloadAuth(): void {
   void loadGis().catch(() => {
     // melhor-esforço: se falhar aqui, o fluxo de login tenta carregar de novo
   });
+}
+
+function isIOS(): boolean {
+  // iPadOS 13+ informa "Macintosh", mas mantém pontos de toque.
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+function createState(): string {
+  const bytes = new Uint32Array(4);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (value) => value.toString(36)).join('');
+}
+
+function saveToken(key: string, accessToken: string, expiresIn: number): void {
+  const token: StoredToken = {
+    accessToken,
+    expiresAt: Date.now() + expiresIn * 1000,
+  };
+  try {
+    sessionStorage.setItem(key, JSON.stringify(token));
+  } catch {
+    // armazenamento indisponível (ex.: modo privado): segue só em memória
+  }
+}
+
+/**
+ * O Safari do iPhone pode descartar a aba que abriu o popup do GIS e retornar
+ * para uma página anterior. Para o login principal, usamos o retorno na mesma
+ * aba: o Google volta para este endereço com o token no fragmento da URL.
+ */
+function startIOSRedirectSignIn(clientId: string): Promise<string> {
+  const state = createState();
+  try {
+    sessionStorage.setItem(OAUTH_STATE_KEY, state);
+  } catch {
+    return Promise.reject(new Error('O Safari bloqueou o armazenamento necessário para concluir o login.'));
+  }
+
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: window.location.origin + window.location.pathname,
+    response_type: 'token',
+    scope: DRIVE_SCOPE,
+    include_granted_scopes: 'true',
+    prompt: 'select_account',
+    state,
+  });
+  window.location.assign(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
+  return new Promise<string>(() => undefined);
+}
+
+/** Lê e remove o resultado do redirecionamento OAuth na inicialização do app. */
+export function consumeIOSRedirectSignIn(): OAuthRedirectResult | null {
+  const hash = new URLSearchParams(window.location.hash.slice(1));
+  const accessToken = hash.get('access_token');
+  const error = hash.get('error');
+  const returnedState = hash.get('state');
+  if (!accessToken && !error) return null;
+
+  window.history.replaceState(null, '', window.location.pathname + window.location.search);
+
+  let expectedState: string | null = null;
+  try {
+    expectedState = sessionStorage.getItem(OAUTH_STATE_KEY);
+    sessionStorage.removeItem(OAUTH_STATE_KEY);
+  } catch {
+    throw new Error('Não foi possível validar o retorno do login no Safari.');
+  }
+  if (!expectedState || returnedState !== expectedState) {
+    throw new Error('O retorno do login não pôde ser validado. Tente novamente.');
+  }
+  if (error || !accessToken) throw new Error(error ?? 'Login cancelado');
+
+  const expiresIn = Number(hash.get('expires_in') ?? '3600');
+  return { accessToken, expiresIn: Number.isFinite(expiresIn) ? expiresIn : 3600 };
 }
 
 function readStoredToken(key: string): StoredToken | null {
@@ -180,16 +262,8 @@ function requestAccessToken({
           reject(new Error(response.error ?? 'Login cancelado'));
           return;
         }
-        const token: StoredToken = {
-          accessToken: response.access_token,
-          expiresAt: Date.now() + (response.expires_in ?? 3600) * 1000,
-        };
-        try {
-          sessionStorage.setItem(storageKey, JSON.stringify(token));
-        } catch {
-          // armazenamento indisponivel (ex.: modo privado): segue so em memoria
-        }
-        resolve(token.accessToken);
+        saveToken(storageKey, response.access_token, response.expires_in ?? 3600);
+        resolve(response.access_token);
       },
     });
     client.requestAccessToken({ prompt });
@@ -240,7 +314,15 @@ export function getYoutubeAccessToken(
 }
 
 export function signIn(): Promise<string> {
+  if (isIOS() && CLIENT_ID) return startIOSRedirectSignIn(CLIENT_ID);
   return getAccessToken(true);
+}
+
+export function restoreIOSRedirectSignIn(): boolean {
+  const result = consumeIOSRedirectSignIn();
+  if (!result) return false;
+  saveToken(TOKEN_KEY, result.accessToken, result.expiresIn);
+  return true;
 }
 
 export function signInYoutube(options?: { forceAccountSelection?: boolean }): Promise<string> {

@@ -3,6 +3,7 @@ import {
   hasValidToken,
   hasValidYoutubeToken,
   preloadAuth,
+  restoreIOSRedirectSignIn,
   setYoutubeClientId,
   signIn as authSignIn,
   signOut as authSignOut,
@@ -357,11 +358,19 @@ export const useStore = create<AppState>((set, get) => {
       // Carrega o GIS já na abertura: quando o usuário tocar em "Entrar", o popup
       // do OAuth abre dentro do gesto (o Safari do iPhone bloqueia popups tardios).
       preloadAuth();
-      if (hasValidToken()) {
-        await connect();
-        await refreshYoutubeAccount();
-      } else {
-        set({ authStatus: 'signedOut' });
+      try {
+        restoreIOSRedirectSignIn();
+        if (hasValidToken()) {
+          await connect();
+          await refreshYoutubeAccount();
+        } else {
+          set({ authStatus: 'signedOut' });
+        }
+      } catch (error) {
+        set({
+          authStatus: 'signedOut',
+          errorMessage: error instanceof Error ? error.message : String(error),
+        });
       }
     },
 

@@ -17,7 +17,10 @@ Siga estes passos uma única vez para colocar o Estúdio no ar.
    - **Origens JavaScript autorizadas**:
      - `http://localhost:5173`
      - `https://SEU-SITE.netlify.app` (adicione depois que souber o domínio)
-   - Não precisa de URI de redirecionamento (o app usa o fluxo de token do GIS).
+   - Em **URIs de redirecionamento autorizados**, adicione também:
+     - `https://sistema-organizacao-rede-social.vercel.app/`
+     - Para outros domínios usados no deploy, adicione a URL completa deles também.
+     O iPhone usa esse retorno na mesma aba para não depender de popup do Safari.
    - Copie o **Client ID** gerado (termina com `.apps.googleusercontent.com`).
 
 ## 2. Rodar localmente

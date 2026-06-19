@@ -1613,6 +1613,7 @@ input[type='time']::-webkit-calendar-picker-indicator {
 
 .modal {
   width: min(480px, 100%);
+  position: relative;
   background: var(--bg-raised);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-lg);
@@ -1625,6 +1626,39 @@ input[type='time']::-webkit-calendar-picker-indicator {
 .modal h2 {
   font-size: 18px;
   margin-bottom: 18px;
+  padding-right: 42px;
+}
+
+.modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-dim);
+  font: inherit;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.modal-close:hover,
+.modal-close:focus-visible {
+  border-color: var(--line-strong);
+  background: var(--bg-card);
+  color: var(--ink);
+}
+
+.modal-close:focus-visible {
+  outline: 2px solid var(--st-ready);
+  outline-offset: 2px;
 }
 
 .modal .form-grid {

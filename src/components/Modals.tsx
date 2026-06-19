@@ -34,6 +34,9 @@ export function ModalShell({ children, onClose }: { children: ReactNode; onClose
         transition={{ duration: 0.14, ease: [0.2, 0.8, 0.2, 1] }}
         onClick={(e) => e.stopPropagation()}
       >
+        <button type="button" className="modal-close" onClick={onClose} aria-label="Fechar modal">
+          ×
+        </button>
         {children}
       </motion.div>
     </div>

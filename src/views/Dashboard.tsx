@@ -576,13 +576,14 @@ export function Dashboard() {
                     <span className="filters-pop-label">Período</span>
                     <span className="filter-dates">
                       <Icon name="calendar" />
+                      <span className="filter-date-label">De</span>
                       <input
                         type="date"
                         aria-label="Atualizado de"
                         value={dateFrom}
                         onChange={(e) => setDateFrom(e.target.value)}
                       />
-                      <span>até</span>
+                      <span className="filter-date-label">até</span>
                       <input
                         type="date"
                         aria-label="Atualizado até"

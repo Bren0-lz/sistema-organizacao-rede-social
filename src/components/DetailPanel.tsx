@@ -445,6 +445,51 @@ function VideoPreview({ item, fileId }: { item: ContentItem; fileId: string }) {
   );
 }
 
+// Mantém apenas um player montado por vez, mas deixa as duas versões do vídeo
+// sempre acessíveis no painel — especialmente útil no espaço reduzido do mobile.
+function VideoVersionPreview({ item }: { item: ContentItem }) {
+  const availableVersions = [
+    item.rawVideoFileId && { slot: 'raw' as const, label: 'Vídeo cru', fileId: item.rawVideoFileId },
+    item.editedVideoFileId && {
+      slot: 'edited' as const,
+      label: 'Editado',
+      fileId: item.editedVideoFileId,
+    },
+  ].filter(Boolean) as { slot: 'raw' | 'edited'; label: string; fileId: string }[];
+
+  const [selectedSlot, setSelectedSlot] = useState<'raw' | 'edited'>(
+    item.editedVideoFileId ? 'edited' : 'raw',
+  );
+
+  const selectedVersion =
+    availableVersions.find((version) => version.slot === selectedSlot) ?? availableVersions[0];
+
+  if (!selectedVersion) return null;
+
+  return (
+    <div className="video-versions">
+      {availableVersions.length > 1 && (
+        <div className="video-version-tabs" role="tablist" aria-label="Versão do vídeo">
+          {availableVersions.map((version) => (
+            <button
+              key={version.slot}
+              type="button"
+              className={`video-version-tab ${selectedVersion.slot === version.slot ? 'active' : ''}`}
+              role="tab"
+              aria-selected={selectedVersion.slot === version.slot}
+              onClick={() => setSelectedSlot(version.slot)}
+            >
+              <Icon name={version.slot === 'raw' ? 'video' : 'scissors'} />
+              {version.label}
+            </button>
+          ))}
+        </div>
+      )}
+      <VideoPreview item={item} fileId={selectedVersion.fileId} />
+    </div>
+  );
+}
+
 // Legenda/hashtags próprias da rede, com botão de copiar (cada rede costuma
 // pedir um texto diferente). Persiste no blur, como o campo de "Link do post".
 function CaptionField({ item, network }: { item: ContentItem; network: Network }) {
@@ -1102,7 +1147,6 @@ export function DetailPanel({ item, onClose }: Props) {
   const hidden = isMobile ? { y: '100%' } : { x: '100%' };
 
   const isCarousel = itemType(item) === 'carousel';
-  const videoToPreview = item.editedVideoFileId ?? item.rawVideoFileId;
 
   return (
     <>
@@ -1155,7 +1199,7 @@ export function DetailPanel({ item, onClose }: Props) {
                   <FileSlotBox key={slot} item={item} slot={slot} />
                 ))}
               </div>
-              {videoToPreview && <VideoPreview item={item} fileId={videoToPreview} />}
+              <VideoVersionPreview item={item} />
             </>
           )}
         </section>

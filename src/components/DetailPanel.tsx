@@ -1130,7 +1130,7 @@ export function DetailPanel({ item, onClose }: Props) {
             }}
           />
           <button
-            className="icon-btn"
+            className="icon-btn drawer-close"
             onClick={onClose}
             aria-label="Fechar"
             style={{ marginLeft: 'auto' }}

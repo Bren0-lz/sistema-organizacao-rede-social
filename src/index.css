@@ -3834,6 +3834,8 @@ input[type='time']::-webkit-calendar-picker-indicator {
     gap: 10px 12px;
   }
   .brand {
+    grid-column: 1;
+    grid-row: 1;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -3841,9 +3843,20 @@ input[type='time']::-webkit-calendar-picker-indicator {
   .search-input {
     order: 0;
     grid-column: 1 / -1;
+    grid-row: 2;
     width: 100%;
     min-width: 0;
     flex-basis: auto;
+  }
+  .topbar .nav-refresh {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+  }
+  .topbar .nav-settings {
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: end;
   }
   .topbar .icon-btn {
     width: 44px;

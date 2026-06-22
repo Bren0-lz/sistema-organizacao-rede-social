@@ -26,6 +26,7 @@ interface Props {
   onToggle: (id: string) => void;
   onToggleAll: (ids: string[], select: boolean) => void;
   onOpen: (id: string) => void;
+  onDelete: (id: string) => void;
 }
 
 function LazyThumb({
@@ -75,6 +76,7 @@ const ListRow = memo(function ListRow({
   measureElement,
   onToggle,
   onOpen,
+  onDelete,
 }: {
   item: ContentItem;
   index: number;
@@ -82,7 +84,9 @@ const ListRow = memo(function ListRow({
   measureElement: (el: HTMLElement | null) => void;
   onToggle: (id: string) => void;
   onOpen: (id: string) => void;
+  onDelete: (id: string) => void;
 }) {
+  const [confirming, setConfirming] = useState(false);
   const stage = itemStage(item);
   const isCarousel = itemType(item) === 'carousel';
   const thumb = thumbSourceFor(item);
@@ -151,11 +155,43 @@ const ListRow = memo(function ListRow({
           month: '2-digit',
         })}
       </td>
+      <td className="col-actions" onClick={(e) => e.stopPropagation()}>
+        {confirming ? (
+          <span className="row-delete-confirm">
+            <button
+              className="btn btn-danger btn-sm"
+              title={`Mover ${item.title} para a lixeira`}
+              onClick={() => {
+                onDelete(item.id);
+                setConfirming(false);
+              }}
+            >
+              Lixeira
+            </button>
+            <button
+              className="btn btn-ghost btn-sm"
+              title="Cancelar"
+              onClick={() => setConfirming(false)}
+            >
+              Cancelar
+            </button>
+          </span>
+        ) : (
+          <button
+            className="btn btn-ghost btn-sm row-delete-btn"
+            aria-label={`Excluir ${item.title}`}
+            title="Mover para a lixeira"
+            onClick={() => setConfirming(true)}
+          >
+            <Icon name="trash" />
+          </button>
+        )}
+      </td>
     </tr>
   );
 });
 
-export function ListView({ items, selected, onToggle, onToggleAll, onOpen }: Props) {
+export function ListView({ items, selected, onToggle, onToggleAll, onOpen, onDelete }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>('updated');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
 
@@ -239,12 +275,13 @@ export function ListView({ items, selected, onToggle, onToggleAll, onOpen }: Pro
             <th className="col-date sortable" onClick={() => toggleSort('updated')}>
               Atualizado{arrow('updated')}
             </th>
+            <th className="col-actions"></th>
           </tr>
         </thead>
         <tbody>
           {paddingTop > 0 && (
             <tr className="row-spacer" aria-hidden>
-              <td colSpan={7} style={{ height: paddingTop }} />
+              <td colSpan={8} style={{ height: paddingTop }} />
             </tr>
           )}
           {virtualRows.map((virtualRow) => {
@@ -258,6 +295,7 @@ export function ListView({ items, selected, onToggle, onToggleAll, onOpen }: Pro
                 measureElement={rowVirtualizer.measureElement}
                 onToggle={onToggle}
                 onOpen={onOpen}
+                onDelete={onDelete}
               />
             );
           })}

@@ -1,4 +1,4 @@
-import { type WheelEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   coverFileIdFor,
@@ -102,7 +102,6 @@ function BoardColumn({
   onOpen: (id: string) => void;
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
-  const lastWheelAt = useRef(0);
 
   const hasItems = list.length > 0;
   const canNavigate = list.length > 1;
@@ -119,23 +118,6 @@ function BoardColumn({
       setActiveIndex((current) => (current + direction + list.length) % list.length);
     },
     [canNavigate, list.length],
-  );
-
-  const handleWheel = useCallback(
-    (event: WheelEvent<HTMLDivElement>) => {
-      if (!canNavigate || Math.abs(event.deltaY) < 18) return;
-
-      const now = Date.now();
-      if (now - lastWheelAt.current < 420) {
-        event.preventDefault();
-        return;
-      }
-
-      lastWheelAt.current = now;
-      event.preventDefault();
-      goTo(event.deltaY > 0 ? 1 : -1);
-    },
-    [canNavigate, goTo],
   );
 
   return (
@@ -157,7 +139,7 @@ function BoardColumn({
       <div className="column-cards">
         {activeItem ? (
           <>
-            <div className="column-card-window" onWheel={handleWheel}>
+            <div className="column-card-window">
               <AnimatePresence mode="wait">
                 <ContentCard key={activeItem.id} item={activeItem} onOpen={onOpen} />
               </AnimatePresence>

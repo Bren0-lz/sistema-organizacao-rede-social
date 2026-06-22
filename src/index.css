@@ -668,8 +668,8 @@ input[type='time']::-webkit-calendar-picker-indicator {
 
 .column-card-window {
   min-height: 0;
-  /* No celular, a troca de conteúdo fica restrita aos botões de paginação. */
-  touch-action: none;
+  /* Permite rolar a página no celular sem habilitar gestos horizontais no card. */
+  touch-action: pan-y;
 }
 
 .column-pager {

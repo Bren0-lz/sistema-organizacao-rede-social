@@ -105,6 +105,7 @@ function FileSlotBox({ item, slot }: { item: ContentItem; slot: FileSlot }) {
   const uploadToItem = useStore((s) => s.uploadToItem);
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   const fileId =
     slot === 'raw'
@@ -167,6 +168,22 @@ function FileSlotBox({ item, slot }: { item: ContentItem; slot: FileSlot }) {
       </span>
       {fileId && (
         <span className="slot-actions">
+          <button
+            type="button"
+            className="slot-link slot-download"
+            disabled={downloading}
+            onClick={async (e) => {
+              e.stopPropagation();
+              setDownloading(true);
+              try {
+                await downloadFile(fileId, item.title);
+              } finally {
+                setDownloading(false);
+              }
+            }}
+          >
+            <Icon name="download" size={13} /> {downloading ? 'Baixando…' : 'Baixar'}
+          </button>
           <a
             className="slot-link"
             href={`https://drive.google.com/file/d/${fileId}/view`}

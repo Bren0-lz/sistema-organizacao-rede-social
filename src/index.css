@@ -3502,8 +3502,10 @@ input[type='time']::-webkit-calendar-picker-indicator {
 
   /* toasts de upload acima da nav inferior */
   .uploads-stack {
-    bottom: calc(150px + env(safe-area-inset-bottom));
+    bottom: calc(70px + env(safe-area-inset-bottom));
     right: 12px;
+    left: auto;
+    width: min(290px, calc(100vw - 24px));
   }
 
   /* ----- alvos de toque maiores ----- */

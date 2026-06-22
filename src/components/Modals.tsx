@@ -491,7 +491,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
         >
           Sair da conta
         </button>
-        <button className="btn btn-ghost" onClick={onClose}>
+        <button className="btn btn-modal-close" onClick={onClose}>
           Fechar
         </button>
       </div>

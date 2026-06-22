@@ -220,6 +220,19 @@ input[type='time']::-webkit-calendar-picker-indicator {
   border-color: var(--line-strong);
 }
 
+/* Ação secundária com presença visual, usada para encerrar modais. */
+.btn-modal-close {
+  background: var(--bg-raised);
+  border-color: var(--line-strong);
+  color: var(--ink);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+}
+
+.btn-modal-close:hover {
+  background: color-mix(in srgb, var(--bg-raised) 82%, var(--ink));
+  border-color: var(--ink-faint);
+}
+
 .btn-danger {
   color: #ff7a7a;
   border-color: rgba(255, 80, 80, 0.3);

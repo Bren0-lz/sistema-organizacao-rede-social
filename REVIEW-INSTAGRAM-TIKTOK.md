@@ -6,9 +6,9 @@ no Netlify elas ficam públicas nestas URLs (troque `SEU-SITE` pelo seu domínio
 
 | Documento | URL pública |
 |---|---|
-| Política de Privacidade | `https://SEU-SITE.netlify.app/legal/privacidade.html` |
-| Termos de Serviço | `https://SEU-SITE.netlify.app/legal/termos.html` |
-| Exclusão de Dados | `https://SEU-SITE.netlify.app/legal/exclusao-de-dados.html` |
+| Política de Privacidade | `https://sistema-organizacao-rede-social.vercel.app/legal/privacidade.html` |
+| Termos de Serviço | `https://sistema-organizacao-rede-social.vercel.app/legal/termos.html` |
+| Exclusão de Dados | `https://sistema-organizacao-rede-social.vercel.app/legal/exclusao-de-dados.html` |
 
 > Antes de cadastrar, faça o deploy e confirme que as 3 URLs abrem **sem login**
 > (abra numa aba anônima). Os revisores não conseguem logar no app.

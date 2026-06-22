@@ -622,7 +622,7 @@ export function Dashboard() {
         >
           <h2>Seu estúdio está vazio</h2>
           <p>Crie o primeiro conteúdo e suba o vídeo cru, o editado e a capa.</p>
-          <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
+          <div style={{ display: 'flex', gap: 10, marginTop: 18, justifyContent: 'center', flexWrap: 'wrap' }}>
             <button className="btn btn-primary" onClick={() => setShowNew(true)}>
               + Criar primeiro conteúdo
             </button>

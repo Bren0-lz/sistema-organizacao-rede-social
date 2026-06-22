@@ -300,6 +300,13 @@ export async function restoreSession(): Promise<boolean> {
   if (hasValidToken()) return true;
   if (!CLIENT_ID) return false;
 
+  // No iOS o refresh silencioso do GIS depende de ler a sessão Google em
+  // contexto cross-site, que o Safari bloqueia (ITP). Em vez de falhar rápido, o
+  // pedido fica pendurado até o timeout de 90s, prendendo o app em
+  // "conectando ao drive…". Sem token válido, o login volta a ser explícito via
+  // redirect (signIn), que é o fluxo que funciona no iOS.
+  if (isIOS()) return false;
+
   try {
     await getScopedAccessToken({
       storageKey: TOKEN_KEY,

@@ -12,6 +12,56 @@ const TYPE_OPTIONS: { type: ContentType; icon: IconName; label: string }[] = [
 
 type VideoSlot = Extract<FileSlot, 'raw' | 'edited'>;
 
+const POSTER_MAX_WIDTH = 960;
+
+/**
+ * O Safari no iOS não exibe automaticamente o primeiro frame de um vídeo local
+ * como capa. Extraímos um frame para usá-lo no atributo `poster` do player.
+ */
+async function createVideoPoster(file: File): Promise<string | undefined> {
+  const sourceUrl = URL.createObjectURL(file);
+  const video = document.createElement('video');
+  video.muted = true;
+  video.playsInline = true;
+  video.preload = 'auto';
+  video.src = sourceUrl;
+
+  const waitFor = (event: 'loadedmetadata' | 'seeked') => new Promise<void>((resolve, reject) => {
+    const timeout = window.setTimeout(() => reject(new Error(`Tempo esgotado ao ${event}`)), 4000);
+    video.addEventListener(event, () => {
+      window.clearTimeout(timeout);
+      resolve();
+    }, { once: true });
+    video.addEventListener('error', () => {
+      window.clearTimeout(timeout);
+      reject(new Error('Não foi possível carregar o vídeo para gerar a capa'));
+    }, { once: true });
+  });
+
+  try {
+    video.load();
+    await waitFor('loadedmetadata');
+    video.currentTime = Math.min(0.1, Math.max(0, video.duration - 0.01));
+    await waitFor('seeked');
+
+    if (!video.videoWidth || !video.videoHeight) return undefined;
+    const width = Math.min(video.videoWidth, POSTER_MAX_WIDTH);
+    const height = Math.round((width / video.videoWidth) * video.videoHeight);
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    canvas.getContext('2d')?.drawImage(video, 0, 0, width, height);
+    return canvas.toDataURL('image/jpeg', 0.82);
+  } catch {
+    // A prévia normal ainda funciona em navegadores que não permitirem extrair o frame.
+    return undefined;
+  } finally {
+    video.removeAttribute('src');
+    video.load();
+    URL.revokeObjectURL(sourceUrl);
+  }
+}
+
 const VIDEO_SLOT_OPTIONS: { slot: VideoSlot; icon: IconName; label: string }[] = [
   { slot: 'raw', icon: 'video', label: 'Vídeo cru' },
   { slot: 'edited', icon: 'scissors', label: 'Vídeo editado' },
@@ -34,6 +84,9 @@ export function ModalShell({ children, onClose }: { children: ReactNode; onClose
         transition={{ duration: 0.14, ease: [0.2, 0.8, 0.2, 1] }}
         onClick={(e) => e.stopPropagation()}
       >
+        <button type="button" className="modal-close" onClick={onClose} aria-label="Fechar modal">
+          ×
+        </button>
         {children}
       </motion.div>
     </div>
@@ -63,6 +116,7 @@ export function NewItemModal({
   const accept = isVideo ? 'video/*' : 'image/*';
   const selectedVideo = isVideo ? files[0] : undefined;
   const [videoPreviewUrl, setVideoPreviewUrl] = useState('');
+  const [videoPosterUrl, setVideoPosterUrl] = useState('');
   const [carouselPreviewUrls, setCarouselPreviewUrls] = useState<string[]>([]);
 
   useEffect(() => {
@@ -74,6 +128,21 @@ export function NewItemModal({
     const url = URL.createObjectURL(selectedVideo);
     setVideoPreviewUrl(url);
     return () => URL.revokeObjectURL(url);
+  }, [selectedVideo]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setVideoPosterUrl('');
+
+    if (!selectedVideo) return;
+
+    void createVideoPoster(selectedVideo).then((posterUrl) => {
+      if (!cancelled && posterUrl) setVideoPosterUrl(posterUrl);
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [selectedVideo]);
 
   useEffect(() => {
@@ -192,8 +261,10 @@ export function NewItemModal({
               <div className="video-file-preview">
                 <video
                   src={videoPreviewUrl}
+                  poster={videoPosterUrl || undefined}
                   preload="metadata"
                   controls
+                  playsInline
                   onClick={(e) => e.stopPropagation()}
                 />
                 <div className="video-file-preview-info">

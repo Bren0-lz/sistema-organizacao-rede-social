@@ -1201,24 +1201,98 @@ input[type='time']::-webkit-calendar-picker-indicator {
   margin-top: 0;
 }
 
+.video-versions {
+  margin-top: 14px;
+}
+
+.video-version-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg-card);
+}
+
+.video-version-tab {
+  flex: 1 1 0;
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-dim);
+  font: 600 12px var(--font-body);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.video-version-tab:hover {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.video-version-tab.active {
+  color: var(--ink);
+  border-color: var(--line-strong);
+  background: var(--bg-raised);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
+}
+
+.video-version-tab.active:first-child {
+  color: var(--st-raw);
+}
+
+.video-version-tab.active:last-child {
+  color: var(--st-edited);
+}
+
 .drawer-preview {
-  width: auto;
-  max-width: 280px;
-  aspect-ratio: 9 / 16;
+  display: block;
+  width: 100%;
+  max-width: 620px;
+  height: auto;
+  max-height: calc(100vh - 180px);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: #000;
-  margin: 14px auto 0;
+  margin: 10px auto 0;
+}
+
+.drawer-preview[data-orientation='portrait'] {
+  max-width: 280px;
+}
+
+.drawer-preview:not(video) {
+  aspect-ratio: 16 / 9;
+}
+
+.drawer-preview-loading {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  max-width: 620px;
+  min-height: 180px;
+  margin: 10px auto 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #000;
+  color: var(--ink-dim);
+  font-size: 13px;
 }
 
 .drawer-preview-poster {
-  width: auto;
-  max-width: 280px;
-  aspect-ratio: 9 / 16;
+  width: 100%;
+  max-width: 620px;
+  aspect-ratio: 16 / 9;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: #000 center / cover no-repeat;
-  margin: 14px auto 0;
+  margin: 10px auto 0;
   display: grid;
   place-items: center;
   cursor: pointer;
@@ -1589,6 +1663,7 @@ input[type='time']::-webkit-calendar-picker-indicator {
 
 .modal {
   width: min(480px, 100%);
+  position: relative;
   background: var(--bg-raised);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-lg);
@@ -1601,6 +1676,40 @@ input[type='time']::-webkit-calendar-picker-indicator {
 .modal h2 {
   font-size: 18px;
   margin-bottom: 18px;
+  padding-right: 42px;
+}
+
+.modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-dim);
+  font: inherit;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.modal-close:hover,
+.modal-close:focus-visible {
+  border-color: var(--line-strong);
+  background: var(--bg-card);
+  color: var(--ink);
+}
+
+.modal-close:focus-visible {
+  outline: 2px solid var(--st-ready);
+  outline-offset: 2px;
 }
 
 .modal .form-grid {
@@ -2990,7 +3099,9 @@ input[type='time']::-webkit-calendar-picker-indicator {
     right: 0;
     bottom: 0;
     width: 100%;
-    max-height: 90vh;
+    /* `vh` no Safari pode incluir a área sob as barras do navegador. */
+    max-height: calc(100vh - 64px - env(safe-area-inset-top));
+    max-height: calc(100dvh - 64px - env(safe-area-inset-top));
     border-left: none;
     border-top: 1px solid var(--line-strong);
     border-radius: 22px 22px 0 0;
@@ -3009,23 +3120,43 @@ input[type='time']::-webkit-calendar-picker-indicator {
     background: var(--line-strong);
   }
   .drawer-head {
-    top: -24px;
+    /* O cabeçalho — e principalmente o fechar — permanece dentro da viewport. */
+    top: 0;
     margin: -24px -20px 24px;
     padding: 34px 20px 14px;
+    background: var(--bg-raised);
     border-bottom-color: var(--line);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.16);
+  }
+  .drawer-close {
+    flex: 0 0 auto;
+    position: relative;
+    z-index: 3;
+    background: var(--bg-raised);
   }
 
   /* ----- modais: colados ao rodapé, alvos maiores ----- */
   .modal-backdrop {
     align-items: flex-end;
-    padding: 0;
+    padding: calc(52px + env(safe-area-inset-top)) 0 0;
+    height: 100dvh;
   }
   .modal {
     width: 100%;
     border-radius: 22px 22px 0 0;
     padding: 24px 20px calc(28px + env(safe-area-inset-bottom));
-    max-height: 92vh;
+    /* Reserva uma faixa do backdrop para fechar ao tocar fora e acompanha
+       barras dinâmicas do navegador no mobile. */
+    max-height: calc(100vh - 52px - env(safe-area-inset-top));
+    max-height: calc(100dvh - 52px - env(safe-area-inset-top));
+    min-height: 0;
     overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .modal-close {
+    z-index: 3;
+    background: var(--bg-raised);
   }
 
   /* ----- barra de ações em massa: acima da nav inferior ----- */

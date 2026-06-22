@@ -1,13 +1,14 @@
 import { create } from 'zustand';
 import {
-  consumeRedirectResult,
-  hasValidToken,
   hasValidYoutubeToken,
+  preloadAuth,
+  restoreIOSRedirectSignIn,
   setYoutubeClientId,
   signIn as authSignIn,
   signInYoutube as authSignInYoutube,
   signOut as authSignOut,
   signOutYoutube as authSignOutYoutube,
+  restoreSession,
 } from '../services/googleAuth';
 import {
   deleteFile,
@@ -360,20 +361,22 @@ export const useStore = create<AppState>((set, get) => {
     coverUrls: {},
 
     async init() {
-      // Processa o retorno do Google (login por redirecionamento), se houver.
-      const redirect = consumeRedirectResult();
-      if (redirect && 'error' in redirect) {
-        set({ authStatus: 'signedOut', errorMessage: redirect.error });
-        return;
-      }
-      if (hasValidToken()) {
-        await connect();
-        // Após voltar de uma conexão de YouTube, força a leitura do canal para
-        // já refletir "conectado" (ou o erro) sem outro clique. O erro já fica no
-        // estado (youtubeErrorMessage); o catch evita virar rejeição global.
-        await refreshYoutubeAccount(redirect?.kind === 'youtube').catch(() => {});
-      } else {
-        set({ authStatus: 'signedOut' });
+      // Carrega o GIS já na abertura: quando o usuário tocar em "Entrar", o popup
+      // do OAuth abre dentro do gesto (o Safari do iPhone bloqueia popups tardios).
+      preloadAuth();
+      try {
+        restoreIOSRedirectSignIn();
+        if (await restoreSession()) {
+          await connect();
+          await refreshYoutubeAccount();
+        } else {
+          set({ authStatus: 'signedOut' });
+        }
+      } catch (error) {
+        set({
+          authStatus: 'signedOut',
+          errorMessage: error instanceof Error ? error.message : String(error),
+        });
       }
     },
 

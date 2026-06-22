@@ -415,10 +415,14 @@ export const useStore = create<AppState>((set, get) => {
     },
 
     async signIn() {
-      // Redireciona a página para o Google; nada roda depois (a página descarrega).
-      // O único erro síncrono possível é o Client ID ausente.
+      // No iOS o login usa redirect: a página descarrega e esta Promise nunca
+      // resolve (nada roda depois). No desktop é um popup: a Promise resolve aqui
+      // com o token, então precisamos carregar o Drive em seguida — senão a tela
+      // de login fica presa até um F5 (que só então dispara init → restoreSession).
       try {
-        authSignIn();
+        await authSignIn();
+        await connect();
+        await refreshYoutubeAccount();
       } catch (error) {
         set({
           authStatus: 'signedOut',

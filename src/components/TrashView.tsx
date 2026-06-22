@@ -72,6 +72,7 @@ export function TrashView({ items }: Props) {
             <th className="col-title">Título</th>
             <th className="col-date">Removido em</th>
             <th className="col-stage">Expira em</th>
+            <th className="col-actions"></th>
           </tr>
         </thead>
         <tbody>
@@ -105,6 +106,16 @@ export function TrashView({ items }: Props) {
                     <span className="stage-tag" style={{ color: left <= 5 ? '#ff6b6b' : undefined }}>
                       {left} dia{left === 1 ? '' : 's'}
                     </span>
+                  </td>
+                  <td className="col-actions" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      disabled={busy}
+                      title={`Restaurar ${item.title}`}
+                      onClick={() => void run(() => restoreItems([item.id]))}
+                    >
+                      <Icon name="restore" /> Restaurar
+                    </button>
                   </td>
                 </tr>
               );

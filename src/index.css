@@ -977,8 +977,9 @@ input[type='time']::-webkit-calendar-picker-indicator {
   position: absolute;
   inset: 0;
   z-index: 0;
-  background-size: cover;
+  background-size: contain;
   background-position: center;
+  background-repeat: no-repeat;
 }
 
 /* escurece a prévia para o texto continuar legível */
@@ -2289,6 +2290,11 @@ input[type='time']::-webkit-calendar-picker-indicator {
 .col-stage {
   width: 138px;
 }
+.col-actions {
+  width: 132px;
+  text-align: right;
+  white-space: nowrap;
+}
 
 .list-empty {
   padding: 28px;
@@ -3163,6 +3169,17 @@ input[type='time']::-webkit-calendar-picker-indicator {
     max-width: 100%;
     white-space: normal;
     line-height: 1.2;
+  }
+  /* botão de restaurar por linha (lixeira): largura total abaixo dos metadados */
+  .list-table td.col-actions {
+    grid-column: 1 / -1;
+    width: 100%;
+    text-align: left;
+    margin-top: 4px;
+  }
+  .list-table td.col-actions .btn {
+    width: 100%;
+    justify-content: center;
   }
   .list-table td.col-date {
     grid-area: date;

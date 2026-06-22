@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type DragEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react';
 import { motion } from 'framer-motion';
 import {
   itemType,
@@ -18,6 +18,7 @@ import { downloadFile, fetchBlobUrl, previewUrl } from '../services/drive';
 import { NetworkIcon } from './NetworkIcon';
 import { Icon, type IconName } from './Icon';
 import { JourneyTrail } from './JourneyTrail';
+import { getYoutubeVideoStatistics, type YouTubeVideoStatistics } from '../services/youtube';
 
 interface Props {
   item: ContentItem;
@@ -57,6 +58,10 @@ function formatLocalDateTime(iso?: string): string {
   return `${pad2(date.getDate())}/${pad2(date.getMonth() + 1)}/${date.getFullYear()} ${pad2(
     date.getHours(),
   )}:${pad2(date.getMinutes())}`;
+}
+
+function formatMetric(value: number | undefined): string {
+  return value === undefined ? '—' : value.toLocaleString('pt-BR');
 }
 
 const YOUTUBE_CATEGORY_OPTIONS = [
@@ -750,6 +755,9 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
   const [youtubeAction, setYoutubeAction] = useState<'save' | 'cancel' | 'delete' | null>(null);
   const [saveOk, setSaveOk] = useState(false);
   const [confirmYoutubeDelete, setConfirmYoutubeDelete] = useState(false);
+  const [metrics, setMetrics] = useState<YouTubeVideoStatistics | null>(null);
+  const [metricsLoading, setMetricsLoading] = useState(false);
+  const [metricsError, setMetricsError] = useState<string | null>(null);
   const uploading = state.youtubeUploadStatus === 'uploading';
   const busy = uploading || youtubeAction !== null;
   const selectedVideoFileId = item.editedVideoFileId ?? item.rawVideoFileId;
@@ -811,6 +819,28 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
       setPrivacyStatus(state.youtubePrivacyStatus ?? (state.youtubeVideoId ? '' : 'public'));
     }
   }, [privacyTouched, state.youtubePrivacyStatus, state.youtubeVideoId]);
+
+  const refreshMetrics = useCallback(async () => {
+    if (!state.youtubeVideoId) return;
+    setMetricsLoading(true);
+    setMetricsError(null);
+    try {
+      setMetrics(await getYoutubeVideoStatistics(state.youtubeVideoId));
+    } catch (err) {
+      setMetricsError(err instanceof Error ? err.message : 'Nao foi possivel carregar as metricas.');
+    } finally {
+      setMetricsLoading(false);
+    }
+  }, [state.youtubeVideoId]);
+
+  useEffect(() => {
+    if (!state.youtubeVideoId) {
+      setMetrics(null);
+      setMetricsError(null);
+      return;
+    }
+    void refreshMetrics();
+  }, [refreshMetrics, state.youtubeVideoId]);
 
   const submit = async () => {
     const scheduledPublishAt = publishMode === 'schedule' ? publishAt : undefined;
@@ -920,6 +950,31 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
           <Icon name={state.status === 'scheduled' ? 'calendar' : 'check'} />
           <span>{youtubeStateLabel}</span>
         </div>
+      )}
+      {hasYoutubeVideo && (
+        <section className="youtube-metrics" aria-label="Metricas do video no YouTube">
+          <div className="youtube-metrics-head">
+            <strong>Metricas no YouTube</strong>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              disabled={metricsLoading}
+              onClick={() => void refreshMetrics()}
+            >
+              {metricsLoading ? 'Atualizando...' : 'Atualizar'}
+            </button>
+          </div>
+          {metrics ? (
+            <div className="youtube-metrics-grid">
+              <div><span>Visualizacoes</span><strong>{formatMetric(metrics.viewCount)}</strong></div>
+              <div><span>Curtidas</span><strong>{formatMetric(metrics.likeCount)}</strong></div>
+              <div><span>Comentarios</span><strong>{formatMetric(metrics.commentCount)}</strong></div>
+            </div>
+          ) : metricsLoading ? (
+            <p className="youtube-help">Carregando metricas...</p>
+          ) : null}
+          {metricsError && <p className="youtube-error">{metricsError}</p>}
+        </section>
       )}
       <div className="youtube-fields">
         <input

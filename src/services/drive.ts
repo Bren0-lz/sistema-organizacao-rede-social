@@ -23,6 +23,8 @@ export const SLOT_FOLDER_NAMES: Record<FileSlot, string> = {
 const CAROUSEL_FOLDER_NAME = 'Imagens de Carrossel';
 
 const FOLDER_ID_KEY = 'org-social:rootFolderId';
+// Estrutura de pastas completa (todos os IDs), para pular a redescoberta ao reabrir.
+const FOLDERS_KEY = 'org-social:folders:v1';
 
 // O Safari pode indisponibilizar o localStorage em alguns contextos de
 // privacidade. Isso não deve impedir a abertura do app após o OAuth.
@@ -48,6 +50,39 @@ function removeLocalStorage(key: string): void {
   } catch {
     // Nada para limpar quando o armazenamento não está disponível.
   }
+}
+
+function readCachedFolders(): AppFolders | null {
+  const raw = readLocalStorage(FOLDERS_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<AppFolders>;
+    if (
+      parsed.root &&
+      parsed.raw &&
+      parsed.edited &&
+      parsed.covers &&
+      parsed.carousel &&
+      parsed.dbFileId &&
+      parsed.configFileId
+    ) {
+      return parsed as AppFolders;
+    }
+  } catch {
+    // cache corrompido: será reconstruído na descoberta normal
+  }
+  return null;
+}
+
+/**
+ * Invalida o cache da estrutura de pastas. Chamado quando uma leitura posterior
+ * (db.json/config.json) falha — sinal de que algum ID cacheado ficou obsoleto
+ * (ex.: alguém moveu/recriou uma pasta compartilhada). A próxima conexão
+ * redescobre tudo do zero.
+ */
+export function clearFolderCache(): void {
+  removeLocalStorage(FOLDERS_KEY);
+  removeLocalStorage(FOLDER_ID_KEY);
 }
 
 async function driveFetch(path: string, init: RequestInit = {}): Promise<Response> {
@@ -95,19 +130,21 @@ async function createFolder(name: string, parentId?: string): Promise<string> {
   return data.id;
 }
 
-async function findChild(parentId: string, name: string): Promise<DriveFileInfo | null> {
-  const files = await findByQuery(
-    `'${parentId}' in parents and name = '${name.replace(/'/g, "\\'")}' and trashed = false`,
-  );
-  return files[0] ?? null;
-}
-
 /**
  * Localiza (ou cria) a estrutura de pastas do app no Drive.
  * Ordem de busca: ID salvo localmente → pasta marcada com appProperties
  * (inclui pastas compartilhadas pela equipe) → cria do zero.
  */
 export async function ensureAppStructure(explicitRootId?: string): Promise<AppFolders> {
+  // Caminho "reabrir": a estrutura inteira já é conhecida, então pulamos toda a
+  // descoberta. Só vale quando o usuário não está apontando explicitamente para
+  // outra pasta; se algum ID cacheado estiver obsoleto, a leitura seguinte falha
+  // e o store chama clearFolderCache() para reconstruir.
+  if (!explicitRootId) {
+    const cached = readCachedFolders();
+    if (cached) return cached;
+  }
+
   let rootId = explicitRootId ?? readLocalStorage(FOLDER_ID_KEY) ?? undefined;
 
   if (rootId) {
@@ -133,37 +170,32 @@ export async function ensureAppStructure(explicitRootId?: string): Promise<AppFo
   }
   writeLocalStorage(FOLDER_ID_KEY, rootId);
 
-  const folders: Partial<Record<FileSlot, string>> = {};
-  for (const slot of Object.keys(SLOT_FOLDER_NAMES) as FileSlot[]) {
-    const name = SLOT_FOLDER_NAMES[slot];
-    const found = await findChild(rootId, name);
-    folders[slot] = found?.id ?? (await createFolder(name, rootId));
-  }
+  // Uma única listagem dos filhos da raiz substitui as 6 buscas sequenciais.
+  const children = await findByQuery(`'${rootId}' in parents and trashed = false`);
+  const byName = new Map<string, DriveFileInfo>();
+  for (const child of children) byName.set(child.name, child);
 
-  const carouselFound = await findChild(rootId, CAROUSEL_FOLDER_NAME);
-  const carouselId = carouselFound?.id ?? (await createFolder(CAROUSEL_FOLDER_NAME, rootId));
+  // Cada item necessário vem do mapa; o que faltar é criado em paralelo.
+  const [raw, edited, covers, carousel, dbFileId, configFileId] = await Promise.all([
+    byName.get(SLOT_FOLDER_NAMES.raw)?.id ?? createFolder(SLOT_FOLDER_NAMES.raw, rootId),
+    byName.get(SLOT_FOLDER_NAMES.edited)?.id ?? createFolder(SLOT_FOLDER_NAMES.edited, rootId),
+    byName.get(SLOT_FOLDER_NAMES.cover)?.id ?? createFolder(SLOT_FOLDER_NAMES.cover, rootId),
+    byName.get(CAROUSEL_FOLDER_NAME)?.id ?? createFolder(CAROUSEL_FOLDER_NAME, rootId),
+    byName.get(DB_FILE_NAME)?.id ?? createJsonFile(rootId, DB_FILE_NAME, { version: 0, items: [] }),
+    byName.get(CONFIG_FILE_NAME)?.id ?? createJsonFile(rootId, CONFIG_FILE_NAME, {}),
+  ]);
 
-  let dbFile = await findChild(rootId, DB_FILE_NAME);
-  if (!dbFile) {
-    const id = await createJsonFile(rootId, DB_FILE_NAME, { version: 0, items: [] });
-    dbFile = { id, name: DB_FILE_NAME, mimeType: 'application/json' };
-  }
-
-  let configFile = await findChild(rootId, CONFIG_FILE_NAME);
-  if (!configFile) {
-    const id = await createJsonFile(rootId, CONFIG_FILE_NAME, {});
-    configFile = { id, name: CONFIG_FILE_NAME, mimeType: 'application/json' };
-  }
-
-  return {
+  const folders: AppFolders = {
     root: rootId,
-    raw: folders.raw!,
-    edited: folders.edited!,
-    covers: folders.cover!,
-    carousel: carouselId,
-    dbFileId: dbFile.id,
-    configFileId: configFile.id,
+    raw,
+    edited,
+    covers,
+    carousel,
+    dbFileId,
+    configFileId,
   };
+  writeLocalStorage(FOLDERS_KEY, JSON.stringify(folders));
+  return folders;
 }
 
 async function createJsonFile(parentId: string, name: string, initial: unknown): Promise<string> {
@@ -311,8 +343,17 @@ export async function downloadFile(fileId: string, fallbackName?: string): Promi
  * Versão leve de {@link fetchBlobUrl} para capas: baixa o `thumbnailLink` do
  * Drive (poucos KB) em vez do arquivo cheio. Se o item não tiver thumbnail
  * disponível, cai de volta para o download completo.
+ *
+ * `allowFullDownload: false` desliga esse fallback — usado quando o fileId é um
+ * vídeo (capa temporária pelo frame do Drive): baixar o vídeo inteiro seria
+ * pesado e um `<img>` nem o exibiria. Sem thumbnail, apenas lança e o card
+ * mantém o placeholder.
  */
-export async function fetchThumbnailUrl(fileId: string): Promise<string> {
+export async function fetchThumbnailUrl(
+  fileId: string,
+  options: { allowFullDownload?: boolean } = {},
+): Promise<string> {
+  const { allowFullDownload = true } = options;
   const info = await getFileInfo(fileId);
   if (info.thumbnailLink) {
     try {
@@ -324,6 +365,9 @@ export async function fetchThumbnailUrl(fileId: string): Promise<string> {
     } catch {
       // thumbnail indisponível/expirado — segue para o fallback abaixo
     }
+  }
+  if (!allowFullDownload) {
+    throw new Error('Miniatura do vídeo ainda não disponível no Drive.');
   }
   return fetchBlobUrl(fileId);
 }

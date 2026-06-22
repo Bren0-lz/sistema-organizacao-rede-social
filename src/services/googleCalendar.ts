@@ -39,7 +39,7 @@ async function parseError(res: Response, action: string): Promise<never> {
 
 /** Cria o evento da gravação e retorna o id do evento criado. */
 export async function createRecordingEvent(rec: Recording): Promise<string> {
-  const token = await getAccessToken(true);
+  const token = await getAccessToken();
   const res = await fetch(CALENDAR_API, {
     method: 'POST',
     headers: {
@@ -56,7 +56,7 @@ export async function createRecordingEvent(rec: Recording): Promise<string> {
 
 /** Atualiza o evento existente com os dados atuais da gravação. */
 export async function updateRecordingEvent(eventId: string, rec: Recording): Promise<void> {
-  const token = await getAccessToken(true);
+  const token = await getAccessToken();
   const res = await fetch(`${CALENDAR_API}/${encodeURIComponent(eventId)}`, {
     method: 'PATCH',
     headers: {
@@ -71,7 +71,7 @@ export async function updateRecordingEvent(eventId: string, rec: Recording): Pro
 
 /** Remove o evento do calendário. Ignora se já não existe. */
 export async function deleteRecordingEvent(eventId: string): Promise<void> {
-  const token = await getAccessToken(true);
+  const token = await getAccessToken();
   const res = await fetch(`${CALENDAR_API}/${encodeURIComponent(eventId)}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },

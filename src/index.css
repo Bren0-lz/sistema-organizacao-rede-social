@@ -957,6 +957,33 @@ input[type='time']::-webkit-calendar-picker-indicator {
   color: var(--ink);
 }
 
+/* prévia (frame do vídeo / capa) ao fundo do card */
+.slot-thumb {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-size: cover;
+  background-position: center;
+}
+
+/* escurece a prévia para o texto continuar legível */
+.slot-thumb::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(8, 10, 18, 0.35), rgba(8, 10, 18, 0.8));
+}
+
+/* conteúdo (ícone, label, dica, ações) fica acima da prévia */
+.slot.has-thumb > span:not(.slot-thumb) {
+  position: relative;
+  z-index: 1;
+}
+
+.slot.has-thumb {
+  color: var(--ink);
+}
+
 .slot-icon {
   font-size: 21px;
   display: block;

@@ -4,10 +4,12 @@ import {
   itemType,
   NETWORK_LABELS,
   NETWORKS,
+  thumbSourceFor,
   type ContentItem,
   type FileSlot,
   type Network,
   type NetworkStatus,
+  type ThumbSource,
   type YouTubePrivacyStatus,
 } from '../types';
 import { useStore } from '../store/useStore';
@@ -88,6 +90,17 @@ function parseTags(value: string): string[] {
     .filter(Boolean);
 }
 
+/**
+ * Miniatura a mostrar ao fundo do card: cada slot de vídeo usa o frame que o
+ * Drive gera do próprio arquivo; o slot de capa usa a capa real, ou — sem ela —
+ * o frame do vídeo (capa temporária), igual à lista e aos cards.
+ */
+function slotThumbSource(item: ContentItem, slot: FileSlot): ThumbSource | undefined {
+  if (slot === 'cover') return thumbSourceFor(item);
+  const fileId = slot === 'raw' ? item.rawVideoFileId : item.editedVideoFileId;
+  return fileId ? { fileId, fromVideo: true } : undefined;
+}
+
 function FileSlotBox({ item, slot }: { item: ContentItem; slot: FileSlot }) {
   const uploadToItem = useStore((s) => s.uploadToItem);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -100,6 +113,18 @@ function FileSlotBox({ item, slot }: { item: ContentItem; slot: FileSlot }) {
         ? item.editedVideoFileId
         : item.coverFileId;
   const meta = SLOT_META[slot];
+
+  // prévia ao fundo (frame do vídeo / capa) — assina só esta URL para não
+  // re-renderizar à toa, e baixa sob demanda como nos demais previews
+  const thumb = slotThumbSource(item, slot);
+  const thumbFileId = thumb?.fileId;
+  const thumbFromVideo = thumb?.fromVideo ?? false;
+  const thumbUrl = useStore((s) => (thumbFileId ? s.coverUrls[thumbFileId] : undefined));
+  const loadCover = useStore((s) => s.loadCover);
+
+  useEffect(() => {
+    if (thumbFileId) void loadCover(thumbFileId, { thumbnailOnly: thumbFromVideo });
+  }, [thumbFileId, thumbFromVideo, loadCover]);
 
   const handleFiles = (files: FileList | null) => {
     const file = files?.[0];
@@ -114,7 +139,9 @@ function FileSlotBox({ item, slot }: { item: ContentItem; slot: FileSlot }) {
 
   return (
     <div
-      className={`slot ${fileId ? 'filled' : ''} ${dragOver ? 'drag-over' : ''}`}
+      className={`slot ${fileId ? 'filled' : ''} ${thumbUrl ? 'has-thumb' : ''} ${
+        dragOver ? 'drag-over' : ''
+      }`}
       data-slot={slot}
       onClick={() => inputRef.current?.click()}
       onDragOver={(e) => {
@@ -124,6 +151,13 @@ function FileSlotBox({ item, slot }: { item: ContentItem; slot: FileSlot }) {
       onDragLeave={() => setDragOver(false)}
       onDrop={onDrop}
     >
+      {thumbUrl && (
+        <span
+          className="slot-thumb"
+          style={{ backgroundImage: `url(${thumbUrl})` }}
+          aria-hidden
+        />
+      )}
       <span className="slot-icon">
         <Icon name={fileId ? 'check' : meta.icon} />
       </span>
@@ -354,9 +388,10 @@ function CarouselEditor({ item }: { item: ContentItem }) {
 // Preview do vídeo sob demanda: mostra um poster (capa, se houver) com botão ▶.
 // O iframe pesado do Drive só monta após o clique, mantendo a abertura do drawer fluida.
 function VideoPreview({ item, fileId }: { item: ContentItem; fileId: string }) {
-  const coverUrl = useStore((s) =>
-    item.coverFileId ? s.coverUrls[item.coverFileId] : undefined,
-  );
+  // capa real, se houver; senão usa o frame que o Drive gera do vídeo (provisório)
+  const posterFileId = item.coverFileId ?? fileId;
+  const fromVideo = !item.coverFileId;
+  const coverUrl = useStore((s) => s.coverUrls[posterFileId]);
   const loadCover = useStore((s) => s.loadCover);
   const [playing, setPlaying] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string>();
@@ -371,8 +406,8 @@ function VideoPreview({ item, fileId }: { item: ContentItem; fileId: string }) {
   }, [fileId]);
 
   useEffect(() => {
-    if (!playing && item.coverFileId) void loadCover(item.coverFileId);
-  }, [playing, item.coverFileId, loadCover]);
+    if (!playing) void loadCover(posterFileId, { thumbnailOnly: fromVideo });
+  }, [playing, posterFileId, fromVideo, loadCover]);
 
   // O player nativo respeita a rotação presente nos metadados de vídeos do iPhone.
   useEffect(() => {

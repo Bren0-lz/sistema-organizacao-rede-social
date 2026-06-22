@@ -5,11 +5,13 @@ import {
   restoreIOSRedirectSignIn,
   setYoutubeClientId,
   signIn as authSignIn,
+  signInYoutube as authSignInYoutube,
   signOut as authSignOut,
   signOutYoutube as authSignOutYoutube,
   restoreSession,
 } from '../services/googleAuth';
 import {
+  clearFolderCache,
   deleteFile,
   ensureAppStructure,
   fetchFileBlob,
@@ -62,6 +64,16 @@ import {
 
 /** Capas baixadas no máximo 4 por vez, para não saturar a rede. */
 const coverLimiter = createLimiter(4);
+/**
+ * O frame que o Drive gera de um vídeo (capa temporária) só fica disponível
+ * alguns segundos/minutos depois do upload. Reagendamos algumas tentativas com
+ * espera crescente até o Drive terminar de gerá-lo, em vez de desistir na 1ª
+ * falha (senão o placeholder ficaria a sessão inteira). `coverRetryScheduled`
+ * garante no máximo um timer pendente por arquivo.
+ */
+const VIDEO_THUMB_RETRY_DELAYS = [4000, 10000, 20000, 40000, 60000];
+const coverRetries = new Map<string, number>();
+const coverRetryScheduled = new Set<string>();
 /** Uploads em lote: no máximo 3 arquivos subindo ao mesmo tempo. */
 const uploadLimiter = createLimiter(3);
 
@@ -180,7 +192,12 @@ interface AppState {
   removeCarouselImage(itemId: string, fileId: string): Promise<void>;
   /** Move uma imagem do carrossel de uma posição para outra (reordena a exibição). */
   reorderCarousel(itemId: string, from: number, to: number): Promise<void>;
-  loadCover(fileId: string): Promise<void>;
+  /**
+   * Baixa e cacheia a miniatura de um arquivo. `thumbnailOnly` (usado quando o
+   * fileId é um vídeo, p/ capa temporária pelo frame do Drive) impede o fallback
+   * de baixar o arquivo inteiro: sem thumbnail, mantém o placeholder.
+   */
+  loadCover(fileId: string, options?: { thumbnailOnly?: boolean }): Promise<void>;
 }
 
 const SLOT_FIELD: Record<FileSlot, keyof Pick<
@@ -317,13 +334,35 @@ export const useStore = create<AppState>((set, get) => {
 
   async function connect(explicitRootId?: string): Promise<void> {
     set({ authStatus: 'connecting', errorMessage: undefined });
+
+    // Carrega a estrutura de pastas e, em paralelo, config.json + db.json. Se a
+    // estrutura veio do cache e algum ID ficou obsoleto (pasta movida/recriada
+    // por outro membro), a leitura falha: zeramos o cache e redescobrimos do zero
+    // uma única vez antes de propagar o erro.
+    async function loadStructureAndData() {
+      const attempt = async () => {
+        const folders = await ensureAppStructure(explicitRootId);
+        const [config, db] = await Promise.all([
+          readJsonFile<AppConfig>(folders.configFileId).catch(() => ({}) as AppConfig),
+          loadDatabase(folders.dbFileId),
+        ]);
+        return { folders, config, db };
+      };
+      try {
+        return await attempt();
+      } catch (firstError) {
+        clearFolderCache();
+        try {
+          return await attempt();
+        } catch {
+          throw firstError;
+        }
+      }
+    }
+
     try {
-      const folders = await ensureAppStructure(explicitRootId);
-      const config = await readJsonFile<AppConfig>(folders.configFileId).catch(
-        () => ({}) as AppConfig,
-      );
+      const { folders, config, db } = await loadStructureAndData();
       setYoutubeClientId(config.youtubeClientId);
-      const db = await loadDatabase(folders.dbFileId);
       const normalized = markElapsedScheduledPosts(db.items);
       set({
         authStatus: 'ready',
@@ -375,10 +414,10 @@ export const useStore = create<AppState>((set, get) => {
     },
 
     async signIn() {
+      // Redireciona a página para o Google; nada roda depois (a página descarrega).
+      // O único erro síncrono possível é o Client ID ausente.
       try {
-        await authSignIn();
-        await connect();
-        await refreshYoutubeAccount();
+        authSignIn();
       } catch (error) {
         set({
           authStatus: 'signedOut',
@@ -405,8 +444,17 @@ export const useStore = create<AppState>((set, get) => {
     },
 
     async connectYoutube() {
-      authSignOutYoutube();
-      await refreshYoutubeAccount(true);
+      // Redireciona a página para o Google escolher a conta do YouTube. Ao voltar,
+      // `init()` detecta o token e chama refreshYoutubeAccount automaticamente.
+      try {
+        authSignOutYoutube();
+        authSignInYoutube({ forceAccountSelection: true });
+      } catch (error) {
+        set({
+          youtubeAuthStatus: 'error',
+          youtubeErrorMessage: error instanceof Error ? error.message : String(error),
+        });
+      }
     },
 
     disconnectYoutube() {
@@ -971,13 +1019,30 @@ export const useStore = create<AppState>((set, get) => {
       );
     },
 
-    async loadCover(fileId) {
+    async loadCover(fileId, options) {
       if (get().coverUrls[fileId]) return;
       try {
-        const url = await coverLimiter(() => fetchThumbnailUrl(fileId));
+        const url = await coverLimiter(() =>
+          fetchThumbnailUrl(fileId, { allowFullDownload: !options?.thumbnailOnly }),
+        );
+        coverRetries.delete(fileId);
         set({ coverUrls: { ...get().coverUrls, [fileId]: url } });
       } catch {
-        // capa indisponível — o card mostra o placeholder
+        // Capa de vídeo (frame do Drive) costuma surgir alguns segundos após o
+        // upload: reagenda enquanto houver tentativas restantes, em vez de
+        // desistir. Demais capas mantêm o placeholder.
+        if (options?.thumbnailOnly && !coverRetryScheduled.has(fileId)) {
+          const attempt = coverRetries.get(fileId) ?? 0;
+          const delay = VIDEO_THUMB_RETRY_DELAYS[attempt];
+          if (delay !== undefined) {
+            coverRetries.set(fileId, attempt + 1);
+            coverRetryScheduled.add(fileId);
+            setTimeout(() => {
+              coverRetryScheduled.delete(fileId);
+              if (!get().coverUrls[fileId]) void get().loadCover(fileId, options);
+            }, delay);
+          }
+        }
       }
     },
   };

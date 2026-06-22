@@ -10,6 +10,7 @@ import {
   newContentItem,
   newIdea,
   newRecording,
+  thumbSourceFor,
   trashDaysLeft,
   type ContentItem,
   type ContentType,
@@ -176,6 +177,36 @@ describe('coverFileIdFor', () => {
 
   it('no vídeo usa o coverFileId', () => {
     expect(coverFileIdFor(makeItem({ coverFileId: 'capa' }))).toBe('capa');
+  });
+});
+
+describe('thumbSourceFor', () => {
+  it('usa a capa quando ela existe (não marca como vídeo)', () => {
+    const item = makeItem({ coverFileId: 'capa', rawVideoFileId: 'cru' });
+    expect(thumbSourceFor(item)).toEqual({ fileId: 'capa', fromVideo: false });
+  });
+
+  it('sem capa, cai no vídeo editado como capa temporária', () => {
+    const item = makeItem({ editedVideoFileId: 'editado', rawVideoFileId: 'cru' });
+    expect(thumbSourceFor(item)).toEqual({ fileId: 'editado', fromVideo: true });
+  });
+
+  it('sem capa nem editado, cai no vídeo cru', () => {
+    const item = makeItem({ rawVideoFileId: 'cru' });
+    expect(thumbSourceFor(item)).toEqual({ fileId: 'cru', fromVideo: true });
+  });
+
+  it('vídeo sem nenhum arquivo retorna undefined', () => {
+    expect(thumbSourceFor(makeItem())).toBeUndefined();
+  });
+
+  it('carrossel usa a 1ª imagem (não o frame de vídeo)', () => {
+    const item = makeItem({ type: 'carousel', carouselFileIds: ['img1', 'img2'] });
+    expect(thumbSourceFor(item)).toEqual({ fileId: 'img1', fromVideo: false });
+  });
+
+  it('carrossel sem imagens retorna undefined', () => {
+    expect(thumbSourceFor(makeItem({ type: 'carousel', carouselFileIds: [] }))).toBeUndefined();
   });
 });
 

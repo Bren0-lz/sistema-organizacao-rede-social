@@ -31,7 +31,7 @@ no Netlify elas ficam públicas nestas URLs (troque `SEU-SITE` pelo seu domínio
    - **URL de Instruções de Exclusão de Dados:** `.../legal/exclusao-de-dados.html`
      (campo "Data Deletion Instructions URL" / "Excluir dados").
    - **Categoria:** *Negócios e páginas* (ou *Produtividade*).
-   - **E-mail de contato:** brenooh7@gmail.com
+   - **E-mail de contato:** daniel.telecomb2b@gmail.com
    - **Ícone do app** (1024×1024).
 3. **Adicionar produto:** *Instagram* → *API com login do Instagram* (Instagram Graph API
    / Content Publishing).

@@ -200,6 +200,7 @@ function BoardColumn({
 export function Dashboard() {
   const items = useStore((s) => s.items);
   const refresh = useStore((s) => s.refresh);
+  const deleteItem = useStore((s) => s.deleteItem);
   const [filter, setFilter] = useState<Filter>('all');
   const [view, setView] = useState<ViewMode>('list');
   const [showTrash, setShowTrash] = useState(false);
@@ -663,6 +664,7 @@ export function Dashboard() {
           onToggle={toggle}
           onToggleAll={toggleAll}
           onOpen={setOpenItemId}
+          onDelete={(id) => void deleteItem(id)}
         />
       ) : (
         <main ref={boardRef} className="board">

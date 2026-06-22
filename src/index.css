@@ -2297,6 +2297,33 @@ input[type='time']::-webkit-calendar-picker-indicator {
   white-space: nowrap;
 }
 
+/* botão de excluir por linha: discreto por padrão, fica visível ao passar o
+   mouse pela linha; em telas de toque continua sempre visível */
+.row-delete-btn {
+  padding: 6px 8px;
+  opacity: 0;
+  color: var(--ink-dim);
+  transition: opacity 0.12s ease, color 0.12s ease, background 0.12s ease;
+}
+.list-table tbody tr:hover .row-delete-btn,
+.row-delete-btn:focus-visible {
+  opacity: 1;
+}
+.row-delete-btn:hover {
+  color: #ff6b6b;
+  border-color: rgba(255, 107, 107, 0.4);
+}
+.row-delete-confirm {
+  display: inline-flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+@media (hover: none) {
+  .row-delete-btn {
+    opacity: 1;
+  }
+}
+
 .list-empty {
   padding: 28px;
   text-align: center;

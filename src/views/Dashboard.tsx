@@ -1,4 +1,4 @@
-import { type WheelEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type WheelEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   coverFileIdFor,
@@ -217,6 +217,7 @@ export function Dashboard() {
   const [showBulk, setShowBulk] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const boardRef = useRef<HTMLElement>(null);
 
   // separa itens ativos dos que estão na lixeira
   const active = useMemo(() => items.filter((i) => !i.deletedAt), [items]);
@@ -277,6 +278,30 @@ export function Dashboard() {
     }
     return map;
   }, [searched, filter]);
+
+  // O CSS consegue igualar colunas na mesma linha do grid. Aqui propagamos a
+  // altura da maior coluna para as linhas seguintes (ex.: "Publicado").
+  useLayoutEffect(() => {
+    if (view !== 'board') return;
+
+    const board = boardRef.current;
+    if (!board) return;
+
+    const syncColumnHeight = () => {
+      board.style.removeProperty('--board-column-min-height');
+      const columns = Array.from(board.querySelectorAll<HTMLElement>('.column'));
+      const maxHeight = Math.max(0, ...columns.map((column) => column.getBoundingClientRect().height));
+      board.style.setProperty('--board-column-min-height', `${Math.ceil(maxHeight)}px`);
+    };
+
+    const frame = requestAnimationFrame(syncColumnHeight);
+    window.addEventListener('resize', syncColumnHeight);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('resize', syncColumnHeight);
+      board.style.removeProperty('--board-column-min-height');
+    };
+  }, [view, byStage]);
 
   // na visão lista, o filtro de rede vira só "atribuído àquela rede"
   const listItems = useMemo(() => {
@@ -640,7 +665,7 @@ export function Dashboard() {
           onOpen={setOpenItemId}
         />
       ) : (
-        <main className="board">
+        <main ref={boardRef} className="board">
           {STAGES.filter(({ stage }) => {
             if (filter === 'raw') return stage === 'raw';
             if (filter === 'edited') return stage === 'edited';

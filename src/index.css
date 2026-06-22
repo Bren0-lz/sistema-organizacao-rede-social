@@ -608,7 +608,7 @@ input[type='time']::-webkit-calendar-picker-indicator {
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   padding: 16px 14px;
-  min-height: 240px;
+  min-height: max(240px, var(--board-column-min-height, 0px));
 }
 
 .column-head {

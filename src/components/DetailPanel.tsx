@@ -1296,10 +1296,11 @@ export function DetailPanel({ item, onClose }: Props) {
           </button>
         </div>
 
-        <section className="drawer-section">
-          <h3>{isCarousel ? 'Jornada do carrossel' : 'Jornada do vídeo'}</h3>
-          <JourneyTrail item={item} />
-        </section>
+        <div className="drawer-body">
+          <section className="drawer-section">
+            <h3>{isCarousel ? 'Jornada do carrossel' : 'Jornada do vídeo'}</h3>
+            <JourneyTrail item={item} />
+          </section>
 
         <section className="drawer-section">
           <h3>{isCarousel ? 'Imagens do carrossel' : 'Arquivos'}</h3>
@@ -1365,7 +1366,8 @@ export function DetailPanel({ item, onClose }: Props) {
               <Icon name="trash" /> Mover para lixeira
             </button>
           )}
-        </section>
+          </section>
+        </div>
       </motion.aside>
     </>
   );

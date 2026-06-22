@@ -3410,7 +3410,10 @@ input[type='time']::-webkit-calendar-picker-indicator {
     border-left: none;
     border-top: 1px solid var(--line-strong);
     border-radius: 22px 22px 0 0;
-    padding: 24px 20px calc(40px + env(safe-area-inset-bottom));
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 0;
   }
   /* alça do bottom-sheet */
   .drawer::before {
@@ -3423,17 +3426,28 @@ input[type='time']::-webkit-calendar-picker-indicator {
     height: 4px;
     border-radius: 999px;
     background: var(--line-strong);
+    z-index: 2;
+    pointer-events: none;
   }
   .drawer-head {
-    /* O cabeçalho — e principalmente o fechar — permanece dentro da viewport. */
-    /* Compensa o padding superior do sheet: com `top: 0`, o conteúdo rolável
-       ainda conseguia aparecer na faixa acima do cabeçalho fixo. */
-    top: -24px;
-    margin: -24px -20px 24px;
+    /* Fica fora da área rolável: evita os recálculos instáveis de `sticky`
+       do Safari quando as barras do navegador aparecem ou desaparecem. */
+    position: relative;
+    top: auto;
+    z-index: 1;
+    flex: 0 0 auto;
+    margin: 0;
     padding: 34px 20px 14px;
     background: var(--bg-raised);
     border-bottom-color: var(--line);
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.16);
+  }
+  .drawer-body {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding: 24px 20px calc(40px + env(safe-area-inset-bottom));
   }
   .drawer-close {
     flex: 0 0 auto;

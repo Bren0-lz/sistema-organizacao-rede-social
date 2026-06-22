@@ -167,11 +167,24 @@ function FileSlotBox({ item, slot }: { item: ContentItem; slot: FileSlot }) {
       </span>
       {fileId && (
         <span className="slot-actions">
+          <button
+            className="slot-action slot-action-download"
+            type="button"
+            title={`Baixar ${meta.label.toLowerCase()}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              void downloadFile(fileId, item.title);
+            }}
+          >
+            <Icon name="download" />
+            <span>Baixar</span>
+          </button>
           <a
-            className="slot-link"
+            className="slot-action slot-action-drive"
             href={`https://drive.google.com/file/d/${fileId}/view`}
             target="_blank"
             rel="noreferrer"
+            title={`Abrir ${meta.label.toLowerCase()} no Google Drive`}
             onClick={(e) => e.stopPropagation()}
           >
             abrir no Drive ↗

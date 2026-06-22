@@ -180,7 +180,12 @@ interface AppState {
   removeCarouselImage(itemId: string, fileId: string): Promise<void>;
   /** Move uma imagem do carrossel de uma posição para outra (reordena a exibição). */
   reorderCarousel(itemId: string, from: number, to: number): Promise<void>;
-  loadCover(fileId: string): Promise<void>;
+  /**
+   * Baixa e cacheia a miniatura de um arquivo. `thumbnailOnly` (usado quando o
+   * fileId é um vídeo, p/ capa temporária pelo frame do Drive) impede o fallback
+   * de baixar o arquivo inteiro: sem thumbnail, mantém o placeholder.
+   */
+  loadCover(fileId: string, options?: { thumbnailOnly?: boolean }): Promise<void>;
 }
 
 const SLOT_FIELD: Record<FileSlot, keyof Pick<
@@ -978,10 +983,12 @@ export const useStore = create<AppState>((set, get) => {
       );
     },
 
-    async loadCover(fileId) {
+    async loadCover(fileId, options) {
       if (get().coverUrls[fileId]) return;
       try {
-        const url = await coverLimiter(() => fetchThumbnailUrl(fileId));
+        const url = await coverLimiter(() =>
+          fetchThumbnailUrl(fileId, { allowFullDownload: !options?.thumbnailOnly }),
+        );
         set({ coverUrls: { ...get().coverUrls, [fileId]: url } });
       } catch {
         // capa indisponível — o card mostra o placeholder

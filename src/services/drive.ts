@@ -285,8 +285,17 @@ export async function downloadFile(fileId: string, fallbackName?: string): Promi
  * Versão leve de {@link fetchBlobUrl} para capas: baixa o `thumbnailLink` do
  * Drive (poucos KB) em vez do arquivo cheio. Se o item não tiver thumbnail
  * disponível, cai de volta para o download completo.
+ *
+ * `allowFullDownload: false` desliga esse fallback — usado quando o fileId é um
+ * vídeo (capa temporária pelo frame do Drive): baixar o vídeo inteiro seria
+ * pesado e um `<img>` nem o exibiria. Sem thumbnail, apenas lança e o card
+ * mantém o placeholder.
  */
-export async function fetchThumbnailUrl(fileId: string): Promise<string> {
+export async function fetchThumbnailUrl(
+  fileId: string,
+  options: { allowFullDownload?: boolean } = {},
+): Promise<string> {
+  const { allowFullDownload = true } = options;
   const info = await getFileInfo(fileId);
   if (info.thumbnailLink) {
     try {
@@ -298,6 +307,9 @@ export async function fetchThumbnailUrl(fileId: string): Promise<string> {
     } catch {
       // thumbnail indisponível/expirado — segue para o fallback abaixo
     }
+  }
+  if (!allowFullDownload) {
+    throw new Error('Miniatura do vídeo ainda não disponível no Drive.');
   }
   return fetchBlobUrl(fileId);
 }

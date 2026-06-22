@@ -1,11 +1,11 @@
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
-  coverFileIdFor,
   isAutoPostedFromSchedule,
   itemStage,
   itemType,
   NETWORKS,
+  thumbSourceFor,
   type ContentItem,
 } from '../types';
 import { useStore } from '../store/useStore';
@@ -22,8 +22,11 @@ interface Props {
 
 export function ContentCard({ item, onOpen }: Props) {
   // assina só a URL desta capa — não o mapa inteiro — para que o carregamento
-  // de uma capa não re-renderize todos os cards visíveis
-  const coverFileId = coverFileIdFor(item);
+  // de uma capa não re-renderize todos os cards visíveis. Sem capa, um vídeo
+  // cai no frame que o Drive gera dele (capa temporária).
+  const thumb = thumbSourceFor(item);
+  const coverFileId = thumb?.fileId;
+  const fromVideo = thumb?.fromVideo ?? false;
   const coverUrl = useStore((s) => (coverFileId ? s.coverUrls[coverFileId] : undefined));
   const loadCover = useStore((s) => s.loadCover);
   const { ref, inView } = useInView<HTMLElement>();
@@ -33,8 +36,8 @@ export function ContentCard({ item, onOpen }: Props) {
 
   useEffect(() => {
     // só baixa a capa quando o card entra na viewport
-    if (inView && coverFileId) void loadCover(coverFileId);
-  }, [inView, coverFileId, loadCover]);
+    if (inView && coverFileId) void loadCover(coverFileId, { thumbnailOnly: fromVideo });
+  }, [inView, coverFileId, fromVideo, loadCover]);
 
   return (
     <motion.article
@@ -54,7 +57,9 @@ export function ContentCard({ item, onOpen }: Props) {
           <img src={coverUrl} alt={`Capa de ${item.title}`} />
         ) : (
           <div className="card-cover-placeholder">
-            <Icon name={coverFileId ? 'hourglass' : isCarousel ? 'carousel' : 'video'} />
+            <Icon
+              name={!fromVideo && coverFileId ? 'hourglass' : isCarousel ? 'carousel' : 'video'}
+            />
           </div>
         )}
         <span className="card-type-badge" title={isCarousel ? 'Carrossel' : 'Vídeo'}>

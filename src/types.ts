@@ -219,6 +219,33 @@ export function coverFileIdFor(item: ContentItem): string | undefined {
   return item.coverFileId;
 }
 
+/** Origem da miniatura a exibir no card/lista. */
+export interface ThumbSource {
+  fileId: string;
+  /**
+   * `true` quando a miniatura vem do próprio arquivo de vídeo (capa temporária:
+   * o frame que o Drive gera), e não de uma capa definida pelo usuário. Nesse
+   * caso o carregador não deve baixar o vídeo inteiro como fallback.
+   */
+  fromVideo: boolean;
+}
+
+/**
+ * Qual miniatura exibir e de onde ela vem. Igual a {@link coverFileIdFor}
+ * quando há capa/1ª imagem; mas, para um vídeo ainda sem capa, cai no próprio
+ * vídeo (editado de preferência, senão o cru) para usar o frame gerado pelo
+ * Drive como capa provisória, evitando a tela preta.
+ */
+export function thumbSourceFor(item: ContentItem): ThumbSource | undefined {
+  const cover = coverFileIdFor(item);
+  if (cover) return { fileId: cover, fromVideo: false };
+  if (itemType(item) === 'video') {
+    const videoFileId = item.editedVideoFileId ?? item.rawVideoFileId;
+    if (videoFileId) return { fileId: videoFileId, fromVideo: true };
+  }
+  return undefined;
+}
+
 /** Estágio do item no pipeline de produção. */
 export type Stage = 'raw' | 'edited' | 'ready' | 'scheduled' | 'posted';
 

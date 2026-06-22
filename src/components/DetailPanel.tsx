@@ -354,15 +354,16 @@ function CarouselEditor({ item }: { item: ContentItem }) {
 // Preview do vídeo sob demanda: mostra um poster (capa, se houver) com botão ▶.
 // O iframe pesado do Drive só monta após o clique, mantendo a abertura do drawer fluida.
 function VideoPreview({ item, fileId }: { item: ContentItem; fileId: string }) {
-  const coverUrl = useStore((s) =>
-    item.coverFileId ? s.coverUrls[item.coverFileId] : undefined,
-  );
+  // capa real, se houver; senão usa o frame que o Drive gera do vídeo (provisório)
+  const posterFileId = item.coverFileId ?? fileId;
+  const fromVideo = !item.coverFileId;
+  const coverUrl = useStore((s) => s.coverUrls[posterFileId]);
   const loadCover = useStore((s) => s.loadCover);
   const [playing, setPlaying] = useState(false);
 
   useEffect(() => {
-    if (!playing && item.coverFileId) void loadCover(item.coverFileId);
-  }, [playing, item.coverFileId, loadCover]);
+    if (!playing) void loadCover(posterFileId, { thumbnailOnly: fromVideo });
+  }, [playing, posterFileId, fromVideo, loadCover]);
 
   if (playing) {
     return (

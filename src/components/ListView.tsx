@@ -1,12 +1,12 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useWindowVirtualizer } from '@tanstack/react-virtual';
 import {
-  coverFileIdFor,
   isAutoPostedFromSchedule,
   itemStage,
   itemType,
   NETWORKS,
   STAGE_ORDER,
+  thumbSourceFor,
   type ContentItem,
 } from '../types';
 import { useStore } from '../store/useStore';
@@ -28,7 +28,15 @@ interface Props {
   onOpen: (id: string) => void;
 }
 
-function LazyThumb({ fileId, isCarousel }: { fileId?: string; isCarousel: boolean }) {
+function LazyThumb({
+  fileId,
+  fromVideo = false,
+  isCarousel,
+}: {
+  fileId?: string;
+  fromVideo?: boolean;
+  isCarousel: boolean;
+}) {
   // assina só a URL desta capa — não o mapa inteiro — senão cada capa que
   // carrega re-renderiza todas as linhas visíveis (o grande causador de travamento)
   const url = useStore((s) => (fileId ? s.coverUrls[fileId] : undefined));
@@ -36,8 +44,8 @@ function LazyThumb({ fileId, isCarousel }: { fileId?: string; isCarousel: boolea
   const { ref, inView } = useInView<HTMLDivElement>();
 
   useEffect(() => {
-    if (inView && fileId) void loadCover(fileId);
-  }, [inView, fileId, loadCover]);
+    if (inView && fileId) void loadCover(fileId, { thumbnailOnly: fromVideo });
+  }, [inView, fileId, fromVideo, loadCover]);
 
   return (
     <div className="row-thumb" ref={ref} data-type={isCarousel ? 'carousel' : 'video'}>
@@ -45,7 +53,7 @@ function LazyThumb({ fileId, isCarousel }: { fileId?: string; isCarousel: boolea
         <img src={url} alt="" loading="lazy" />
       ) : (
         <span className="row-thumb-ph">
-          <Icon name={fileId ? 'hourglass' : isCarousel ? 'carousel' : 'video'} />
+          <Icon name={!fromVideo && fileId ? 'hourglass' : isCarousel ? 'carousel' : 'video'} />
         </span>
       )}
       <span className="row-type-badge" title={isCarousel ? 'Carrossel' : 'Vídeo'} aria-hidden>
@@ -77,6 +85,7 @@ const ListRow = memo(function ListRow({
 }) {
   const stage = itemStage(item);
   const isCarousel = itemType(item) === 'carousel';
+  const thumb = thumbSourceFor(item);
   return (
     <tr
       data-index={index}
@@ -93,7 +102,7 @@ const ListRow = memo(function ListRow({
         />
       </td>
       <td className="col-thumb">
-        <LazyThumb fileId={coverFileIdFor(item)} isCarousel={isCarousel} />
+        <LazyThumb fileId={thumb?.fileId} fromVideo={thumb?.fromVideo} isCarousel={isCarousel} />
       </td>
       <td className="col-title">
         <span className="row-title">{item.title}</span>

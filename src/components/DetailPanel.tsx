@@ -628,6 +628,10 @@ function NetworkRow({ item, network }: { item: ContentItem; network: Network }) 
         >
           {!isYoutube && (
             <>
+              <p className="network-direct-publish-notice" role="note">
+                O envio direto para o {NETWORK_LABELS[network]} ainda nao esta disponivel. Use
+                este painel para organizar a publicacao e atualizar o status apos publicar.
+              </p>
               <div className="status-tabs">
                 {(['none', 'scheduled', 'posted'] as const).map((status) => (
                   <button

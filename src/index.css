@@ -233,6 +233,20 @@ input[type='time']::-webkit-calendar-picker-indicator {
   border-color: var(--ink-faint);
 }
 
+/* Ação de salvar nas configurações: reconhecível sem competir com conectar. */
+.btn-client-save {
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.48);
+  color: #a5e3ff;
+  box-shadow: 0 4px 14px -8px rgba(56, 189, 248, 0.65);
+}
+
+.btn-client-save:hover:not(:disabled) {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: var(--st-ready);
+  color: #d7f3ff;
+}
+
 .btn-danger {
   color: #ff7a7a;
   border-color: rgba(255, 80, 80, 0.3);

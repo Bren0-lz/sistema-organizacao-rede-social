@@ -672,6 +672,69 @@ input[type='time']::-webkit-calendar-picker-indicator {
   touch-action: pan-y;
 }
 
+.account-control {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  height: 40px;
+  padding: 4px 6px 4px 5px;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg-raised);
+}
+
+.account-avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: var(--st-ready);
+  background: color-mix(in srgb, var(--st-ready) 15%, var(--bg-raised));
+}
+
+.account-details {
+  display: grid;
+  min-width: 0;
+  line-height: 1.15;
+}
+
+.account-label {
+  color: var(--ink-dim);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.account-email {
+  max-width: 190px;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-sign-out {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  color: var(--tt-pink);
+  font-size: 12px;
+  font-weight: 700;
+  transition: background 0.2s, color 0.2s;
+}
+
+.account-sign-out:hover {
+  background: color-mix(in srgb, var(--tt-pink) 12%, transparent);
+  color: var(--ink);
+}
+
 .column-pager {
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr) 34px;
@@ -4286,6 +4349,19 @@ input[type='time']::-webkit-calendar-picker-indicator {
     grid-column: 3;
     grid-row: 1;
     justify-self: end;
+  }
+  .topbar .account-control {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    width: 100%;
+    height: auto;
+    min-height: 44px;
+  }
+  .account-details {
+    flex: 1;
+  }
+  .account-email {
+    max-width: none;
   }
   .topbar .icon-btn {
     width: 44px;

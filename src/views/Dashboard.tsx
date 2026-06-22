@@ -182,6 +182,8 @@ function BoardColumn({
 export function Dashboard() {
   const items = useStore((s) => s.items);
   const refresh = useStore((s) => s.refresh);
+  const signOut = useStore((s) => s.signOut);
+  const accountEmail = useStore((s) => s.accountEmail);
   const deleteItem = useStore((s) => s.deleteItem);
   const [filter, setFilter] = useState<Filter>('all');
   const [view, setView] = useState<ViewMode>('list');
@@ -445,6 +447,19 @@ export function Dashboard() {
         <button className="icon-btn nav-settings" title="Configurações" onClick={() => setShowSettings(true)}>
           <Icon name="settings" size={18} />
         </button>
+        <div className="account-control" aria-label="Conta conectada">
+          <span className="account-avatar" aria-hidden="true">
+            <Icon name="user" size={18} />
+          </span>
+          <span className="account-details">
+            <span className="account-label">Conta conectada</span>
+            <span className="account-email" title={accountEmail}>{accountEmail ?? 'Conta Google'}</span>
+          </span>
+          <button className="account-sign-out" type="button" onClick={signOut} title="Sair da conta">
+            <Icon name="logout" size={16} />
+            <span>Sair</span>
+          </button>
+        </div>
         <button className="btn btn-ghost nav-bulk hide-mobile" onClick={() => setShowBulk(true)}>
           <Icon name="upload" /> Subir em lote
         </button>

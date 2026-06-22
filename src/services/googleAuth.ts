@@ -3,6 +3,8 @@
 // uma conta Google diferente da conta usada para armazenar os arquivos no Drive.
 
 const DRIVE_SCOPE = [
+  'openid',
+  'email',
   'https://www.googleapis.com/auth/drive.file',
   'https://www.googleapis.com/auth/calendar.events',
 ].join(' ');
@@ -23,7 +25,8 @@ export function setYoutubeClientId(id?: string): void {
 }
 
 // v5: removeu escopos do YouTube do login principal.
-const TOKEN_KEY = 'org-social:token:v5';
+// v6: inclui os escopos de identidade para exibir a conta conectada no app.
+const TOKEN_KEY = 'org-social:token:v6';
 const YOUTUBE_TOKEN_KEY = 'org-social:youtube-token:v1';
 const OAUTH_STATE_KEY = 'org-social:oauth-state:v1';
 
@@ -334,6 +337,22 @@ export function getAccessToken(interactive = false): Promise<string> {
     prompt: 'select_account',
     missingSessionMessage: 'Sessao expirada - faca login novamente.',
   });
+}
+
+/** E-mail da conta Google que autorizou o acesso principal ao Drive/Agenda. */
+export async function getSignedInEmail(): Promise<string | undefined> {
+  try {
+    const accessToken = await getAccessToken(false);
+    const response = await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!response.ok) return undefined;
+    const profile = (await response.json()) as { email?: unknown };
+    return typeof profile.email === 'string' ? profile.email : undefined;
+  } catch {
+    // A conta continua funcional mesmo se o endpoint de perfil estiver indisponível.
+    return undefined;
+  }
 }
 
 export function getYoutubeAccessToken(

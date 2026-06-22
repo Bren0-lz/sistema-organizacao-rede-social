@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import {
   hasValidYoutubeToken,
+  getSignedInEmail,
   preloadAuth,
   restoreIOSRedirectSignIn,
   setYoutubeClientId,
@@ -122,6 +123,8 @@ interface AppState {
   youtubeErrorMessage?: string;
   /** Client ID OAuth do YouTube salvo no Drive (vazio = usa o padrão do build). */
   youtubeClientId?: string;
+  /** E-mail da conta principal usada para Drive e Agenda. */
+  accountEmail?: string;
   folders?: AppFolders;
   items: ContentItem[];
   recordings: Recording[];
@@ -401,6 +404,8 @@ export const useStore = create<AppState>((set, get) => {
         recordings: db.recordings,
         ideas: db.ideas,
       });
+      const accountEmail = await getSignedInEmail();
+      if (accountEmail) set({ accountEmail });
       if (normalized.changed) void persist();
       // limpa itens que já passaram dos 30 dias na lixeira
       const expired = normalized.items.filter(isTrashExpired).map((i) => i.id);
@@ -473,6 +478,7 @@ export const useStore = create<AppState>((set, get) => {
         youtubeAccount: undefined,
         youtubeErrorMessage: undefined,
         youtubeClientId: undefined,
+        accountEmail: undefined,
       });
     },
 

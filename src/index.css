@@ -3426,7 +3426,9 @@ input[type='time']::-webkit-calendar-picker-indicator {
   }
   .drawer-head {
     /* O cabeçalho — e principalmente o fechar — permanece dentro da viewport. */
-    top: 0;
+    /* Compensa o padding superior do sheet: com `top: 0`, o conteúdo rolável
+       ainda conseguia aparecer na faixa acima do cabeçalho fixo. */
+    top: -24px;
     margin: -24px -20px 24px;
     padding: 34px 20px 14px;
     background: var(--bg-raised);

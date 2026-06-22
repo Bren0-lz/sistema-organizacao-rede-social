@@ -105,6 +105,7 @@ function FileSlotBox({ item, slot }: { item: ContentItem; slot: FileSlot }) {
   const uploadToItem = useStore((s) => s.uploadToItem);
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   const fileId =
     slot === 'raw'
@@ -168,16 +169,20 @@ function FileSlotBox({ item, slot }: { item: ContentItem; slot: FileSlot }) {
       {fileId && (
         <span className="slot-actions">
           <button
-            className="slot-action slot-action-download"
             type="button"
-            title={`Baixar ${meta.label.toLowerCase()}`}
-            onClick={(e) => {
+            className="slot-link slot-download"
+            disabled={downloading}
+            onClick={async (e) => {
               e.stopPropagation();
-              void downloadFile(fileId, item.title);
+              setDownloading(true);
+              try {
+                await downloadFile(fileId, item.title);
+              } finally {
+                setDownloading(false);
+              }
             }}
           >
-            <Icon name="download" />
-            <span>Baixar</span>
+            <Icon name="download" size={13} /> {downloading ? 'Baixando…' : 'Baixar'}
           </button>
           <a
             className="slot-action slot-action-drive"

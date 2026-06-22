@@ -1079,6 +1079,22 @@ input[type='time']::-webkit-calendar-picker-indicator {
   background: rgba(14, 116, 144, 0.58);
 }
 
+.slot-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.slot-download:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 /* ---- editor de carrossel (painel de detalhes) ---- */
 .carousel-grid {
   display: grid;

@@ -52,6 +52,11 @@ body {
   min-width: 0;
 }
 
+html {
+  overflow-y: scroll; /* fallback: sempre reserva a calha da barra */
+  scrollbar-gutter: stable; /* moderno: reserva sem forçar thumb visível */
+}
+
 body {
   background: var(--bg);
   color: var(--ink);

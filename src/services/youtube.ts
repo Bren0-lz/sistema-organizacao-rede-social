@@ -45,6 +45,13 @@ export interface YouTubeChannelInfo {
   customUrl?: string;
 }
 
+/** Estatisticas publicadas pelo YouTube para um video. */
+export interface YouTubeVideoStatistics {
+  viewCount: number;
+  likeCount?: number;
+  commentCount?: number;
+}
+
 interface YouTubeVideoSnippet {
   title?: string;
   description?: string;
@@ -65,6 +72,11 @@ interface YouTubeVideoStatus {
 interface YouTubeVideoResource {
   snippet?: YouTubeVideoSnippet;
   status?: YouTubeVideoStatus;
+  statistics?: {
+    viewCount?: string;
+    likeCount?: string;
+    commentCount?: string;
+  };
 }
 
 export async function uploadScheduledVideo({
@@ -308,6 +320,30 @@ export async function getCurrentYoutubeChannel(): Promise<YouTubeChannelInfo> {
     id: channel.id,
     title: channel.snippet?.title ?? 'Canal do YouTube',
     customUrl: channel.snippet?.customUrl,
+  };
+}
+
+/**
+ * Busca os contadores atuais de um video que ja esta vinculado ao sistema.
+ * A Data API retorna os valores como texto; normalizamos aqui para a interface
+ * nao precisar conhecer esse detalhe da API.
+ */
+export async function getYoutubeVideoStatistics(
+  videoId: string,
+): Promise<YouTubeVideoStatistics> {
+  const token = await getYoutubeAccessToken();
+  const video = await fetchYoutubeVideo(videoId, token, 'statistics');
+  const statistics = video.statistics ?? {};
+  const toNumber = (value: string | undefined): number | undefined => {
+    if (value === undefined) return undefined;
+    const number = Number(value);
+    return Number.isFinite(number) ? number : undefined;
+  };
+
+  return {
+    viewCount: toNumber(statistics.viewCount) ?? 0,
+    likeCount: toNumber(statistics.likeCount),
+    commentCount: toNumber(statistics.commentCount),
   };
 }
 

@@ -78,6 +78,30 @@ const coverRetryScheduled = new Set<string>();
 /** Uploads em lote: no máximo 3 arquivos subindo ao mesmo tempo. */
 const uploadLimiter = createLimiter(3);
 
+/**
+ * Limite para montar a estrutura do Drive no boot. As chamadas REST do Drive não
+ * têm timeout próprio; numa rede móvel ruim uma delas pode pendurar e prender o
+ * app em "conectando ao drive…" para sempre. Estourando este prazo, mostramos a
+ * tela de erro (com botão "Voltar ao login") em vez de espera infinita.
+ */
+const CONNECT_TIMEOUT_MS = 45_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
 /** Destino de um upload: um slot de vídeo/capa ou uma imagem de carrossel. */
 export type UploadKind = FileSlot | 'carousel';
 
@@ -362,7 +386,11 @@ export const useStore = create<AppState>((set, get) => {
     }
 
     try {
-      const { folders, config, db } = await loadStructureAndData();
+      const { folders, config, db } = await withTimeout(
+        loadStructureAndData(),
+        CONNECT_TIMEOUT_MS,
+        'Não foi possível conectar ao Drive. Verifique sua conexão e tente novamente.',
+      );
       setYoutubeClientId(config.youtubeClientId);
       const normalized = markElapsedScheduledPosts(db.items);
       set({

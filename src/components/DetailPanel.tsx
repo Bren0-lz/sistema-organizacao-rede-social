@@ -182,7 +182,8 @@ function FileSlotBox({ item, slot }: { item: ContentItem; slot: FileSlot }) {
               }
             }}
           >
-            <Icon name="download" size={13} /> {downloading ? 'Baixando…' : 'Baixar'}
+            {!downloading && <Icon name="download" size={13} />}
+            {downloading ? 'Baixando…' : 'Baixar'}
           </button>
           <a
             className="slot-action slot-action-drive"

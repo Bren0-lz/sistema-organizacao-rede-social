@@ -1061,6 +1061,8 @@ input[type='time']::-webkit-calendar-picker-indicator {
   line-height: 1;
   text-decoration: none;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   cursor: pointer;
   transition: background 0.16s, border-color 0.16s, color 0.16s, transform 0.16s;
 }

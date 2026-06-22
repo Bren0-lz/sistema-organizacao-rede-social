@@ -409,7 +409,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
           />
           <div className="modal-actions" style={{ justifyContent: 'flex-start', marginTop: 8 }}>
             <button
-              className="btn btn-ghost"
+              className="btn btn-client-save"
               disabled={clientIdBusy || clientIdInput.trim() === (youtubeClientId ?? '')}
               onClick={async () => {
                 setClientIdBusy(true);

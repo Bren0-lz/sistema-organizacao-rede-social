@@ -57,6 +57,16 @@ export const STAGE_LABELS: Record<Stage, string> = {
   posted: 'Publicado',
 };
 
+/**
+ * Rótulo do estágio levando em conta o tipo do item: no estágio `raw`, um
+ * carrossel não tem "vídeo", então mostramos "Imagens" em vez de "Vídeo bruto".
+ */
+export function itemStageLabel(item: ContentItem): string {
+  const stage = itemStage(item);
+  if (stage === 'raw' && itemType(item) === 'carousel') return 'Imagens';
+  return STAGE_LABELS[stage];
+}
+
 export const STAGE_COLORS: Record<Stage, string> = {
   raw: 'var(--st-raw)',
   edited: 'var(--st-edited)',

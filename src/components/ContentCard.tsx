@@ -13,7 +13,7 @@ import { useInView } from '../lib/concurrency';
 import { NetworkIcon } from './NetworkIcon';
 import { Icon } from './Icon';
 import { TrailMini } from './TrailMini';
-import { STAGE_LABELS } from '../lib/journey';
+import { itemStageLabel } from '../lib/journey';
 
 interface Props {
   item: ContentItem;
@@ -95,7 +95,7 @@ export function ContentCard({ item, onOpen }: Props) {
         <div className="card-trail">
           <TrailMini item={item} />
           <span className="card-trail-label" data-stage={stage}>
-            {STAGE_LABELS[stage]}
+            {itemStageLabel(item)}
           </span>
         </div>
       </div>

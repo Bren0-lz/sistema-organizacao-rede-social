@@ -15,7 +15,7 @@ import { NetworkIcon } from './NetworkIcon';
 import { StageIcon } from './StageIcon';
 import { Icon } from './Icon';
 import { RowTrail } from './RowTrail';
-import { STAGE_COLORS, STAGE_LABELS } from '../lib/journey';
+import { STAGE_COLORS, itemStageLabel } from '../lib/journey';
 
 type SortKey = 'title' | 'updated' | 'stage';
 type SortDir = 'asc' | 'desc';
@@ -146,7 +146,7 @@ const ListRow = memo(function ListRow({
       </td>
       <td className="col-stage">
         <span className="stage-tag" style={{ color: STAGE_COLORS[stage] }}>
-          <StageIcon stage={stage} /> {STAGE_LABELS[stage]}
+          <StageIcon stage={stage} /> {itemStageLabel(item)}
         </span>
       </td>
       <td className="col-date">

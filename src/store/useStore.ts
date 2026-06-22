@@ -11,6 +11,7 @@ import {
   restoreSession,
 } from '../services/googleAuth';
 import {
+  clearFolderCache,
   deleteFile,
   ensureAppStructure,
   fetchFileBlob,
@@ -323,13 +324,35 @@ export const useStore = create<AppState>((set, get) => {
 
   async function connect(explicitRootId?: string): Promise<void> {
     set({ authStatus: 'connecting', errorMessage: undefined });
+
+    // Carrega a estrutura de pastas e, em paralelo, config.json + db.json. Se a
+    // estrutura veio do cache e algum ID ficou obsoleto (pasta movida/recriada
+    // por outro membro), a leitura falha: zeramos o cache e redescobrimos do zero
+    // uma única vez antes de propagar o erro.
+    async function loadStructureAndData() {
+      const attempt = async () => {
+        const folders = await ensureAppStructure(explicitRootId);
+        const [config, db] = await Promise.all([
+          readJsonFile<AppConfig>(folders.configFileId).catch(() => ({}) as AppConfig),
+          loadDatabase(folders.dbFileId),
+        ]);
+        return { folders, config, db };
+      };
+      try {
+        return await attempt();
+      } catch (firstError) {
+        clearFolderCache();
+        try {
+          return await attempt();
+        } catch {
+          throw firstError;
+        }
+      }
+    }
+
     try {
-      const folders = await ensureAppStructure(explicitRootId);
-      const config = await readJsonFile<AppConfig>(folders.configFileId).catch(
-        () => ({}) as AppConfig,
-      );
+      const { folders, config, db } = await loadStructureAndData();
       setYoutubeClientId(config.youtubeClientId);
-      const db = await loadDatabase(folders.dbFileId);
       const normalized = markElapsedScheduledPosts(db.items);
       set({
         authStatus: 'ready',

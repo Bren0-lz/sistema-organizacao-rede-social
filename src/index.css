@@ -2431,7 +2431,7 @@ input[type='time']::-webkit-calendar-picker-indicator {
   width: 138px;
 }
 .col-actions {
-  width: 132px;
+  width: 190px;
   text-align: right;
   white-space: nowrap;
 }

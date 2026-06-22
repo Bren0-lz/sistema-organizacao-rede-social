@@ -372,6 +372,72 @@ export async function fetchThumbnailUrl(
   return fetchBlobUrl(fileId);
 }
 
+/**
+ * Gera uma capa provisória de um vídeo no próprio navegador: baixa o arquivo
+ * (autenticado, o mesmo caminho usado para reproduzir), desenha um frame em um
+ * `<canvas>` e devolve um blob-URL da imagem (lado máximo de 480px).
+ *
+ * Usado como fallback quando o Drive não disponibiliza um thumbnail utilizável
+ * para o vídeo — caso desta app, que autentica por token (sem cookie de sessão),
+ * então o `thumbnailLink` do Drive costuma falhar por CORS/cookies. Baixa o
+ * vídeo inteiro uma vez; o resultado é cacheado por quem chama.
+ */
+export async function captureVideoFrameUrl(fileId: string): Promise<string> {
+  const blob = await fetchFileBlob(fileId);
+  const srcUrl = URL.createObjectURL(blob);
+  const video = document.createElement('video');
+  video.muted = true;
+  video.playsInline = true;
+  video.preload = 'auto';
+  video.src = srcUrl;
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(new Error('Tempo esgotado ao capturar o frame do vídeo.')),
+        10000,
+      );
+      video.onloadedmetadata = () => {
+        const duration = Number.isFinite(video.duration) ? video.duration : 0;
+        // evita o frame inicial (costuma ser preto): 1s ou metade do vídeo
+        video.currentTime = duration > 0 ? Math.min(duration / 2, 1) : 0.1;
+      };
+      video.onseeked = () => {
+        clearTimeout(timer);
+        resolve();
+      };
+      video.onerror = () => {
+        clearTimeout(timer);
+        reject(new Error('Não foi possível decodificar o vídeo.'));
+      };
+    });
+
+    const w = video.videoWidth;
+    const h = video.videoHeight;
+    if (!w || !h) throw new Error('Vídeo sem dimensões para capturar.');
+    const scale = Math.min(1, 480 / Math.max(w, h));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(w * scale));
+    canvas.height = Math.max(1, Math.round(h * scale));
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas 2D indisponível.');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const frame = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, 'image/jpeg', 0.8),
+    );
+    if (!frame) throw new Error('Falha ao gerar a imagem do frame.');
+    return URL.createObjectURL(frame);
+  } finally {
+    video.onloadedmetadata = null;
+    video.onseeked = null;
+    video.onerror = null;
+    video.removeAttribute('src');
+    video.load();
+    URL.revokeObjectURL(srcUrl);
+  }
+}
+
 export function setSharedRootFolder(folderIdOrUrl: string): string {
   // aceita tanto o ID puro quanto a URL https://drive.google.com/drive/folders/<id>
   const match = folderIdOrUrl.match(/folders\/([\w-]+)/);

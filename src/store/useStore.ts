@@ -11,6 +11,7 @@ import {
   restoreSession,
 } from '../services/googleAuth';
 import {
+  captureVideoFrameUrl,
   clearFolderCache,
   deleteFile,
   ensureAppStructure,
@@ -65,11 +66,11 @@ import {
 /** Capas baixadas no máximo 4 por vez, para não saturar a rede. */
 const coverLimiter = createLimiter(4);
 /**
- * O frame que o Drive gera de um vídeo (capa temporária) só fica disponível
- * alguns segundos/minutos depois do upload. Reagendamos algumas tentativas com
- * espera crescente até o Drive terminar de gerá-lo, em vez de desistir na 1ª
- * falha (senão o placeholder ficaria a sessão inteira). `coverRetryScheduled`
- * garante no máximo um timer pendente por arquivo.
+ * Capa provisória de vídeo: tentamos o thumbnail do Drive e, se falhar, geramos
+ * o frame localmente. Quando até a captura local falha (rede/codec), reagendamos
+ * algumas tentativas com espera crescente em vez de desistir na 1ª falha (senão
+ * o placeholder ficaria a sessão inteira). `coverRetryScheduled` garante no
+ * máximo um timer pendente por arquivo.
  */
 const VIDEO_THUMB_RETRY_DELAYS = [4000, 10000, 20000, 40000, 60000];
 const coverRetries = new Map<string, number>();
@@ -1021,27 +1022,43 @@ export const useStore = create<AppState>((set, get) => {
 
     async loadCover(fileId, options) {
       if (get().coverUrls[fileId]) return;
+      const cacheUrl = (url: string) => {
+        coverRetries.delete(fileId);
+        set({ coverUrls: { ...get().coverUrls, [fileId]: url } });
+      };
+
       try {
         const url = await coverLimiter(() =>
           fetchThumbnailUrl(fileId, { allowFullDownload: !options?.thumbnailOnly }),
         );
-        coverRetries.delete(fileId);
-        set({ coverUrls: { ...get().coverUrls, [fileId]: url } });
+        cacheUrl(url);
+        return;
       } catch {
-        // Capa de vídeo (frame do Drive) costuma surgir alguns segundos após o
-        // upload: reagenda enquanto houver tentativas restantes, em vez de
-        // desistir. Demais capas mantêm o placeholder.
-        if (options?.thumbnailOnly && !coverRetryScheduled.has(fileId)) {
-          const attempt = coverRetries.get(fileId) ?? 0;
-          const delay = VIDEO_THUMB_RETRY_DELAYS[attempt];
-          if (delay !== undefined) {
-            coverRetries.set(fileId, attempt + 1);
-            coverRetryScheduled.add(fileId);
-            setTimeout(() => {
-              coverRetryScheduled.delete(fileId);
-              if (!get().coverUrls[fileId]) void get().loadCover(fileId, options);
-            }, delay);
-          }
+        // miniatura do Drive indisponível — capas de imagem param aqui (mantêm
+        // o placeholder); vídeos seguem para o fallback de captura local
+      }
+      if (!options?.thumbnailOnly) return;
+
+      // Vídeo sem capa: como esta app autentica por token (sem cookie), o
+      // thumbnailLink do Drive costuma falhar, então geramos o frame no próprio
+      // navegador a partir do arquivo. Baixa o vídeo uma vez e cacheia.
+      try {
+        const url = await coverLimiter(() => captureVideoFrameUrl(fileId));
+        cacheUrl(url);
+        return;
+      } catch {
+        // captura falhou (rede/codec) — reagenda algumas tentativas
+      }
+      if (!coverRetryScheduled.has(fileId)) {
+        const attempt = coverRetries.get(fileId) ?? 0;
+        const delay = VIDEO_THUMB_RETRY_DELAYS[attempt];
+        if (delay !== undefined) {
+          coverRetries.set(fileId, attempt + 1);
+          coverRetryScheduled.add(fileId);
+          setTimeout(() => {
+            coverRetryScheduled.delete(fileId);
+            if (!get().coverUrls[fileId]) void get().loadCover(fileId, options);
+          }, delay);
         }
       }
     },

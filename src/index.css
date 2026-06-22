@@ -53,8 +53,10 @@ body {
 }
 
 html {
+  overflow-x: hidden; /* sem rolagem horizontal */
   overflow-y: scroll; /* fallback: sempre reserva a calha da barra */
   scrollbar-gutter: stable; /* moderno: reserva sem forçar thumb visível */
+  overscroll-behavior-x: none; /* mata o efeito elástico de esticar no eixo X */
 }
 
 body {
@@ -65,6 +67,7 @@ body {
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
+  overscroll-behavior-x: none; /* sem rubber-band lateral */
 }
 
 #root {

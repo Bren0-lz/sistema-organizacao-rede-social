@@ -192,7 +192,7 @@ function FileSlotBox({ item, slot }: { item: ContentItem; slot: FileSlot }) {
             title={`Abrir ${meta.label.toLowerCase()} no Google Drive`}
             onClick={(e) => e.stopPropagation()}
           >
-            abrir no Drive ↗
+            Drive ↗
           </a>
         </span>
       )}

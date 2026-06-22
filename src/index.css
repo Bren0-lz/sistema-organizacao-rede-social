@@ -1022,25 +1022,25 @@ input[type='time']::-webkit-calendar-picker-indicator {
 .slot-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-  margin-top: 10px;
+  gap: 5px;
+  margin: 11px 1px 0;
 }
 
 .slot-action {
   min-width: 0;
-  min-height: 28px;
+  min-height: 27px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 5px 6px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 7px;
-  background: rgba(8, 10, 18, 0.58);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) inset;
+  gap: 3px;
+  padding: 5px 4px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 6px;
+  background: rgba(8, 10, 18, 0.68);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.1) inset;
   color: var(--ink);
   font: inherit;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
   line-height: 1;
   text-decoration: none;
@@ -1055,7 +1055,7 @@ input[type='time']::-webkit-calendar-picker-indicator {
 }
 
 .slot-action svg {
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .slot-action:focus-visible {
@@ -1068,9 +1068,9 @@ input[type='time']::-webkit-calendar-picker-indicator {
 }
 
 .slot-action-drive {
-  color: #8bdcff;
-  border-color: rgba(56, 189, 248, 0.42);
-  background: rgba(14, 116, 144, 0.3);
+  color: #bdeaff;
+  border-color: rgba(56, 189, 248, 0.5);
+  background: rgba(8, 83, 112, 0.52);
 }
 
 .slot-action-drive:hover {

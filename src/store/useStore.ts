@@ -64,6 +64,16 @@ import {
 
 /** Capas baixadas no máximo 4 por vez, para não saturar a rede. */
 const coverLimiter = createLimiter(4);
+/**
+ * O frame que o Drive gera de um vídeo (capa temporária) só fica disponível
+ * alguns segundos/minutos depois do upload. Reagendamos algumas tentativas com
+ * espera crescente até o Drive terminar de gerá-lo, em vez de desistir na 1ª
+ * falha (senão o placeholder ficaria a sessão inteira). `coverRetryScheduled`
+ * garante no máximo um timer pendente por arquivo.
+ */
+const VIDEO_THUMB_RETRY_DELAYS = [4000, 10000, 20000, 40000, 60000];
+const coverRetries = new Map<string, number>();
+const coverRetryScheduled = new Set<string>();
 /** Uploads em lote: no máximo 3 arquivos subindo ao mesmo tempo. */
 const uploadLimiter = createLimiter(3);
 
@@ -1015,9 +1025,24 @@ export const useStore = create<AppState>((set, get) => {
         const url = await coverLimiter(() =>
           fetchThumbnailUrl(fileId, { allowFullDownload: !options?.thumbnailOnly }),
         );
+        coverRetries.delete(fileId);
         set({ coverUrls: { ...get().coverUrls, [fileId]: url } });
       } catch {
-        // capa indisponível — o card mostra o placeholder
+        // Capa de vídeo (frame do Drive) costuma surgir alguns segundos após o
+        // upload: reagenda enquanto houver tentativas restantes, em vez de
+        // desistir. Demais capas mantêm o placeholder.
+        if (options?.thumbnailOnly && !coverRetryScheduled.has(fileId)) {
+          const attempt = coverRetries.get(fileId) ?? 0;
+          const delay = VIDEO_THUMB_RETRY_DELAYS[attempt];
+          if (delay !== undefined) {
+            coverRetries.set(fileId, attempt + 1);
+            coverRetryScheduled.add(fileId);
+            setTimeout(() => {
+              coverRetryScheduled.delete(fileId);
+              if (!get().coverUrls[fileId]) void get().loadCover(fileId, options);
+            }, delay);
+          }
+        }
       }
     },
   };

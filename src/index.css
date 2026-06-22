@@ -672,35 +672,43 @@ input[type='time']::-webkit-calendar-picker-indicator {
   touch-action: pan-y;
 }
 
-.account-control {
-  display: inline-flex;
-  align-items: center;
+.account-menu {
+  position: relative;
   flex: 0 0 auto;
-  min-width: 0;
-  max-width: 100%;
+}
+
+.account-trigger {
+  display: grid;
+  place-items: center;
+  width: 40px;
   height: 40px;
-  padding: 4px 6px 4px 5px;
-  gap: 8px;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--bg-raised);
-}
-
-.account-avatar {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
   color: var(--st-ready);
-  background: color-mix(in srgb, var(--st-ready) 15%, var(--bg-raised));
+  transition: color 0.2s, border-color 0.2s, transform 0.15s;
 }
 
-.account-details {
+.account-trigger:hover,
+.account-trigger[aria-expanded='true'] {
+  color: var(--ink);
+  border-color: color-mix(in srgb, var(--st-ready) 55%, var(--line));
+  transform: translateY(-1px);
+}
+
+.account-popover {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 8px);
+  right: 0;
   display: grid;
-  min-width: 0;
-  line-height: 1.15;
+  width: min(300px, calc(100vw - 32px));
+  gap: 5px;
+  padding: 13px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--bg-raised-2, var(--bg-raised));
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.32);
 }
 
 .account-label {
@@ -712,7 +720,6 @@ input[type='time']::-webkit-calendar-picker-indicator {
 }
 
 .account-email {
-  max-width: 190px;
   overflow: hidden;
   color: var(--ink);
   font-size: 12px;
@@ -725,6 +732,7 @@ input[type='time']::-webkit-calendar-picker-indicator {
   align-items: center;
   gap: 5px;
   padding: 7px 8px;
+  margin-top: 5px;
   border-radius: 8px;
   color: var(--tt-pink);
   font-size: 12px;
@@ -740,10 +748,7 @@ input[type='time']::-webkit-calendar-picker-indicator {
 /* Em larguras intermediárias, a conta ocupa a própria linha em vez de encolher
    e deixar seu conteúdo avançar sobre as ações do cabeçalho. */
 @media (max-width: 1100px) {
-  .topbar .account-control {
-    flex: 1 0 280px;
-    margin-left: 0;
-  }
+  .topbar .account-menu { flex: 0 0 auto; }
 }
 
 .column-pager {
@@ -4332,7 +4337,7 @@ input[type='time']::-webkit-calendar-picker-indicator {
 @media (max-width: 768px) {
   .topbar {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 44px 44px;
+    grid-template-columns: minmax(0, 1fr) 44px 44px 44px;
     align-items: center;
     gap: 10px 12px;
   }
@@ -4361,18 +4366,14 @@ input[type='time']::-webkit-calendar-picker-indicator {
     grid-row: 1;
     justify-self: end;
   }
-  .topbar .account-control {
-    grid-column: 1 / -1;
-    grid-row: 3;
-    width: 100%;
-    height: auto;
-    min-height: 44px;
+  .topbar .account-menu {
+    grid-column: 4;
+    grid-row: 1;
+    justify-self: end;
   }
-  .account-details {
-    flex: 1;
-  }
-  .account-email {
-    max-width: none;
+  .topbar .account-trigger {
+    width: 44px;
+    height: 44px;
   }
   .topbar .icon-btn {
     width: 44px;

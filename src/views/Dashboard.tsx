@@ -201,8 +201,27 @@ export function Dashboard() {
   const [showNew, setShowNew] = useState(false);
   const [showBulk, setShowBulk] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const boardRef = useRef<HTMLElement>(null);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showAccountMenu) return;
+    const closeMenu = (event: MouseEvent | KeyboardEvent) => {
+      if (event instanceof KeyboardEvent) {
+        if (event.key === 'Escape') setShowAccountMenu(false);
+        return;
+      }
+      if (!accountMenuRef.current?.contains(event.target as Node)) setShowAccountMenu(false);
+    };
+    document.addEventListener('mousedown', closeMenu);
+    document.addEventListener('keydown', closeMenu);
+    return () => {
+      document.removeEventListener('mousedown', closeMenu);
+      document.removeEventListener('keydown', closeMenu);
+    };
+  }, [showAccountMenu]);
 
   // separa itens ativos dos que estão na lixeira
   const active = useMemo(() => items.filter((i) => !i.deletedAt), [items]);
@@ -447,18 +466,27 @@ export function Dashboard() {
         <button className="icon-btn nav-settings" title="Configurações" onClick={() => setShowSettings(true)}>
           <Icon name="settings" size={18} />
         </button>
-        <div className="account-control" aria-label="Conta conectada">
-          <span className="account-avatar" aria-hidden="true">
+        <div className="account-menu" ref={accountMenuRef}>
+          <button
+            className="account-trigger"
+            type="button"
+            aria-label="Abrir menu da conta"
+            aria-expanded={showAccountMenu}
+            aria-controls="account-menu-popover"
+            onClick={() => setShowAccountMenu((open) => !open)}
+          >
             <Icon name="user" size={18} />
-          </span>
-          <span className="account-details">
-            <span className="account-label">Conta conectada</span>
-            <span className="account-email" title={accountEmail}>{accountEmail ?? 'Conta Google'}</span>
-          </span>
-          <button className="account-sign-out" type="button" onClick={signOut} title="Sair da conta">
-            <Icon name="logout" size={16} />
-            <span>Sair</span>
           </button>
+          {showAccountMenu && (
+            <div className="account-popover" id="account-menu-popover">
+              <span className="account-label">Conta conectada</span>
+              <span className="account-email" title={accountEmail}>{accountEmail ?? 'Conta Google'}</span>
+              <button className="account-sign-out" type="button" onClick={signOut}>
+                <Icon name="logout" size={16} />
+                <span>Sair da conta</span>
+              </button>
+            </div>
+          )}
         </div>
         <button className="btn btn-ghost nav-bulk hide-mobile" onClick={() => setShowBulk(true)}>
           <Icon name="upload" /> Subir em lote

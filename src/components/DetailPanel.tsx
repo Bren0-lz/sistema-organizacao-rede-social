@@ -170,7 +170,7 @@ function FileSlotBox({ item, slot }: { item: ContentItem; slot: FileSlot }) {
         <span className="slot-actions">
           <button
             type="button"
-            className="slot-link slot-download"
+            className="slot-action slot-action-download"
             disabled={downloading}
             onClick={async (e) => {
               e.stopPropagation();

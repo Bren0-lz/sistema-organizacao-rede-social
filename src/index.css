@@ -1017,7 +1017,22 @@ input[type='time']::-webkit-calendar-picker-indicator {
   display: block;
   margin-top: 4px;
   font-size: 11px;
-  color: var(--ink-faint);
+  color: var(--ink-dim);
+}
+
+/* sobre a miniatura escura, clareia o texto e dá contraste com sombra */
+.slot.has-thumb .slot-label,
+.slot.has-thumb .slot-hint {
+  color: var(--ink);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+.slot.has-thumb .slot-hint {
+  color: rgba(242, 240, 236, 0.82);
+}
+
+.slot.has-thumb .slot-icon {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
 }
 
 .slot-actions {
@@ -1080,20 +1095,10 @@ input[type='time']::-webkit-calendar-picker-indicator {
   background: rgba(14, 116, 144, 0.58);
 }
 
-.slot-download {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  font: inherit;
-}
-
-.slot-download:disabled {
-  opacity: 0.6;
+.slot-action:disabled {
+  opacity: 0.55;
   cursor: default;
+  transform: none;
 }
 
 /* ---- editor de carrossel (painel de detalhes) ---- */

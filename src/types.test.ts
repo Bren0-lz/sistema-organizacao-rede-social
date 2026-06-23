@@ -246,3 +246,17 @@ describe('construtores (newContentItem / newRecording / newIdea)', () => {
     expect(idea.id).toBeTruthy();
   });
 });
+
+describe('emptyNetworkStatus', () => {
+  it('começa não atribuído e sem status de publicação', () => {
+    expect(emptyNetworkStatus()).toEqual({ assigned: false, status: 'none' });
+  });
+
+  it('retorna um objeto novo a cada chamada (não compartilha referência)', () => {
+    const a = emptyNetworkStatus();
+    const b = emptyNetworkStatus();
+    expect(a).not.toBe(b);
+    a.assigned = true;
+    expect(b.assigned).toBe(false);
+  });
+});

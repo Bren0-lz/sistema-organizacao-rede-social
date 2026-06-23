@@ -105,17 +105,19 @@ function BoardColumn({
 
   const hasItems = list.length > 0;
   const canNavigate = list.length > 1;
+  // `currentIndex` já mantém o índice dentro dos limites quando a lista encolhe,
+  // então não é preciso um efeito para "consertar" o activeIndex: toda leitura é
+  // derivada/clampada aqui no render.
   const currentIndex = hasItems ? Math.min(activeIndex, list.length - 1) : 0;
   const activeItem = hasItems ? list[currentIndex] : undefined;
-
-  useEffect(() => {
-    setActiveIndex((current) => (list.length === 0 ? 0 : Math.min(current, list.length - 1)));
-  }, [list.length]);
 
   const goTo = useCallback(
     (direction: 1 | -1) => {
       if (!canNavigate) return;
-      setActiveIndex((current) => (current + direction + list.length) % list.length);
+      setActiveIndex((current) => {
+        const idx = Math.min(current, list.length - 1);
+        return (idx + direction + list.length) % list.length;
+      });
     },
     [canNavigate, list.length],
   );

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildJourney, formatWhen, miniTrail } from './journey';
+import { buildJourney, formatWhen, itemStageLabel, miniTrail } from './journey';
 import {
   emptyNetworkStatus,
   newContentItem,
@@ -32,6 +32,22 @@ describe('formatWhen', () => {
   it('formata ISO válido como "DD/MM às HH:MM"', () => {
     // Asserção por forma (não valor exato) para não depender do fuso da máquina.
     expect(formatWhen('2026-06-15T09:05:00')).toMatch(/^\d{2}\/\d{2} às \d{2}:\d{2}$/);
+  });
+});
+
+describe('itemStageLabel', () => {
+  it('vídeo cru usa o rótulo "Vídeo bruto"', () => {
+    expect(itemStageLabel(makeItem())).toBe('Vídeo bruto');
+  });
+
+  it('carrossel cru troca "Vídeo bruto" por "Imagens"', () => {
+    expect(itemStageLabel(makeItem({ type: 'carousel' }))).toBe('Imagens');
+  });
+
+  it('em estágios além do cru, usa o rótulo padrão do estágio (mesmo carrossel)', () => {
+    const editado = makeItem({ type: 'carousel', carouselEditedAt: '2026-01-01T00:00:00Z' });
+    expect(itemStage(editado)).toBe('edited');
+    expect(itemStageLabel(editado)).toBe('Editado');
   });
 });
 

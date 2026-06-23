@@ -119,8 +119,12 @@ export function NewItemModal({
   const [videoPosterUrl, setVideoPosterUrl] = useState('');
   const [carouselPreviewUrls, setCarouselPreviewUrls] = useState<string[]>([]);
 
+  // Object-URL é um side-effect que exige revoke no cleanup; guardar a URL gerada
+  // em estado a partir do efeito é o padrão recomendado (useMemo poderia vazar, pois
+  // o React pode descartar o memo sem rodar cleanup).
   useEffect(() => {
     if (!selectedVideo) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- limpa o preview ao remover o vídeo
       setVideoPreviewUrl('');
       return;
     }
@@ -132,6 +136,7 @@ export function NewItemModal({
 
   useEffect(() => {
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reseta o poster antes de gerar o novo
     setVideoPosterUrl('');
 
     if (!selectedVideo) return;
@@ -147,6 +152,7 @@ export function NewItemModal({
 
   useEffect(() => {
     if (isVideo) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- carrossel não se aplica a vídeo
       setCarouselPreviewUrls([]);
       return;
     }

@@ -422,13 +422,8 @@ function VideoPreview({ item, fileId }: { item: ContentItem; fileId: string }) {
   const [videoUrl, setVideoUrl] = useState<string>();
   const [aspectRatio, setAspectRatio] = useState<number>();
   const [useDrivePreview, setUseDrivePreview] = useState(false);
-
-  useEffect(() => {
-    setPlaying(false);
-    setVideoUrl(undefined);
-    setAspectRatio(undefined);
-    setUseDrivePreview(false);
-  }, [fileId]);
+  // O reset de estado ao trocar de vídeo é feito por `key={fileId}` no pai
+  // (remonta o componente), em vez de um efeito que zera os estados.
 
   useEffect(() => {
     if (!playing) void loadCover(posterFileId, { thumbnailOnly: fromVideo });
@@ -545,7 +540,7 @@ function VideoVersionPreview({ item }: { item: ContentItem }) {
           ))}
         </div>
       )}
-      <VideoPreview item={item} fileId={selectedVersion.fileId} />
+      <VideoPreview key={selectedVersion.fileId} item={item} fileId={selectedVersion.fileId} />
     </div>
   );
 }
@@ -809,8 +804,13 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
             ? 'Enviar agora'
             : 'Enviar e agendar';
 
+  // Re-sincroniza o formulário editável com `state` quando ele muda após uma ação
+  // assíncrona (ex.: o agendamento volta do store). Remontar via `key` apagaria
+  // edições em andamento, então mantemos o efeito — é a exceção de "sincronizar com
+  // sistema externo" que a regra reconhece.
   useEffect(() => {
     if (state.scheduledAt) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sincroniza data/modo com o agendamento vindo do store
       setPublishAt(state.scheduledAt);
       setPublishMode('schedule');
     }
@@ -818,6 +818,7 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
 
   useEffect(() => {
     if (!privacyTouched) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- segue a privacidade do servidor até o usuário editar
       setPrivacyStatus(state.youtubePrivacyStatus ?? (state.youtubeVideoId ? '' : 'public'));
     }
   }, [privacyTouched, state.youtubePrivacyStatus, state.youtubeVideoId]);
@@ -837,6 +838,7 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
 
   useEffect(() => {
     if (!state.youtubeVideoId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- limpa métricas ao desvincular o vídeo do YouTube
       setMetrics(null);
       setMetricsError(null);
       return;

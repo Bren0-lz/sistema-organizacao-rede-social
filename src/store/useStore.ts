@@ -87,7 +87,7 @@ const uploadLimiter = createLimiter(3);
  */
 const CONNECT_TIMEOUT_MS = 45_000;
 
-function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+export function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(message)), ms);
     promise.then(
@@ -237,7 +237,7 @@ const SLOT_FIELD: Record<FileSlot, keyof Pick<
   cover: 'coverFileId',
 };
 
-function markElapsedScheduledPosts(
+export function markElapsedScheduledPosts(
   items: ContentItem[],
   now = Date.now(),
 ): { items: ContentItem[]; changed: boolean } {
@@ -1227,6 +1227,6 @@ export const useStore = create<AppState>((set, get) => {
 });
 
 /** Remove a extensão do nome do arquivo para virar título do conteúdo. */
-function stripExtension(name: string): string {
+export function stripExtension(name: string): string {
   return name.replace(/\.[^./\\]+$/, '').trim() || name;
 }

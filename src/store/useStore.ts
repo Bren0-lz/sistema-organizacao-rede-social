@@ -10,6 +10,7 @@ import {
   signOut as authSignOut,
   signOutYoutube as authSignOutYoutube,
   restoreSession,
+  restoreYoutubeSession,
 } from '../services/googleAuth';
 import {
   captureVideoFrameUrl,
@@ -411,6 +412,9 @@ export const useStore = create<AppState>((set, get) => {
         'Não foi possível conectar ao Drive. Verifique sua conexão e tente novamente.',
       );
       setYoutubeClientId(config.youtubeClientId);
+      // Restaura a conexao do YouTube sem abrir o seletor de conta quando a
+      // sessao Google e a permissao anteriores ainda estiverem ativas.
+      await restoreYoutubeSession();
       const normalized = markElapsedScheduledPosts(db.items);
       set({
         authStatus: 'ready',
@@ -508,7 +512,8 @@ export const useStore = create<AppState>((set, get) => {
       // `init()` detecta o token e chama refreshYoutubeAccount automaticamente.
       try {
         authSignOutYoutube();
-        authSignInYoutube({ forceAccountSelection: true });
+        await authSignInYoutube({ forceAccountSelection: true });
+        await refreshYoutubeAccount(true);
       } catch (error) {
         set({
           youtubeAuthStatus: 'error',

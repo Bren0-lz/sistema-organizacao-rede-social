@@ -4260,6 +4260,23 @@ input[type='time']::-webkit-calendar-picker-indicator {
 }
 .agenda-filter-clear {
   margin-left: auto;
+  min-height: 32px;
+  padding: 7px 12px;
+  border-color: color-mix(in srgb, var(--st-scheduled) 48%, var(--line));
+  background: color-mix(in srgb, var(--st-scheduled) 12%, var(--bg-card));
+  color: #c7d0ff;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 4px 12px -8px color-mix(in srgb, var(--st-scheduled) 70%, transparent);
+}
+.agenda-filter-clear:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--st-scheduled) 72%, var(--line));
+  background: color-mix(in srgb, var(--st-scheduled) 22%, var(--bg-card));
+  color: #fff;
+}
+.agenda-filter-clear:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--st-scheduled) 75%, #fff);
+  outline-offset: 2px;
 }
 .calendar-weekday {
   font-size: 11px;

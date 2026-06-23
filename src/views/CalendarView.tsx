@@ -395,12 +395,13 @@ export function CalendarView({
             {hasAgendaFilters && (
               <button
                 type="button"
-                className="btn btn-ghost btn-sm agenda-filter-clear"
+                className="btn btn-sm agenda-filter-clear"
                 onClick={() => {
                   setAgendaDateFilter('');
                   setAgendaStatusFilter('all');
                 }}
               >
+                <Icon name="restore" size={15} />
                 Limpar
               </button>
             )}

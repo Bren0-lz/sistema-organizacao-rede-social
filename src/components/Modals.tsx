@@ -350,7 +350,7 @@ export function NewItemModal({
         </div>
       </div>
       <div className="modal-actions">
-        <button className="btn btn-ghost" onClick={onClose}>
+        <button className="btn btn-modal-close" onClick={onClose}>
           Cancelar
         </button>
         <button className="btn btn-primary" disabled={!canSubmit} onClick={() => void submit()}>

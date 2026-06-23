@@ -339,6 +339,32 @@ export function getAccessToken(interactive = false): Promise<string> {
   });
 }
 
+/**
+ * Renova, sem seletor de conta, a permissao do YouTube que o usuario ja
+ * concedeu. O fluxo OAuth de uma SPA fornece access tokens temporarios, entao
+ * a renovacao aproveita a sessao Google ainda ativa no navegador.
+ */
+export async function restoreYoutubeSession(): Promise<boolean> {
+  if (hasValidYoutubeToken()) return true;
+  const clientId = youtubeClientId ?? CLIENT_ID;
+  // O Safari/iOS bloqueia esse tipo de renovacao silenciosa por ITP.
+  if (!clientId || isIOS()) return false;
+
+  try {
+    await getScopedAccessToken({
+      storageKey: YOUTUBE_TOKEN_KEY,
+      scope: YOUTUBE_SCOPE,
+      clientId,
+      interactive: true,
+      prompt: '',
+      missingSessionMessage: 'Conecte uma conta do YouTube nas configuracoes antes de publicar.',
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** E-mail da conta Google que autorizou o acesso principal ao Drive/Agenda. */
 export async function getSignedInEmail(): Promise<string | undefined> {
   try {
@@ -355,10 +381,15 @@ export async function getSignedInEmail(): Promise<string | undefined> {
   }
 }
 
-export function getYoutubeAccessToken(
+export async function getYoutubeAccessToken(
   interactive = false,
   options: { forceAccountSelection?: boolean } = {},
 ): Promise<string> {
+  // Em operacoes comuns, um token vencido e renovado sem pedir que o usuario
+  // escolha o canal outra vez, desde que a sessao Google ainda seja valida.
+  if (!interactive && !hasValidYoutubeToken()) {
+    await restoreYoutubeSession();
+  }
   return getScopedAccessToken({
     storageKey: YOUTUBE_TOKEN_KEY,
     scope: YOUTUBE_SCOPE,

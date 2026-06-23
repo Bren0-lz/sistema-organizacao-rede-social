@@ -118,7 +118,7 @@ export function BulkUploadModal({ onClose }: { onClose: () => void }) {
         )}
 
         <div className="modal-actions">
-          <button className="btn btn-ghost" onClick={onClose}>
+          <button className="btn btn-modal-close" onClick={onClose}>
             Cancelar
           </button>
           <button

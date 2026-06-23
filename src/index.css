@@ -497,10 +497,15 @@ input[type='time']::-webkit-calendar-picker-indicator {
 /* Subir em lote — laranja/Instagram */
 .nav-bulk {
   color: var(--ig-a);
+  border-color: color-mix(in srgb, var(--ig-a) 44%, var(--line));
+  background: color-mix(in srgb, var(--ig-a) 8%, var(--bg-raised));
+  font-weight: 700;
+  box-shadow: 0 4px 12px -9px color-mix(in srgb, var(--ig-a) 82%, transparent);
 }
 .nav-bulk:hover {
   color: var(--ig-a);
-  border-color: color-mix(in srgb, var(--ig-a) 55%, transparent);
+  border-color: color-mix(in srgb, var(--ig-a) 70%, var(--line));
+  background: color-mix(in srgb, var(--ig-a) 17%, var(--bg-raised));
 }
 
 /* ---------- lixeira ---------- */
@@ -1888,6 +1893,27 @@ input[type='time']::-webkit-calendar-picker-indicator {
   justify-content: center;
   padding-inline: 12px;
   min-height: 38px;
+}
+
+/* Cancela a exclusão sem se perder como um simples texto abaixo das ações. */
+.youtube-keep-action {
+  grid-column: 1 / -1;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: var(--ink);
+  font-weight: 700;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+.youtube-keep-action:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.46);
+  color: #fff;
+}
+
+.youtube-keep-action:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.55);
+  outline-offset: 2px;
 }
 
 .youtube-private-action {
@@ -3852,25 +3878,35 @@ input[type='time']::-webkit-calendar-picker-indicator {
 /* ----- abas extras na topbar ----- */
 .nav-calendar {
   color: var(--st-scheduled);
+  border-color: color-mix(in srgb, var(--st-scheduled) 44%, var(--line));
+  background: color-mix(in srgb, var(--st-scheduled) 8%, var(--bg-raised));
+  font-weight: 700;
+  box-shadow: 0 4px 12px -9px color-mix(in srgb, var(--st-scheduled) 82%, transparent);
 }
 .nav-calendar:hover,
 .nav-calendar.active {
   color: var(--st-scheduled);
-  border-color: color-mix(in srgb, var(--st-scheduled) 55%, transparent);
+  border-color: color-mix(in srgb, var(--st-scheduled) 70%, var(--line));
+  background: color-mix(in srgb, var(--st-scheduled) 17%, var(--bg-raised));
 }
 .nav-calendar.active {
-  background: color-mix(in srgb, var(--st-scheduled) 12%, var(--bg-raised));
+  background: color-mix(in srgb, var(--st-scheduled) 24%, var(--bg-raised));
 }
 .nav-ideas {
   color: var(--st-edited);
+  border-color: color-mix(in srgb, var(--st-edited) 44%, var(--line));
+  background: color-mix(in srgb, var(--st-edited) 8%, var(--bg-raised));
+  font-weight: 700;
+  box-shadow: 0 4px 12px -9px color-mix(in srgb, var(--st-edited) 82%, transparent);
 }
 .nav-ideas:hover,
 .nav-ideas.active {
   color: var(--st-edited);
-  border-color: color-mix(in srgb, var(--st-edited) 55%, transparent);
+  border-color: color-mix(in srgb, var(--st-edited) 70%, var(--line));
+  background: color-mix(in srgb, var(--st-edited) 17%, var(--bg-raised));
 }
 .nav-ideas.active {
-  background: color-mix(in srgb, var(--st-edited) 12%, var(--bg-raised));
+  background: color-mix(in srgb, var(--st-edited) 24%, var(--bg-raised));
 }
 
 /* ----- botão único que agrupa os filtros secundários ----- */
@@ -3906,14 +3942,13 @@ input[type='time']::-webkit-calendar-picker-indicator {
   z-index: 90;
 }
 .filters-pop {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
+  position: fixed;
   z-index: 91;
   display: flex;
   flex-direction: column;
   gap: 14px;
   width: min(340px, 88vw);
+  overflow-y: auto;
   padding: 16px;
   border-radius: 16px;
   border: 1px solid var(--line-strong);
@@ -4130,6 +4165,25 @@ input[type='time']::-webkit-calendar-picker-indicator {
   align-items: center;
   gap: 10px;
 }
+.calendar-today {
+  min-height: 34px;
+  padding: 8px 12px;
+  border-color: color-mix(in srgb, var(--st-ready) 48%, var(--line));
+  background: color-mix(in srgb, var(--st-ready) 12%, var(--bg-card));
+  color: #b9f3ff;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 4px 12px -8px color-mix(in srgb, var(--st-ready) 75%, transparent);
+}
+.calendar-today:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--st-ready) 72%, var(--line));
+  background: color-mix(in srgb, var(--st-ready) 22%, var(--bg-card));
+  color: #fff;
+}
+.calendar-today:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--st-ready) 75%, #fff);
+  outline-offset: 2px;
+}
 .calendar-month {
   font-family: var(--font-display);
   font-size: 15px;
@@ -4241,6 +4295,23 @@ input[type='time']::-webkit-calendar-picker-indicator {
 }
 .agenda-filter-clear {
   margin-left: auto;
+  min-height: 32px;
+  padding: 7px 12px;
+  border-color: color-mix(in srgb, var(--st-scheduled) 48%, var(--line));
+  background: color-mix(in srgb, var(--st-scheduled) 12%, var(--bg-card));
+  color: #c7d0ff;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 4px 12px -8px color-mix(in srgb, var(--st-scheduled) 70%, transparent);
+}
+.agenda-filter-clear:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--st-scheduled) 72%, var(--line));
+  background: color-mix(in srgb, var(--st-scheduled) 22%, var(--bg-card));
+  color: #fff;
+}
+.agenda-filter-clear:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--st-scheduled) 75%, #fff);
+  outline-offset: 2px;
 }
 .calendar-weekday {
   font-size: 11px;
@@ -4459,14 +4530,7 @@ input[type='time']::-webkit-calendar-picker-indicator {
     overflow: visible;
   }
   .filters-pop {
-    position: absolute;
-    top: calc(100% + 12px);
-    left: 0;
-    right: auto;
-    bottom: auto;
     width: calc(100vw - 32px);
-    max-height: calc(100vh - 250px);
-    overflow-y: auto;
     padding: 18px 16px;
     border-radius: 18px;
   }

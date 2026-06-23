@@ -1166,7 +1166,7 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
                 Confirmar exclusao
               </button>
               <button
-                className="btn btn-ghost"
+                className="btn youtube-keep-action"
                 disabled={busy}
                 onClick={() => setConfirmYoutubeDelete(false)}
               >

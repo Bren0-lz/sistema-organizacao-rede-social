@@ -508,7 +508,8 @@ export const useStore = create<AppState>((set, get) => {
       // `init()` detecta o token e chama refreshYoutubeAccount automaticamente.
       try {
         authSignOutYoutube();
-        authSignInYoutube({ forceAccountSelection: true });
+        await authSignInYoutube({ forceAccountSelection: true });
+        await refreshYoutubeAccount(true);
       } catch (error) {
         set({
           youtubeAuthStatus: 'error',

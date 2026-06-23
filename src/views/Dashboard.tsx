@@ -198,6 +198,7 @@ export function Dashboard() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [filterPopoverPosition, setFilterPopoverPosition] = useState({ top: 0, left: 0, maxHeight: 0 });
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [openItemId, setOpenItemId] = useState<string | null>(null);
   const [showNew, setShowNew] = useState(false);
@@ -529,7 +530,18 @@ export function Dashboard() {
           <button
             className={`chip ${activeSecondaryCount > 0 ? 'active' : ''} ${showFilters ? 'open' : ''}`}
             data-net="all"
-            onClick={() => setShowFilters((s) => !s)}
+            onClick={(event) => {
+              const next = !showFilters;
+              if (next) {
+                const rect = event.currentTarget.getBoundingClientRect();
+                setFilterPopoverPosition({
+                  top: rect.bottom + 8,
+                  left: Math.max(16, Math.min(rect.left, window.innerWidth - 356)),
+                  maxHeight: Math.max(160, window.innerHeight - rect.bottom - 24),
+                });
+              }
+              setShowFilters(next);
+            }}
           >
             <Icon name="filter" /> Filtros
             {activeSecondaryCount > 0 && (
@@ -546,6 +558,12 @@ export function Dashboard() {
                 />
                 <motion.div
                   className="filters-pop"
+                  style={{
+                    position: 'fixed',
+                    top: filterPopoverPosition.top,
+                    left: filterPopoverPosition.left,
+                    maxHeight: filterPopoverPosition.maxHeight,
+                  }}
                   initial={{ opacity: 0, y: -6 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -6 }}

@@ -3074,12 +3074,14 @@ input[type='time']::-webkit-calendar-picker-indicator {
 .row-trail {
   display: flex;
 }
-/* grade alinhada: ícone (col fixa) + pílula, mesma coluna entre todas as redes */
+/* grade alinhada: ícone (col fixa) + pílula, mesma coluna entre todas as redes.
+   Colunas e gap enxutos para a pílula (o dado) ficar logo sob o cabeçalho
+   "Progresso", com o ícone da rede como borda esquerda alinhada ao título. */
 .row-branches {
   display: grid;
-  grid-template-columns: 16px auto;
+  grid-template-columns: 14px auto;
   align-items: center;
-  gap: 4px 10px;
+  gap: 4px 6px;
 }
 .row-net-ico {
   display: inline-flex;

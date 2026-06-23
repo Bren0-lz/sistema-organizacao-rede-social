@@ -3882,14 +3882,19 @@ input[type='time']::-webkit-calendar-picker-indicator {
 }
 .nav-ideas {
   color: var(--st-edited);
+  border-color: color-mix(in srgb, var(--st-edited) 44%, var(--line));
+  background: color-mix(in srgb, var(--st-edited) 8%, var(--bg-raised));
+  font-weight: 700;
+  box-shadow: 0 4px 12px -9px color-mix(in srgb, var(--st-edited) 82%, transparent);
 }
 .nav-ideas:hover,
 .nav-ideas.active {
   color: var(--st-edited);
-  border-color: color-mix(in srgb, var(--st-edited) 55%, transparent);
+  border-color: color-mix(in srgb, var(--st-edited) 70%, var(--line));
+  background: color-mix(in srgb, var(--st-edited) 17%, var(--bg-raised));
 }
 .nav-ideas.active {
-  background: color-mix(in srgb, var(--st-edited) 12%, var(--bg-raised));
+  background: color-mix(in srgb, var(--st-edited) 24%, var(--bg-raised));
 }
 
 /* ----- botão único que agrupa os filtros secundários ----- */

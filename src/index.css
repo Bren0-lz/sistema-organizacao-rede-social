@@ -3871,14 +3871,19 @@ input[type='time']::-webkit-calendar-picker-indicator {
 /* ----- abas extras na topbar ----- */
 .nav-calendar {
   color: var(--st-scheduled);
+  border-color: color-mix(in srgb, var(--st-scheduled) 44%, var(--line));
+  background: color-mix(in srgb, var(--st-scheduled) 8%, var(--bg-raised));
+  font-weight: 700;
+  box-shadow: 0 4px 12px -9px color-mix(in srgb, var(--st-scheduled) 82%, transparent);
 }
 .nav-calendar:hover,
 .nav-calendar.active {
   color: var(--st-scheduled);
-  border-color: color-mix(in srgb, var(--st-scheduled) 55%, transparent);
+  border-color: color-mix(in srgb, var(--st-scheduled) 70%, var(--line));
+  background: color-mix(in srgb, var(--st-scheduled) 17%, var(--bg-raised));
 }
 .nav-calendar.active {
-  background: color-mix(in srgb, var(--st-scheduled) 12%, var(--bg-raised));
+  background: color-mix(in srgb, var(--st-scheduled) 24%, var(--bg-raised));
 }
 .nav-ideas {
   color: var(--st-edited);

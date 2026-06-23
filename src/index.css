@@ -2438,12 +2438,6 @@ input[type='time']::-webkit-calendar-picker-indicator {
   width: 13px;
   height: 13px;
 }
-/* o ícone do estágio recua para a esquerda (para fora da coluna do texto), de
-   modo que a PALAVRA fique alinhada sob o cabeçalho "Estágio" — não o ícone.
-   13px (ícone) + 5px (gap do .stage-tag) = 18px. */
-.list-table td.col-stage .stage-tag svg {
-  margin-left: -18px;
-}
 
 .col-date {
   color: var(--ink-dim);
@@ -2466,6 +2460,25 @@ input[type='time']::-webkit-calendar-picker-indicator {
   width: 190px;
   text-align: right;
   white-space: nowrap;
+}
+
+/* metadados centralizados na coluna: cabeçalho e dado alinhados ao centro
+   (Redes, Progresso, Estágio, Atualizado). Título/ações seguem como estão. */
+.list-table th.col-nets,
+.list-table td.col-nets,
+.list-table th.col-files,
+.list-table td.col-files,
+.list-table th.col-stage,
+.list-table td.col-stage,
+.list-table th.col-date,
+.list-table td.col-date {
+  text-align: center;
+}
+/* conteúdos em fl/grid não respondem a text-align, então centralizamos o
+   próprio bloco dentro da célula */
+.col-nets .row-nets,
+.col-files .row-trail {
+  justify-content: center;
 }
 
 /* botão de excluir por linha: discreto por padrão, fica visível ao passar o
@@ -3106,22 +3119,17 @@ input[type='time']::-webkit-calendar-picker-indicator {
 .row-trail {
   display: flex;
 }
-/* grade alinhada: pílula (o dado) sob o cabeçalho "Progresso"; o ícone da rede
-   ocupa uma faixa de largura 0 e recua para a esquerda (margin negativa), ficando
-   FORA da coluna do texto — assim a pílula começa na borda esquerda da célula,
-   igual ao estado vazio "sem redes definidas" e ao cabeçalho. */
+/* grade alinhada: ícone (col fixa) + pílula, mesma coluna entre todas as redes */
 .row-branches {
   display: grid;
-  grid-template-columns: 0 auto;
+  grid-template-columns: 16px auto;
   align-items: center;
-  gap: 4px 0;
+  gap: 4px 10px;
 }
 .row-net-ico {
   display: inline-flex;
   justify-content: center;
   color: var(--ink-dim);
-  /* 13px (ícone) + 6px (respiro até a pílula) = recuo para fora da coluna */
-  margin-left: -19px;
 }
 .row-net-ico svg {
   width: 13px;
@@ -3358,6 +3366,11 @@ input[type='time']::-webkit-calendar-picker-indicator {
     display: flex;
     align-items: center;
   }
+  /* no cartão (mobile) os metadados voltam a alinhar à esquerda, não centralizados */
+  .col-nets .row-nets,
+  .col-files .row-trail {
+    justify-content: flex-start;
+  }
   /* permite que muitas redes quebrem em linha extra em vez de estourar */
   .list-table td.col-nets .row-nets {
     flex-wrap: wrap;
@@ -3373,11 +3386,6 @@ input[type='time']::-webkit-calendar-picker-indicator {
     max-width: 100%;
     white-space: normal;
     line-height: 1.2;
-  }
-  /* no cartão (mobile) não há cabeçalho para alinhar; o ícone volta a liderar
-     a tag, sem recuar para fora (evita encostar/cortar na borda do cartão) */
-  .list-table td.col-stage .stage-tag svg {
-    margin-left: 0;
   }
   /* botão de restaurar por linha (lixeira): largura total abaixo dos metadados */
   .list-table td.col-actions {
@@ -3415,15 +3423,11 @@ input[type='time']::-webkit-calendar-picker-indicator {
     border-top: 1px solid var(--line);
     min-width: 0;
   }
-  /* pílulas de data com mais respiro no toque; no cartão o ícone volta a
-     liderar (faixa de 16px), sem o recuo negativo usado no desktop */
+  /* pílulas de data com mais respiro no toque */
   .list-table td.col-files .row-branches {
     gap: 6px 10px;
     grid-template-columns: 16px minmax(0, 1fr);
     width: 100%;
-  }
-  .list-table td.col-files .row-net-ico {
-    margin-left: 0;
   }
   .list-table td.col-files .row-net-pill {
     max-width: 100%;

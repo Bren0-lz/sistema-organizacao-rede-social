@@ -52,38 +52,89 @@ export function mergeIdeas(local: Idea[], remote: Idea[]): Idea[] {
   return [...byId.values()];
 }
 
+/** Limite de tentativas do laço de gravação com verificação (anti-clobber). */
+const MAX_SAVE_ATTEMPTS = 4;
+
+type SavePayload = { items: ContentItem[]; recordings: Recording[]; ideas: Idea[] };
+
+/** Mescla as três coleções de um payload contra um snapshot remoto. */
+function mergeWithRemote(local: SavePayload, remote: Partial<Database>): SavePayload {
+  return {
+    items: mergeItems(local.items, remote.items ?? []),
+    recordings: mergeRecordings(local.recordings, remote.recordings ?? []),
+    ideas: mergeIdeas(local.ideas, remote.ideas ?? []),
+  };
+}
+
 /**
  * Grava itens, gravações e ideias no db.json (sempre as três coleções juntas).
  * Retorna o que foi efetivamente gravado (pode incluir alterações de outro
  * membro da equipe após merge).
+ *
+ * O Drive não oferece escrita condicional, então não dá para impedir que outro
+ * membro sobrescreva nossa gravação. Para detectar isso, marcamos cada escrita
+ * com um `writer` único e RELEMOS logo depois: se o `writer` lido não é o nosso,
+ * alguém gravou por cima — incorporamos o estado dele (merge, com nossas mudanças
+ * vencendo por `updatedAt`) e regravamos, em laço curto. A `version` sozinha não
+ * basta porque dois clientes que leram a mesma versão gravam o mesmo número.
+ *
+ * Custo: uma leitura extra por gravação (read→write→read). Como os saves são
+ * disparados por ação do usuário (baixa frequência), é aceitável.
  */
 export async function saveDatabase(
   dbFileId: string,
   items: ContentItem[],
   recordings: Recording[],
   ideas: Idea[],
-): Promise<{ items: ContentItem[]; recordings: Recording[]; ideas: Idea[] }> {
-  let itemsToWrite = items;
-  let recordingsToWrite = recordings;
-  let ideasToWrite = ideas;
-  try {
-    const remote = await readJsonFile<Database>(dbFileId);
-    if ((remote.version ?? 0) > lastKnownVersion) {
-      itemsToWrite = mergeItems(items, remote.items ?? []);
-      recordingsToWrite = mergeRecordings(recordings, remote.recordings ?? []);
-      ideasToWrite = mergeIdeas(ideas, remote.ideas ?? []);
+): Promise<SavePayload> {
+  let payload: SavePayload = { items, recordings, ideas };
+
+  for (let attempt = 0; attempt < MAX_SAVE_ATTEMPTS; attempt++) {
+    // 1. relê e mescla se a versão remota avançou desde a última leitura conhecida
+    try {
+      const remote = await readJsonFile<Database>(dbFileId);
+      if ((remote.version ?? 0) > lastKnownVersion) {
+        payload = mergeWithRemote(payload, remote);
+      }
+      lastKnownVersion = Math.max(lastKnownVersion, remote.version ?? 0);
+    } catch {
+      // releitura indisponível (rede): grava o estado local sem verificação
+      await writeDb(dbFileId, payload, crypto.randomUUID());
+      return payload;
     }
-    lastKnownVersion = Math.max(lastKnownVersion, remote.version ?? 0);
-  } catch {
-    // se a releitura falhar, grava o estado local mesmo assim
+
+    // 2. grava marcando a escrita com um nonce único
+    const writer = crypto.randomUUID();
+    await writeDb(dbFileId, payload, writer);
+
+    // 3. relê e verifica se a NOSSA escrita venceu
+    let check: Database;
+    try {
+      check = await readJsonFile<Database>(dbFileId);
+    } catch {
+      // não deu para verificar: assume melhor-esforço e segue
+      return payload;
+    }
+    if (check.writer === writer) return payload;
+
+    // alguém gravou por cima: incorpora o conteúdo dele e tenta de novo
+    payload = mergeWithRemote(payload, check);
+    lastKnownVersion = Math.max(lastKnownVersion, check.version ?? 0);
   }
+
+  // esgotou as tentativas: a última escrita permanece (melhor-esforço)
+  return payload;
+}
+
+/** Escreve o db.json com a próxima versão e o nonce de escritor informado. */
+async function writeDb(dbFileId: string, payload: SavePayload, writer: string): Promise<void> {
   const db: Database = {
     version: lastKnownVersion + 1,
-    items: itemsToWrite,
-    recordings: recordingsToWrite,
-    ideas: ideasToWrite,
+    writer,
+    items: payload.items,
+    recordings: payload.recordings,
+    ideas: payload.ideas,
   };
   await writeJsonFile(dbFileId, db);
   lastKnownVersion = db.version;
-  return { items: itemsToWrite, recordings: recordingsToWrite, ideas: ideasToWrite };
 }

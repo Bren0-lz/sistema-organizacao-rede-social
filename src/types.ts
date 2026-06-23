@@ -98,6 +98,13 @@ export interface Idea {
 
 export interface Database {
   version: number;
+  /**
+   * Identificador único da última escrita. Como o Drive não oferece escrita
+   * condicional, `saveDatabase` relê após gravar e compara este campo para
+   * detectar se outra escrita concorrente sobrescreveu a nossa. Ausente em bancos
+   * antigos.
+   */
+  writer?: string;
   items: ContentItem[];
   recordings: Recording[];
   ideas: Idea[];

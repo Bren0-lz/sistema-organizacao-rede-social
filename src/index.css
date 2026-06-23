@@ -497,10 +497,15 @@ input[type='time']::-webkit-calendar-picker-indicator {
 /* Subir em lote — laranja/Instagram */
 .nav-bulk {
   color: var(--ig-a);
+  border-color: color-mix(in srgb, var(--ig-a) 44%, var(--line));
+  background: color-mix(in srgb, var(--ig-a) 8%, var(--bg-raised));
+  font-weight: 700;
+  box-shadow: 0 4px 12px -9px color-mix(in srgb, var(--ig-a) 82%, transparent);
 }
 .nav-bulk:hover {
   color: var(--ig-a);
-  border-color: color-mix(in srgb, var(--ig-a) 55%, transparent);
+  border-color: color-mix(in srgb, var(--ig-a) 70%, var(--line));
+  background: color-mix(in srgb, var(--ig-a) 17%, var(--bg-raised));
 }
 
 /* ---------- lixeira ---------- */

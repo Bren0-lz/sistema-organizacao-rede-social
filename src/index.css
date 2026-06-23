@@ -4149,6 +4149,25 @@ input[type='time']::-webkit-calendar-picker-indicator {
   align-items: center;
   gap: 10px;
 }
+.calendar-today {
+  min-height: 34px;
+  padding: 8px 12px;
+  border-color: color-mix(in srgb, var(--st-ready) 48%, var(--line));
+  background: color-mix(in srgb, var(--st-ready) 12%, var(--bg-card));
+  color: #b9f3ff;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 4px 12px -8px color-mix(in srgb, var(--st-ready) 75%, transparent);
+}
+.calendar-today:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--st-ready) 72%, var(--line));
+  background: color-mix(in srgb, var(--st-ready) 22%, var(--bg-card));
+  color: #fff;
+}
+.calendar-today:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--st-ready) 75%, #fff);
+  outline-offset: 2px;
+}
 .calendar-month {
   font-family: var(--font-display);
   font-size: 15px;

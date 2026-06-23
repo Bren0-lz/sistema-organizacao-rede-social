@@ -287,7 +287,8 @@ export function CalendarView({
           <button className="icon-btn" onClick={() => move(1)} title="Proximo mes">
             {'>'}
           </button>
-          <button className="btn btn-ghost btn-sm" onClick={() => setCursor(new Date())}>
+          <button className="btn btn-sm calendar-today" onClick={() => setCursor(new Date())}>
+            <Icon name="calendar" size={14} />
             Hoje
           </button>
         </div>

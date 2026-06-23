@@ -14,6 +14,7 @@ import {
 } from '../types';
 import { useStore } from '../store/useStore';
 import { useMediaQuery } from '../lib/useMediaQuery';
+import { useNow } from '../lib/useNow';
 import { downloadFile, fetchBlobUrl, previewUrl } from '../services/drive';
 import { NetworkIcon } from './NetworkIcon';
 import { Icon, type IconName } from './Icon';
@@ -758,6 +759,7 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
   const [metrics, setMetrics] = useState<YouTubeVideoStatistics | null>(null);
   const [metricsLoading, setMetricsLoading] = useState(false);
   const [metricsError, setMetricsError] = useState<string | null>(null);
+  const now = useNow();
   const uploading = state.youtubeUploadStatus === 'uploading';
   const busy = uploading || youtubeAction !== null;
   const selectedVideoFileId = item.editedVideoFileId ?? item.rawVideoFileId;
@@ -774,7 +776,7 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
       : privacyStatus || 'public';
   const canSaveMetadata = hasYoutubeVideo && !busy;
   const scheduleTime = state.scheduledAt ? new Date(state.scheduledAt).getTime() : Number.NaN;
-  const scheduleHasPassed = Number.isFinite(scheduleTime) && scheduleTime <= Date.now();
+  const scheduleHasPassed = Number.isFinite(scheduleTime) && scheduleTime <= now;
   const youtubeWhen =
     state.status === 'scheduled'
       ? formatLocalDateTime(state.scheduledAt)

@@ -4,6 +4,7 @@ import { useStore } from '../store/useStore';
 import { Icon } from '../components/Icon';
 import { RecordingModal } from '../components/RecordingModal';
 import { startOfToday } from '../lib/date';
+import { useNow } from '../lib/useNow';
 import type { Recording } from '../types';
 
 function formatWhen(iso: string): string {
@@ -20,18 +21,19 @@ function formatWhen(iso: string): string {
 
 interface RowProps {
   recording: Recording;
+  now: number;
   onEdit: (rec: Recording) => void;
   onRecorded: (itemId: string) => void;
 }
 
-function AgendaRow({ recording, onEdit, onRecorded }: RowProps) {
+function AgendaRow({ recording, now, onEdit, onRecorded }: RowProps) {
   const cancelRecording = useStore((s) => s.cancelRecording);
   const deleteRecording = useStore((s) => s.deleteRecording);
   const markRecordingAsRecorded = useStore((s) => s.markRecordingAsRecorded);
   const [busy, setBusy] = useState(false);
 
   const isPlanned = recording.status === 'planned';
-  const overdue = isPlanned && new Date(recording.scheduledAt).getTime() < Date.now();
+  const overdue = isPlanned && new Date(recording.scheduledAt).getTime() < now;
 
   const mark = async () => {
     setBusy(true);
@@ -100,12 +102,14 @@ function Section({
   title,
   color,
   list,
+  now,
   onEdit,
   onRecorded,
 }: {
   title: string;
   color?: string;
   list: Recording[];
+  now: number;
   onEdit: (rec: Recording) => void;
   onRecorded: (itemId: string) => void;
 }) {
@@ -121,7 +125,7 @@ function Section({
       <div className="agenda-list">
         <AnimatePresence mode="popLayout">
           {list.map((rec) => (
-            <AgendaRow key={rec.id} recording={rec} onEdit={onEdit} onRecorded={onRecorded} />
+            <AgendaRow key={rec.id} recording={rec} now={now} onEdit={onEdit} onRecorded={onRecorded} />
           ))}
         </AnimatePresence>
       </div>
@@ -133,12 +137,12 @@ export function RecordingAgenda({ onRecorded }: { onRecorded: (itemId: string) =
   const recordings = useStore((s) => s.recordings);
   const [showNew, setShowNew] = useState(false);
   const [editing, setEditing] = useState<Recording | null>(null);
+  const now = useNow();
 
   const groups = useMemo(() => {
     const active = recordings.filter((r) => !r.deletedAt);
     const today = startOfToday();
     const tomorrow = today + 24 * 60 * 60 * 1000;
-    const now = Date.now();
     const byDate = (a: Recording, b: Recording) => a.scheduledAt.localeCompare(b.scheduledAt);
 
     const planned = active.filter((r) => r.status === 'planned');
@@ -158,7 +162,7 @@ export function RecordingAgenda({ onRecorded }: { onRecorded: (itemId: string) =
       recorded: active.filter((r) => r.status === 'recorded').sort((a, b) => byDate(b, a)),
       canceled: active.filter((r) => r.status === 'canceled').sort((a, b) => byDate(b, a)),
     };
-  }, [recordings]);
+  }, [recordings, now]);
 
   const isEmpty =
     groups.overdue.length === 0 &&
@@ -188,11 +192,11 @@ export function RecordingAgenda({ onRecorded }: { onRecorded: (itemId: string) =
         </motion.div>
       ) : (
         <>
-          <Section title="⚠ Atrasadas" color="var(--st-raw, #ff8d8d)" list={groups.overdue} onEdit={setEditing} onRecorded={onRecorded} />
-          <Section title="Hoje" color="var(--st-ready)" list={groups.today} onEdit={setEditing} onRecorded={onRecorded} />
-          <Section title="Próximas" list={groups.upcoming} onEdit={setEditing} onRecorded={onRecorded} />
-          <Section title="Gravadas" list={groups.recorded} onEdit={setEditing} onRecorded={onRecorded} />
-          <Section title="Canceladas" color="#ff6b84" list={groups.canceled} onEdit={setEditing} onRecorded={onRecorded} />
+          <Section title="⚠ Atrasadas" color="var(--st-raw, #ff8d8d)" list={groups.overdue} now={now} onEdit={setEditing} onRecorded={onRecorded} />
+          <Section title="Hoje" color="var(--st-ready)" list={groups.today} now={now} onEdit={setEditing} onRecorded={onRecorded} />
+          <Section title="Próximas" list={groups.upcoming} now={now} onEdit={setEditing} onRecorded={onRecorded} />
+          <Section title="Gravadas" list={groups.recorded} now={now} onEdit={setEditing} onRecorded={onRecorded} />
+          <Section title="Canceladas" color="#ff6b84" list={groups.canceled} now={now} onEdit={setEditing} onRecorded={onRecorded} />
         </>
       )}
 

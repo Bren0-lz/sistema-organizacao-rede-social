@@ -329,6 +329,22 @@ export const useStore = create<AppState>((set, get) => {
     updatedAt: new Date().toISOString(),
   });
 
+  /** Revoga e remove do cache os blob-URLs de capa dos arquivos informados. */
+  function dropCoverUrls(fileIds: string[]): void {
+    const current = get().coverUrls;
+    let changed = false;
+    const next = { ...current };
+    for (const fileId of fileIds) {
+      const url = next[fileId];
+      if (!url) continue;
+      URL.revokeObjectURL(url);
+      delete next[fileId];
+      coverRetries.delete(fileId);
+      changed = true;
+    }
+    if (changed) set({ coverUrls: next });
+  }
+
   async function reconcileScheduledPosts(now = Date.now()): Promise<void> {
     const result = markElapsedScheduledPosts(get().items, now);
     if (!result.changed) return;
@@ -467,6 +483,11 @@ export const useStore = create<AppState>((set, get) => {
     signOut() {
       authSignOut();
       setYoutubeClientId(undefined);
+      // Revoga os blob-URLs das capas antes de descartar o cache, senão os blobs
+      // ficam retidos na memória do navegador a cada login/logout.
+      for (const url of Object.values(get().coverUrls)) URL.revokeObjectURL(url);
+      coverRetries.clear();
+      coverRetryScheduled.clear();
       set({
         authStatus: 'signedOut',
         youtubeAuthStatus: 'disconnected',
@@ -969,19 +990,18 @@ export const useStore = create<AppState>((set, get) => {
       // remove do banco primeiro; a falha ao apagar arquivos não deve
       // deixar o item preso na lixeira
       await mutate((items) => items.filter((item) => !idSet.has(item.id)));
-      // apaga os arquivos do Drive em paralelo, ignorando os que já sumiram
-      await Promise.all(
-        targets.flatMap((item) =>
-          [
-            item.rawVideoFileId,
-            item.editedVideoFileId,
-            item.coverFileId,
-            ...(item.carouselFileIds ?? []),
-          ]
-            .filter((id): id is string => !!id)
-            .map((fileId) => deleteFile(fileId).catch(() => {})),
-        ),
+      const fileIds = targets.flatMap((item) =>
+        [
+          item.rawVideoFileId,
+          item.editedVideoFileId,
+          item.coverFileId,
+          ...(item.carouselFileIds ?? []),
+        ].filter((id): id is string => !!id),
       );
+      // libera os blob-URLs de capa em cache desses arquivos antes de descartá-los
+      dropCoverUrls(fileIds);
+      // apaga os arquivos do Drive em paralelo, ignorando os que já sumiram
+      await Promise.all(fileIds.map((fileId) => deleteFile(fileId).catch(() => {})));
     },
 
     async uploadToItem(itemId, slot, file) {
@@ -1040,6 +1060,7 @@ export const useStore = create<AppState>((set, get) => {
             : item,
         ),
       );
+      dropCoverUrls([fileId]);
       await deleteFile(fileId).catch(() => {});
     },
 

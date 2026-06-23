@@ -5,6 +5,7 @@ import { Icon } from '../components/Icon';
 import { NetworkIcon } from '../components/NetworkIcon';
 import { RecordingModal } from '../components/RecordingModal';
 import { dayKey, dayKeyFromIso, monthMatrix, startOfToday } from '../lib/date';
+import { useNow } from '../lib/useNow';
 import { NETWORKS, NETWORK_LABELS, type Network, type Recording } from '../types';
 
 const WEEKDAYS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
@@ -63,18 +64,19 @@ function matchesAgendaFilter(
 
 interface AgendaRowProps {
   recording: Recording;
+  now: number;
   onEdit: (rec: Recording) => void;
   onRecorded: (itemId: string) => void;
 }
 
-function AgendaRow({ recording, onEdit, onRecorded }: AgendaRowProps) {
+function AgendaRow({ recording, now, onEdit, onRecorded }: AgendaRowProps) {
   const cancelRecording = useStore((s) => s.cancelRecording);
   const deleteRecording = useStore((s) => s.deleteRecording);
   const markRecordingAsRecorded = useStore((s) => s.markRecordingAsRecorded);
   const [busy, setBusy] = useState(false);
 
   const isPlanned = recording.status === 'planned';
-  const overdue = isPlanned && new Date(recording.scheduledAt).getTime() < Date.now();
+  const overdue = isPlanned && new Date(recording.scheduledAt).getTime() < now;
 
   const mark = async () => {
     setBusy(true);
@@ -143,12 +145,14 @@ function Section({
   title,
   color,
   list,
+  now,
   onEdit,
   onRecorded,
 }: {
   title: string;
   color?: string;
   list: Recording[];
+  now: number;
   onEdit: (rec: Recording) => void;
   onRecorded: (itemId: string) => void;
 }) {
@@ -164,7 +168,7 @@ function Section({
       <div className="agenda-list">
         <AnimatePresence mode="popLayout">
           {list.map((rec) => (
-            <AgendaRow key={rec.id} recording={rec} onEdit={onEdit} onRecorded={onRecorded} />
+            <AgendaRow key={rec.id} recording={rec} now={now} onEdit={onEdit} onRecorded={onRecorded} />
           ))}
         </AnimatePresence>
       </div>
@@ -186,6 +190,7 @@ export function CalendarView({
   const [newScheduledAt, setNewScheduledAt] = useState<string | null>(null);
   const [agendaDateFilter, setAgendaDateFilter] = useState('');
   const [agendaStatusFilter, setAgendaStatusFilter] = useState<RecordingFilter>('all');
+  const now = useNow();
 
   const eventsByDay = useMemo(() => {
     const map = new Map<string, CalEvent[]>();
@@ -231,7 +236,6 @@ export function CalendarView({
   const groups = useMemo(() => {
     const today = startOfToday();
     const tomorrow = today + 24 * 60 * 60 * 1000;
-    const now = Date.now();
     const active = recordings.filter(
       (r) => !r.deletedAt && matchesAgendaFilter(r, agendaStatusFilter, agendaDateFilter, now),
     );
@@ -250,7 +254,7 @@ export function CalendarView({
       recorded: active.filter((r) => r.status === 'recorded').sort((a, b) => byDate(b, a)),
       canceled: active.filter((r) => r.status === 'canceled').sort((a, b) => byDate(b, a)),
     };
-  }, [recordings, agendaDateFilter, agendaStatusFilter]);
+  }, [recordings, agendaDateFilter, agendaStatusFilter, now]);
 
   const weeks = useMemo(() => monthMatrix(cursor), [cursor]);
   const todayKey = dayKey(new Date(startOfToday()));
@@ -421,11 +425,11 @@ export function CalendarView({
             </motion.div>
           ) : (
             <>
-              <Section title="Atrasadas" color="var(--st-raw, #ff8d8d)" list={groups.overdue} onEdit={setEditing} onRecorded={onRecorded} />
-              <Section title="Hoje" color="var(--st-ready)" list={groups.today} onEdit={setEditing} onRecorded={onRecorded} />
-              <Section title="Proximas" list={groups.upcoming} onEdit={setEditing} onRecorded={onRecorded} />
-              <Section title="Gravadas" list={groups.recorded} onEdit={setEditing} onRecorded={onRecorded} />
-              <Section title="Canceladas" color="#ff6b84" list={groups.canceled} onEdit={setEditing} onRecorded={onRecorded} />
+              <Section title="Atrasadas" color="var(--st-raw, #ff8d8d)" list={groups.overdue} now={now} onEdit={setEditing} onRecorded={onRecorded} />
+              <Section title="Hoje" color="var(--st-ready)" list={groups.today} now={now} onEdit={setEditing} onRecorded={onRecorded} />
+              <Section title="Proximas" list={groups.upcoming} now={now} onEdit={setEditing} onRecorded={onRecorded} />
+              <Section title="Gravadas" list={groups.recorded} now={now} onEdit={setEditing} onRecorded={onRecorded} />
+              <Section title="Canceladas" color="#ff6b84" list={groups.canceled} now={now} onEdit={setEditing} onRecorded={onRecorded} />
             </>
           )}
         </aside>

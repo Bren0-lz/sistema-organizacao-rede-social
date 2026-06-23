@@ -169,7 +169,7 @@ export function consumeIOSRedirectSignIn(): OAuthRedirectResult | null {
 
   window.history.replaceState(null, '', window.location.pathname + window.location.search);
 
-  let expectedState: string | null = null;
+  let expectedState: string | null;
   try {
     expectedState = sessionStorage.getItem(OAUTH_STATE_KEY);
     sessionStorage.removeItem(OAUTH_STATE_KEY);

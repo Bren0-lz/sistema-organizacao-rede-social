@@ -45,6 +45,19 @@ describe('NewItemModal', () => {
     // ao trocar o tipo o componente continua montado (sem crash) e o título segue editável
     expect(screen.getByText('Novo conteúdo')).toBeInTheDocument();
   });
+
+  it('aceita vários vídeos para o mesmo conteúdo', () => {
+    const { container } = render(<NewItemModal onClose={() => {}} onCreated={() => {}} />);
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const firstTake = new File(['primeiro'], 'take-1.mp4', { type: 'video/mp4' });
+    const secondTake = new File(['segundo'], 'take-2.mp4', { type: 'video/mp4' });
+
+    expect(input.multiple).toBe(true);
+    fireEvent.change(input, { target: { files: [firstTake, secondTake] } });
+
+    expect(screen.getByText('take-1.mp4')).toBeInTheDocument();
+    expect(screen.getByText('take-2.mp4')).toBeInTheDocument();
+  });
 });
 
 describe('SettingsModal', () => {

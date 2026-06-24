@@ -163,7 +163,7 @@ export function NewItemModal({
     return () => urls.forEach((url) => URL.revokeObjectURL(url));
   }, [files, isVideo]);
 
-  // troca de tipo: zera os arquivos (vídeo aceita só 1; carrossel aceita imagens)
+  // Trocar de tipo zera os arquivos para não misturar vídeos e imagens.
   const changeType = (next: ContentType) => {
     if (next === type) return;
     setType(next);
@@ -176,8 +176,9 @@ export function NewItemModal({
       f.type.startsWith(isVideo ? 'video/' : 'image/'),
     );
     if (picked.length === 0) return;
-    // vídeo: mantém só o último arquivo escolhido; carrossel: acumula
-    setFiles((prev) => (isVideo ? picked.slice(-1) : [...prev, ...picked]));
+    // Tanto os takes de vídeo quanto as imagens do carrossel podem ser adicionados
+    // em seleções sucessivas ao mesmo conteúdo.
+    setFiles((prev) => [...prev, ...picked]);
   };
 
   const removeFile = (idx: number) => setFiles((prev) => prev.filter((_, i) => i !== idx));
@@ -253,7 +254,7 @@ export function NewItemModal({
         )}
 
         <div>
-          <label className="form-label">{isVideo ? 'Vídeo' : 'Imagens do carrossel'}</label>
+          <label className="form-label">{isVideo ? 'Vídeos do conteúdo' : 'Imagens do carrossel'}</label>
           <div
             className={`bulk-drop ${videoPreviewUrl ? 'has-preview' : ''} ${dragOver ? 'drag-over' : ''}`}
             onClick={() => inputRef.current?.click()}
@@ -285,14 +286,14 @@ export function NewItemModal({
             <span className="bulk-drop-icon"><Icon name="upload" /></span>
             <span>
               {isVideo
-                ? 'Arraste o vídeo aqui ou clique para escolher'
+                ? 'Arraste os vídeos aqui ou clique para escolher'
                 : 'Arraste as imagens aqui ou clique para escolher'}
             </span>
             <input
               ref={inputRef}
               type="file"
               accept={accept}
-              multiple={!isVideo}
+              multiple
               hidden
               onChange={(e) => {
                 addFiles(e.target.files);

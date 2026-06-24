@@ -39,7 +39,13 @@ export interface ContentItem {
   type?: ContentType;
   /** Imagens do carrossel, em ordem de exibição. A 1ª é usada como capa. */
   carouselFileIds?: string[];
+  /** Takes crus, em ordem de envio. Um vídeo pode ser gravado em vários takes. */
+  rawVideoFileIds?: string[];
+  /** Versões editadas (cortes/montagens finais), em ordem de envio. */
+  editedVideoFileIds?: string[];
+  /** Legado: 1 único take cru. Mantido só p/ leitura (itens antigos). */
   rawVideoFileId?: string;
+  /** Legado: 1 única versão editada. Mantido só p/ leitura (itens antigos). */
   editedVideoFileId?: string;
   coverFileId?: string;
   /** Quando o vídeo bruto foi anexado (opcional; itens antigos não têm). */
@@ -219,6 +225,21 @@ export function itemType(item: ContentItem): ContentType {
 }
 
 /**
+ * Takes crus do item, unificando o campo novo (array) com o legado (1 único id).
+ * Use SEMPRE isto para ler — nunca `item.rawVideoFileId` direto.
+ */
+export function rawVideoIds(item: ContentItem): string[] {
+  if (item.rawVideoFileIds?.length) return item.rawVideoFileIds;
+  return item.rawVideoFileId ? [item.rawVideoFileId] : [];
+}
+
+/** Versões editadas do item, unificando o campo novo (array) com o legado. */
+export function editedVideoIds(item: ContentItem): string[] {
+  if (item.editedVideoFileIds?.length) return item.editedVideoFileIds;
+  return item.editedVideoFileId ? [item.editedVideoFileId] : [];
+}
+
+/**
  * FileId da miniatura a exibir: no carrossel é a 1ª imagem; no vídeo é a capa.
  */
 export function coverFileIdFor(item: ContentItem): string | undefined {
@@ -247,7 +268,7 @@ export function thumbSourceFor(item: ContentItem): ThumbSource | undefined {
   const cover = coverFileIdFor(item);
   if (cover) return { fileId: cover, fromVideo: false };
   if (itemType(item) === 'video') {
-    const videoFileId = item.editedVideoFileId ?? item.rawVideoFileId;
+    const videoFileId = editedVideoIds(item)[0] ?? rawVideoIds(item)[0];
     if (videoFileId) return { fileId: videoFileId, fromVideo: true };
   }
   return undefined;
@@ -280,6 +301,6 @@ export function itemStage(item: ContentItem): Stage {
   if (itemType(item) === 'carousel') {
     return item.carouselEditedAt ? 'edited' : 'raw';
   }
-  if (item.editedVideoFileId) return 'edited';
+  if (editedVideoIds(item).length > 0) return 'edited';
   return 'raw';
 }

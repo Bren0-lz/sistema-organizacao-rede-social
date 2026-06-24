@@ -15,6 +15,7 @@ export function BulkUploadModal({ onClose }: { onClose: () => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [slot, setSlot] = useState<BulkSlot>('raw');
+  const [groupIntoOne, setGroupIntoOne] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -37,7 +38,7 @@ export function BulkUploadModal({ onClose }: { onClose: () => void }) {
     setBusy(true);
     try {
       // fecha já: o progresso continua nos toasts e nos cards
-      void bulkUploadAsItems(files, slot);
+      void bulkUploadAsItems(files, slot, { groupIntoOne });
       onClose();
     } finally {
       setBusy(false);
@@ -62,8 +63,9 @@ export function BulkUploadModal({ onClose }: { onClose: () => void }) {
       >
         <h2><Icon name="upload" /> Subir em lote</h2>
         <p className="form-help" style={{ marginTop: 0 }}>
-          Cada vídeo vira um conteúdo novo, com o título tirado do nome do arquivo. Você pode
-          ajustar título, capa e redes depois.
+          {groupIntoOne
+            ? 'Todos os arquivos entram num único conteúdo, como vários takes/versões. Útil para um vídeo gravado em partes.'
+            : 'Cada vídeo vira um conteúdo novo, com o título tirado do nome do arquivo. Você pode ajustar título, capa e redes depois.'}
         </p>
 
         <div className="bulk-slot-pick">
@@ -77,6 +79,18 @@ export function BulkUploadModal({ onClose }: { onClose: () => void }) {
             </button>
           ))}
         </div>
+
+        <label className="bulk-group-toggle">
+          <input
+            type="checkbox"
+            checked={groupIntoOne}
+            onChange={(e) => setGroupIntoOne(e.target.checked)}
+          />
+          <span>
+            Agrupar em um único conteúdo{' '}
+            {slot === 'raw' ? '(vários takes)' : '(várias versões)'}
+          </span>
+        </label>
 
         <div
           className={`bulk-drop ${dragOver ? 'drag-over' : ''}`}

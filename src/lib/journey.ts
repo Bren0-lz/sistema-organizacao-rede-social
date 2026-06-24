@@ -5,6 +5,7 @@ import {
   itemType,
   NETWORKS,
   NETWORK_LABELS,
+  rawVideoIds,
   STAGE_ORDER,
   STAGES_SEQ,
   type ContentItem,
@@ -103,14 +104,17 @@ export function buildJourney(item: ContentItem): Journey {
 
   // ----- nó raw -----
   const rawStep: TrailStep = (() => {
+    const rawCount = rawVideoIds(item).length;
+    // "Vídeo bruto recebido" p/ 1 take; "N takes recebidos" p/ vários.
+    const rawTitle = rawCount > 1 ? `${rawCount} takes recebidos` : 'Vídeo bruto recebido';
     if (p > 0) {
-      if (item.rawVideoFileId) {
+      if (rawCount > 0) {
         const ts = item.rawUploadedAt ?? item.createdAt;
         return {
           key: 'raw',
           stage: 'raw',
           state: 'done',
-          title: 'Vídeo bruto recebido',
+          title: rawTitle,
           detail: 'Enviado em',
           timestamp: ts,
         };
@@ -125,12 +129,12 @@ export function buildJourney(item: ContentItem): Journey {
       };
     }
     // stage === 'raw'
-    if (item.rawVideoFileId) {
+    if (rawCount > 0) {
       return {
         key: 'raw',
         stage: 'raw',
         state: 'current',
-        title: 'Vídeo bruto recebido',
+        title: rawTitle,
         detail: 'Enviado em',
         timestamp: item.rawUploadedAt ?? item.createdAt,
       };

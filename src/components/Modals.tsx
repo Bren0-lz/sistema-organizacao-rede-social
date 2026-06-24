@@ -101,7 +101,8 @@ export function NewItemModal({
   onCreated: (id: string) => void;
 }) {
   const createItem = useStore((s) => s.createItem);
-  const uploadToItem = useStore((s) => s.uploadToItem);
+  const addRawVideos = useStore((s) => s.addRawVideos);
+  const addEditedVideos = useStore((s) => s.addEditedVideos);
   const addCarouselImages = useStore((s) => s.addCarouselImages);
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
@@ -195,7 +196,7 @@ export function NewItemModal({
     try {
       const item = await createItem(title.trim(), notes.trim() || undefined, type);
       // dispara os uploads em segundo plano (progresso aparece nos toasts/cards)
-      if (isVideo) void uploadToItem(item.id, videoSlot, files[0]);
+      if (isVideo) void (videoSlot === 'raw' ? addRawVideos : addEditedVideos)(item.id, files);
       else void addCarouselImages(item.id, files);
       onCreated(item.id);
     } finally {

@@ -46,11 +46,13 @@ import {
 } from '../services/googleCalendar';
 import { createLimiter } from '../lib/concurrency';
 import {
+  editedVideoIds,
   hasScheduledTimeArrived,
   isTrashExpired,
   NETWORKS,
   newContentItem,
   newRecording,
+  rawVideoIds,
   type AppConfig,
   type AppFolders,
   newIdea,
@@ -211,9 +213,26 @@ interface AppState {
   /** Exclui itens de vez (apaga também os arquivos no Drive). */
   purgeItems(ids: string[]): Promise<void>;
 
-  uploadToItem(itemId: string, slot: FileSlot, file: File): Promise<void>;
-  /** Cria um item por arquivo e enfileira os uploads (concorrência limitada). */
-  bulkUploadAsItems(files: File[], slot: Extract<FileSlot, 'raw' | 'edited'>): Promise<void>;
+  /** Sobe um arquivo para um slot único do item (atualmente só a capa). */
+  uploadToItem(itemId: string, slot: Extract<FileSlot, 'cover'>, file: File): Promise<void>;
+  /** Sobe um ou mais takes crus e os anexa ao item, em ordem. */
+  addRawVideos(itemId: string, files: File[]): Promise<void>;
+  /** Remove um take cru (do array e do Drive). */
+  removeRawVideo(itemId: string, fileId: string): Promise<void>;
+  /** Sobe uma ou mais versões editadas e as anexa ao item, em ordem. */
+  addEditedVideos(itemId: string, files: File[]): Promise<void>;
+  /** Remove uma versão editada (do array e do Drive). */
+  removeEditedVideo(itemId: string, fileId: string): Promise<void>;
+  /**
+   * Cria itens a partir dos arquivos e enfileira os uploads (concorrência
+   * limitada). Por padrão, um item por arquivo; com `groupIntoOne`, um único
+   * item recebe todos os arquivos como takes/versões.
+   */
+  bulkUploadAsItems(
+    files: File[],
+    slot: Extract<FileSlot, 'raw' | 'edited'>,
+    options?: { groupIntoOne?: boolean },
+  ): Promise<void>;
   /** Sobe imagens para o carrossel de um item e as anexa em ordem. */
   addCarouselImages(itemId: string, files: File[]): Promise<void>;
   /** Remove uma imagem do carrossel (do array e do Drive). */
@@ -228,14 +247,10 @@ interface AppState {
   loadCover(fileId: string, options?: { thumbnailOnly?: boolean }): Promise<void>;
 }
 
-const SLOT_FIELD: Record<FileSlot, keyof Pick<
-  ContentItem,
-  'rawVideoFileId' | 'editedVideoFileId' | 'coverFileId'
->> = {
-  raw: 'rawVideoFileId',
-  edited: 'editedVideoFileId',
+/** Vídeos crus e editados viram arrays (vários takes/versões); só a capa é única. */
+const SLOT_FIELD = {
   cover: 'coverFileId',
-};
+} as const satisfies Partial<Record<FileSlot, keyof ContentItem>>;
 
 export function markElapsedScheduledPosts(
   items: ContentItem[],
@@ -729,7 +744,7 @@ export const useStore = create<AppState>((set, get) => {
       if (!hasValidYoutubeToken()) {
         await refreshYoutubeAccount(true);
       }
-      if (!item.editedVideoFileId && !item.rawVideoFileId) {
+      if (editedVideoIds(item).length === 0 && rawVideoIds(item).length === 0) {
         throw new Error('Anexe ou selecione um video antes de enviar ao YouTube.');
       }
       const isScheduledUpload = !input.publishNow;
@@ -790,7 +805,7 @@ export const useStore = create<AppState>((set, get) => {
 
       try {
         const fresh = get().items.find((current) => current.id === id) ?? item;
-        const videoFileId = fresh.editedVideoFileId ?? fresh.rawVideoFileId;
+        const videoFileId = editedVideoIds(fresh)[0] ?? rawVideoIds(fresh)[0];
         if (!videoFileId) throw new Error('Anexe ou selecione um video antes de agendar no YouTube.');
         const video = await fetchFileBlob(videoFileId);
         const thumbnail = fresh.coverFileId
@@ -993,8 +1008,8 @@ export const useStore = create<AppState>((set, get) => {
       await mutate((items) => items.filter((item) => !idSet.has(item.id)));
       const fileIds = targets.flatMap((item) =>
         [
-          item.rawVideoFileId,
-          item.editedVideoFileId,
+          ...rawVideoIds(item),
+          ...editedVideoIds(item),
           item.coverFileId,
           ...(item.carouselFileIds ?? []),
         ].filter((id): id is string => !!id),
@@ -1013,11 +1028,25 @@ export const useStore = create<AppState>((set, get) => {
       await runUpload(itemId, item.title, slot, file);
     },
 
-    async bulkUploadAsItems(files, slot) {
+    async bulkUploadAsItems(files, slot, options) {
       const { folders } = get();
       if (!folders || files.length === 0) return;
 
       const now = new Date().toISOString();
+
+      // Agrupar: um único item recebe todos os arquivos como takes/versões.
+      if (options?.groupIntoOne) {
+        const item = newContentItem(stripExtension(files[0].name));
+        item.createdAt = now;
+        item.updatedAt = now;
+        await mutate((items) => [item, ...items]);
+        await Promise.all(
+          files.map((file) => uploadLimiter(() => runUpload(item.id, item.title, slot, file))),
+        );
+        return;
+      }
+
+      // Padrão: um item por arquivo.
       const created = files.map((file) => {
         const item = newContentItem(stripExtension(file.name));
         item.createdAt = now;
@@ -1063,6 +1092,22 @@ export const useStore = create<AppState>((set, get) => {
       );
       dropCoverUrls([fileId]);
       await deleteFile(fileId).catch(() => {});
+    },
+
+    async addRawVideos(itemId, files) {
+      await addVideos(itemId, 'raw', files);
+    },
+
+    async removeRawVideo(itemId, fileId) {
+      await removeVideo(itemId, 'raw', fileId);
+    },
+
+    async addEditedVideos(itemId, files) {
+      await addVideos(itemId, 'edited', files);
+    },
+
+    async removeEditedVideo(itemId, fileId) {
+      await removeVideo(itemId, 'edited', fileId);
     },
 
     async reorderCarousel(itemId, from, to) {
@@ -1174,6 +1219,67 @@ export const useStore = create<AppState>((set, get) => {
     );
   }
 
+  /**
+   * Anexa um take cru / versão editada ao fim do array do item, lendo sempre o
+   * estado vivo. Dobra o id legado (único) para dentro do array na 1ª anexação e
+   * limpa o campo legado. Marca o timestamp do estágio se ainda não houver.
+   */
+  function appendVideo(itemId: string, slot: 'raw' | 'edited', fileId: string): Promise<void> {
+    return mutate((items) =>
+      items.map((item) => {
+        if (item.id !== itemId) return item;
+        if (slot === 'raw') {
+          const next = touch({
+            ...item,
+            rawVideoFileIds: [...rawVideoIds(item), fileId],
+            rawUploadedAt: item.rawUploadedAt ?? new Date().toISOString(),
+          });
+          delete next.rawVideoFileId;
+          return next;
+        }
+        const next = touch({
+          ...item,
+          editedVideoFileIds: [...editedVideoIds(item), fileId],
+          editedUploadedAt: item.editedUploadedAt ?? new Date().toISOString(),
+        });
+        delete next.editedVideoFileId;
+        return next;
+      }),
+    );
+  }
+
+  /** Sobe vários vídeos para um item e os anexa em ordem (concorrência limitada). */
+  async function addVideos(itemId: string, slot: 'raw' | 'edited', files: File[]): Promise<void> {
+    const { folders, items } = get();
+    if (!folders) return;
+    const item = items.find((i) => i.id === itemId);
+    if (!item) return;
+    const videos = files.filter((f) => f.type.startsWith('video/'));
+    if (videos.length === 0) return;
+    await Promise.all(
+      videos.map((file) => uploadLimiter(() => runUpload(itemId, item.title, slot, file))),
+    );
+  }
+
+  /** Remove um take cru / versão editada do array do item e apaga do Drive. */
+  async function removeVideo(itemId: string, slot: 'raw' | 'edited', fileId: string): Promise<void> {
+    await mutate((items) =>
+      items.map((item) => {
+        if (item.id !== itemId) return item;
+        const field = slot === 'raw' ? 'rawVideoFileIds' : 'editedVideoFileIds';
+        const remaining = (slot === 'raw' ? rawVideoIds(item) : editedVideoIds(item)).filter(
+          (id) => id !== fileId,
+        );
+        const next = touch({ ...item, [field]: remaining });
+        // descarta o id legado: a partir daqui o array é a fonte da verdade
+        delete next[slot === 'raw' ? 'rawVideoFileId' : 'editedVideoFileId'];
+        return next;
+      }),
+    );
+    dropCoverUrls([fileId]);
+    await deleteFile(fileId).catch(() => {});
+  }
+
   /** Sobe um arquivo para um item já existente, com tarefa de progresso. */
   async function runUpload(
     itemId: string,
@@ -1212,12 +1318,13 @@ export const useStore = create<AppState>((set, get) => {
         await appendCarouselImage(itemId, fileId);
         // pré-carrega a miniatura (a 1ª imagem vira capa na lista/cards)
         void get().loadCover(fileId);
+      } else if (kind === 'raw') {
+        await appendVideo(itemId, 'raw', fileId);
+      } else if (kind === 'edited') {
+        await appendVideo(itemId, 'edited', fileId);
       } else {
-        const patch: Partial<ContentItem> = { [SLOT_FIELD[kind]]: fileId };
-        if (kind === 'raw') patch.rawUploadedAt = new Date().toISOString();
-        if (kind === 'edited') patch.editedUploadedAt = new Date().toISOString();
-        await get().updateItem(itemId, patch);
-        if (kind === 'cover') void get().loadCover(fileId);
+        await get().updateItem(itemId, { [SLOT_FIELD[kind]]: fileId });
+        void get().loadCover(fileId);
       }
       // remove a tarefa concluída após breve pausa para a animação terminar
       setTimeout(() => set({ uploads: get().uploads.filter((u) => u.id !== task.id) }), 1500);

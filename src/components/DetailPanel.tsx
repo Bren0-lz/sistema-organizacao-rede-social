@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react';
 import { motion } from 'framer-motion';
 import {
+  editedVideoIds,
   itemType,
   NETWORK_LABELS,
   NETWORKS,
+  rawVideoIds,
   thumbSourceFor,
   type ContentItem,
   type FileSlot,
   type Network,
   type NetworkStatus,
-  type ThumbSource,
   type YouTubePrivacyStatus,
 } from '../types';
 import { useStore } from '../store/useStore';
@@ -96,34 +97,19 @@ function parseTags(value: string): string[] {
     .filter(Boolean);
 }
 
-/**
- * Miniatura a mostrar ao fundo do card: cada slot de vídeo usa o frame que o
- * Drive gera do próprio arquivo; o slot de capa usa a capa real, ou — sem ela —
- * o frame do vídeo (capa temporária), igual à lista e aos cards.
- */
-function slotThumbSource(item: ContentItem, slot: FileSlot): ThumbSource | undefined {
-  if (slot === 'cover') return thumbSourceFor(item);
-  const fileId = slot === 'raw' ? item.rawVideoFileId : item.editedVideoFileId;
-  return fileId ? { fileId, fromVideo: true } : undefined;
-}
-
-function FileSlotBox({ item, slot }: { item: ContentItem; slot: FileSlot }) {
+// Slot de arquivo único (capa). Vídeos crus/editados usam o VideoTakesEditor.
+function FileSlotBox({ item, slot }: { item: ContentItem; slot: Extract<FileSlot, 'cover'> }) {
   const uploadToItem = useStore((s) => s.uploadToItem);
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
-  const fileId =
-    slot === 'raw'
-      ? item.rawVideoFileId
-      : slot === 'edited'
-        ? item.editedVideoFileId
-        : item.coverFileId;
+  const fileId = item.coverFileId;
   const meta = SLOT_META[slot];
 
-  // prévia ao fundo (frame do vídeo / capa) — assina só esta URL para não
+  // prévia ao fundo (capa real ou frame do vídeo) — assina só esta URL para não
   // re-renderizar à toa, e baixa sob demanda como nos demais previews
-  const thumb = slotThumbSource(item, slot);
+  const thumb = thumbSourceFor(item);
   const thumbFileId = thumb?.fileId;
   const thumbFromVideo = thumb?.fromVideo ?? false;
   const thumbUrl = useStore((s) => (thumbFileId ? s.coverUrls[thumbFileId] : undefined));
@@ -410,6 +396,137 @@ function CarouselEditor({ item }: { item: ContentItem }) {
   );
 }
 
+// Miniatura de um take de vídeo: usa o frame que o Drive gera do próprio arquivo
+// (thumbnailOnly), sem baixar o vídeo inteiro como fallback.
+function VideoTakeThumb({ fileId }: { fileId: string }) {
+  const url = useStore((s) => s.coverUrls[fileId]);
+  const loadCover = useStore((s) => s.loadCover);
+
+  useEffect(() => {
+    void loadCover(fileId, { thumbnailOnly: true });
+  }, [fileId, loadCover]);
+
+  return url ? (
+    <img src={url} alt="" loading="lazy" />
+  ) : (
+    <span className="carousel-thumb-ph">
+      <Icon name="video" />
+    </span>
+  );
+}
+
+// Editor de takes de vídeo: lista os vários arquivos crus (ou versões editadas)
+// de um item, com miniatura, download individual e remoção, mais "adicionar" e
+// "baixar todas". O download é sempre arquivo por arquivo (sem .zip), pensado
+// para celular. Espelha o CarouselEditor e reaproveita seu CSS.
+function VideoTakesEditor({ item, slot }: { item: ContentItem; slot: 'raw' | 'edited' }) {
+  const addVideos = useStore((s) => (slot === 'raw' ? s.addRawVideos : s.addEditedVideos));
+  const removeVideo = useStore((s) => (slot === 'raw' ? s.removeRawVideo : s.removeEditedVideo));
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [downloadingAll, setDownloadingAll] = useState(false);
+  const ids = slot === 'raw' ? rawVideoIds(item) : editedVideoIds(item);
+  const namePart = slot === 'raw' ? 'cru' : 'editado';
+  const title = slot === 'raw' ? 'Vídeos crus' : 'Editados';
+  const addLabel = slot === 'raw' ? 'adicionar takes' : 'adicionar versões';
+
+  const addFiles = (files: FileList | null) => {
+    if (files && files.length > 0) void addVideos(item.id, Array.from(files));
+  };
+
+  const onDrop = (e: DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    addFiles(e.dataTransfer.files);
+  };
+
+  const downloadAll = async () => {
+    if (downloadingAll || ids.length === 0) return;
+    setDownloadingAll(true);
+    try {
+      // baixa um a um, em ordem — sem .zip, ideal para quem está no celular
+      for (let i = 0; i < ids.length; i++) {
+        await downloadFile(ids[i], `${item.title}-${namePart}-${i + 1}`);
+      }
+    } finally {
+      setDownloadingAll(false);
+    }
+  };
+
+  return (
+    <div className="takes-editor">
+      <div className="takes-head">
+        <Icon name={slot === 'raw' ? 'video' : 'scissors'} />
+        <span>
+          {title}
+          {ids.length > 0 ? ` (${ids.length})` : ''}
+        </span>
+      </div>
+      <div className="carousel-grid">
+        {ids.map((fileId, i) => (
+          <div key={fileId} className="carousel-cell">
+            <VideoTakeThumb fileId={fileId} />
+            <span className="carousel-order">{i + 1}</span>
+            <button
+              className="carousel-download"
+              title="Baixar este arquivo"
+              onClick={() => void downloadFile(fileId, `${item.title}-${namePart}-${i + 1}`)}
+            >
+              <Icon name="download" />
+            </button>
+            <button
+              className="carousel-remove"
+              title="Remover"
+              onClick={() => void removeVideo(item.id, fileId)}
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+
+        <button
+          type="button"
+          className={`carousel-add ${dragOver ? 'drag-over' : ''}`}
+          onClick={() => inputRef.current?.click()}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragOver(true);
+          }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={onDrop}
+        >
+          <span className="carousel-add-icon">＋</span>
+          <span>{addLabel}</span>
+        </button>
+      </div>
+      {ids.length > 0 && (
+        <div className="carousel-actions">
+          <button
+            type="button"
+            className="btn btn-ghost"
+            disabled={downloadingAll}
+            onClick={() => void downloadAll()}
+          >
+            <Icon name="download" />{' '}
+            {downloadingAll ? 'Baixando…' : `Baixar todas (${ids.length})`}
+          </button>
+        </div>
+      )}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="video/*"
+        multiple
+        hidden
+        onChange={(e) => {
+          addFiles(e.target.files);
+          e.target.value = '';
+        }}
+      />
+    </div>
+  );
+}
+
 // Preview do vídeo sob demanda: mostra um poster (capa, se houver) com botão ▶.
 // O iframe pesado do Drive só monta após o clique, mantendo a abertura do drawer fluida.
 function VideoPreview({ item, fileId }: { item: ContentItem; fileId: string }) {
@@ -500,24 +617,31 @@ function VideoPreview({ item, fileId }: { item: ContentItem; fileId: string }) {
   );
 }
 
-// Mantém apenas um player montado por vez, mas deixa as duas versões do vídeo
-// sempre acessíveis no painel — especialmente útil no espaço reduzido do mobile.
+// Mantém apenas um player montado por vez, mas deixa todas as versões do vídeo
+// (cada take cru e cada versão editada) acessíveis por abas — especialmente útil
+// no espaço reduzido do mobile.
 function VideoVersionPreview({ item }: { item: ContentItem }) {
+  const raws = rawVideoIds(item);
+  const editeds = editedVideoIds(item);
   const availableVersions = [
-    item.rawVideoFileId && { slot: 'raw' as const, label: 'Vídeo cru', fileId: item.rawVideoFileId },
-    item.editedVideoFileId && {
+    ...raws.map((fileId, i) => ({
+      slot: 'raw' as const,
+      label: raws.length > 1 ? `Cru ${i + 1}` : 'Vídeo cru',
+      fileId,
+    })),
+    ...editeds.map((fileId, i) => ({
       slot: 'edited' as const,
-      label: 'Editado',
-      fileId: item.editedVideoFileId,
-    },
-  ].filter(Boolean) as { slot: 'raw' | 'edited'; label: string; fileId: string }[];
+      label: editeds.length > 1 ? `Editado ${i + 1}` : 'Editado',
+      fileId,
+    })),
+  ];
 
-  const [selectedSlot, setSelectedSlot] = useState<'raw' | 'edited'>(
-    item.editedVideoFileId ? 'edited' : 'raw',
+  const [selectedFileId, setSelectedFileId] = useState<string>(
+    editeds[0] ?? raws[0] ?? '',
   );
 
   const selectedVersion =
-    availableVersions.find((version) => version.slot === selectedSlot) ?? availableVersions[0];
+    availableVersions.find((version) => version.fileId === selectedFileId) ?? availableVersions[0];
 
   if (!selectedVersion) return null;
 
@@ -527,12 +651,12 @@ function VideoVersionPreview({ item }: { item: ContentItem }) {
         <div className="video-version-tabs" role="tablist" aria-label="Versão do vídeo">
           {availableVersions.map((version) => (
             <button
-              key={version.slot}
+              key={version.fileId}
               type="button"
-              className={`video-version-tab ${selectedVersion.slot === version.slot ? 'active' : ''}`}
+              className={`video-version-tab ${selectedVersion.fileId === version.fileId ? 'active' : ''}`}
               role="tab"
-              aria-selected={selectedVersion.slot === version.slot}
-              onClick={() => setSelectedSlot(version.slot)}
+              aria-selected={selectedVersion.fileId === version.fileId}
+              onClick={() => setSelectedFileId(version.fileId)}
             >
               <Icon name={version.slot === 'raw' ? 'video' : 'scissors'} />
               {version.label}
@@ -757,8 +881,12 @@ function YouTubeScheduler({ item, state }: { item: ContentItem; state: NetworkSt
   const now = useNow();
   const uploading = state.youtubeUploadStatus === 'uploading';
   const busy = uploading || youtubeAction !== null;
-  const selectedVideoFileId = item.editedVideoFileId ?? item.rawVideoFileId;
-  const selectedVideoLabel = item.editedVideoFileId ? 'editado' : item.rawVideoFileId ? 'cru' : null;
+  const selectedVideoFileId = editedVideoIds(item)[0] ?? rawVideoIds(item)[0];
+  const selectedVideoLabel = editedVideoIds(item).length
+    ? 'editado'
+    : rawVideoIds(item).length
+      ? 'cru'
+      : null;
   const canSubmit =
     !!selectedVideoFileId && !busy && (publishMode === 'now' || !!publishAt);
   const hasYoutubeVideo = !!state.youtubeVideoId;
@@ -1312,10 +1440,10 @@ export function DetailPanel({ item, onClose }: Props) {
             <CarouselEditor item={item} />
           ) : (
             <>
+              <VideoTakesEditor item={item} slot="raw" />
+              <VideoTakesEditor item={item} slot="edited" />
               <div className="slots">
-                {(['raw', 'edited', 'cover'] as const).map((slot) => (
-                  <FileSlotBox key={slot} item={item} slot={slot} />
-                ))}
+                <FileSlotBox item={item} slot="cover" />
               </div>
               <VideoVersionPreview item={item} />
             </>

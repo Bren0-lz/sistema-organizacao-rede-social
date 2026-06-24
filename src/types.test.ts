@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   coverFileIdFor,
+  editedVideoIds,
   emptyNetworkStatus,
   hasScheduledTimeArrived,
   isAutoPostedFromSchedule,
@@ -10,6 +11,7 @@ import {
   newContentItem,
   newIdea,
   newRecording,
+  rawVideoIds,
   thumbSourceFor,
   trashDaysLeft,
   type ContentItem,
@@ -42,6 +44,14 @@ describe('itemStage', () => {
 
   it('vídeo com versão editada vai para "edited"', () => {
     expect(itemStage(makeItem({ editedVideoFileId: 'abc' }))).toBe('edited');
+  });
+
+  it('vídeo com versão editada via array novo também vai para "edited"', () => {
+    expect(itemStage(makeItem({ editedVideoFileIds: ['abc'] }))).toBe('edited');
+  });
+
+  it('vídeo só com takes crus (array) continua em "raw"', () => {
+    expect(itemStage(makeItem({ rawVideoFileIds: ['t1', 't2'] }))).toBe('raw');
   });
 
   it('carrossel sem marcação fica em "raw" e marcado vai para "edited"', () => {
@@ -207,6 +217,35 @@ describe('thumbSourceFor', () => {
 
   it('carrossel sem imagens retorna undefined', () => {
     expect(thumbSourceFor(makeItem({ type: 'carousel', carouselFileIds: [] }))).toBeUndefined();
+  });
+
+  it('vídeo com vários takes crus usa o 1º take como capa temporária', () => {
+    const item = makeItem({ rawVideoFileIds: ['t1', 't2', 't3'] });
+    expect(thumbSourceFor(item)).toEqual({ fileId: 't1', fromVideo: true });
+  });
+});
+
+describe('rawVideoIds / editedVideoIds (normalizadores)', () => {
+  it('retornam o array novo quando presente', () => {
+    const item = makeItem({ rawVideoFileIds: ['a', 'b'], editedVideoFileIds: ['c'] });
+    expect(rawVideoIds(item)).toEqual(['a', 'b']);
+    expect(editedVideoIds(item)).toEqual(['c']);
+  });
+
+  it('dobram o campo legado (id único) num array de 1 — compatibilidade', () => {
+    const item = makeItem({ rawVideoFileId: 'cru', editedVideoFileId: 'editado' });
+    expect(rawVideoIds(item)).toEqual(['cru']);
+    expect(editedVideoIds(item)).toEqual(['editado']);
+  });
+
+  it('o array novo tem prioridade sobre o legado', () => {
+    const item = makeItem({ rawVideoFileId: 'velho', rawVideoFileIds: ['novo'] });
+    expect(rawVideoIds(item)).toEqual(['novo']);
+  });
+
+  it('retornam vazio quando não há nenhum vídeo', () => {
+    expect(rawVideoIds(makeItem())).toEqual([]);
+    expect(editedVideoIds(makeItem())).toEqual([]);
   });
 });
 

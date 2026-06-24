@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   coverFileIdFor,
+  editedVideoIds,
   itemStage,
   itemType,
   NETWORK_LABELS,
@@ -54,7 +55,9 @@ type MissingFilter = 'cover' | 'edited';
 
 /** Item está sem a "etapa final" (vídeo editado ou carrossel marcado como editado)? */
 function isMissingEdited(item: ContentItem): boolean {
-  return itemType(item) === 'carousel' ? !item.carouselEditedAt : !item.editedVideoFileId;
+  return itemType(item) === 'carousel'
+    ? !item.carouselEditedAt
+    : editedVideoIds(item).length === 0;
 }
 
 /** Item passa pelo filtro de "arquivo faltando" selecionado? */

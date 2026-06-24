@@ -1417,6 +1417,21 @@ input[type='time']::-webkit-calendar-picker-indicator {
   margin-top: 0;
 }
 
+/* Editor de takes de vídeo (crus/editados): reaproveita a grade do carrossel. */
+.takes-editor {
+  margin-bottom: 18px;
+}
+
+.takes-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-dim);
+}
+
 .video-versions {
   margin-top: 14px;
 }
@@ -2566,6 +2581,22 @@ input[type='time']::-webkit-calendar-picker-indicator {
   display: flex;
   gap: 8px;
   margin-bottom: 14px;
+}
+
+.bulk-group-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: var(--ink-dim);
+  cursor: pointer;
+}
+
+.bulk-group-toggle input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
 }
 
 .bulk-drop {

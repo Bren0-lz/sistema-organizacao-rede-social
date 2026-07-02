@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { trashDaysLeft, TRASH_RETENTION_DAYS, type ContentItem } from '../types';
 import { useStore } from '../store/useStore';
+import { formatDate } from '../lib/dates';
 
 interface Props {
   items: ContentItem[];
@@ -91,15 +92,7 @@ export function TrashView({ items }: Props) {
                   <td className="col-title">
                     <span className="row-title">{item.title}</span>
                   </td>
-                  <td className="col-date">
-                    {item.deletedAt
-                      ? new Date(item.deletedAt).toLocaleDateString('pt-BR', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: '2-digit',
-                        })
-                      : '—'}
-                  </td>
+                  <td className="col-date">{formatDate(item.deletedAt, true)}</td>
                   <td className="col-stage">
                     <span className="stage-tag" style={{ color: left <= 5 ? '#ff6b6b' : undefined }}>
                       {left} dia{left === 1 ? '' : 's'}

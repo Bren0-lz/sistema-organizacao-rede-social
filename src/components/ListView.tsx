@@ -7,9 +7,15 @@ import { NetworkIcon } from './NetworkIcon';
 import { StageIcon } from './StageIcon';
 import { TrailMini } from './TrailMini';
 import { STAGE_COLORS, STAGE_LABELS } from '../lib/journey';
+import { formatDate } from '../lib/dates';
 
 type SortKey = 'title' | 'updated' | 'stage';
 type SortDir = 'asc' | 'desc';
+
+/** Altura estimada de uma linha (px) — alimenta o virtualizador. */
+const ROW_HEIGHT = 49;
+/** Linhas extras renderizadas acima/abaixo da viewport, para o scroll não "piscar". */
+const ROW_OVERSCAN = 8;
 
 interface Props {
   items: ContentItem[];
@@ -19,7 +25,7 @@ interface Props {
   onOpen: (id: string) => void;
 }
 
-function LazyThumb({ fileId }: { fileId?: string }) {
+function LazyThumb({ fileId, alt }: { fileId?: string; alt: string }) {
   // assina só a URL desta capa — não o mapa inteiro — senão cada capa que
   // carrega re-renderiza todas as linhas visíveis (o grande causador de travamento)
   const url = useStore((s) => (fileId ? s.coverUrls[fileId] : undefined));
@@ -33,7 +39,7 @@ function LazyThumb({ fileId }: { fileId?: string }) {
   return (
     <div className="row-thumb" ref={ref}>
       {url ? (
-        <img src={url} alt="" loading="lazy" />
+        <img src={url} alt={alt} loading="lazy" />
       ) : (
         <span className="row-thumb-ph">{fileId ? '⏳' : '🖼️'}</span>
       )}
@@ -78,7 +84,7 @@ const ListRow = memo(function ListRow({
         />
       </td>
       <td className="col-thumb">
-        <LazyThumb fileId={item.coverFileId} />
+        <LazyThumb fileId={item.coverFileId} alt={item.coverFileId ? `Capa de ${item.title}` : ''} />
       </td>
       <td className="col-title">
         <span className="row-title">{item.title}</span>
@@ -100,12 +106,7 @@ const ListRow = memo(function ListRow({
           <StageIcon stage={stage} /> {STAGE_LABELS[stage]}
         </span>
       </td>
-      <td className="col-date">
-        {new Date(item.updatedAt).toLocaleDateString('pt-BR', {
-          day: '2-digit',
-          month: '2-digit',
-        })}
-      </td>
+      <td className="col-date">{formatDate(item.updatedAt)}</td>
     </tr>
   );
 });
@@ -146,8 +147,8 @@ export function ListView({ items, selected, onToggle, onToggleAll, onOpen }: Pro
 
   const rowVirtualizer = useWindowVirtualizer({
     count: sorted.length,
-    estimateSize: () => 49,
-    overscan: 8,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: ROW_OVERSCAN,
     scrollMargin: listTop,
   });
 

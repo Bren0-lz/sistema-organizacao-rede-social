@@ -21,6 +21,13 @@ export const SLOT_FOLDER_NAMES: Record<FileSlot, string> = {
 
 const FOLDER_ID_KEY = 'org-social:rootFolderId';
 
+/** Teto de tamanho por upload (5 GB) — evita travar a rede com arquivos absurdos. */
+export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024 * 1024;
+/** Timeout das requisições de capa, para não deixar o card preso em "carregando". */
+const COVER_FETCH_TIMEOUT_MS = 15_000;
+/** IDs de pasta do Drive são strings longas de [A-Za-z0-9_-]. */
+const DRIVE_ID_RE = /^[\w-]{10,}$/;
+
 async function driveFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const token = await getAccessToken();
   const response = await fetch(path.startsWith('http') ? path : `${API}${path}`, {
@@ -178,6 +185,23 @@ export async function deleteFile(fileId: string): Promise<void> {
  * Upload resumável: inicia a sessão e envia o arquivo num único PUT via XHR
  * (XHR para ter onprogress, que o fetch não expõe no upload).
  */
+/**
+ * Valida um arquivo antes de subir: tamanho dentro do teto e tipo coerente com
+ * o slot (vídeo para crus/editados, imagem para capas). O `accept` do input só
+ * filtra a UI; isto barra arquivos colados/arrastados de tipo errado.
+ */
+export function validateUpload(file: File, slot: FileSlot): void {
+  if (file.size > MAX_UPLOAD_BYTES) {
+    const gb = (file.size / 1024 / 1024 / 1024).toFixed(1);
+    throw new Error(`Arquivo muito grande (${gb} GB). O limite por upload é 5 GB.`);
+  }
+  const expected = slot === 'cover' ? 'image/' : 'video/';
+  if (file.type && !file.type.startsWith(expected)) {
+    const kind = slot === 'cover' ? 'uma imagem' : 'um vídeo';
+    throw new Error(`Tipo de arquivo inválido para "${SLOT_FOLDER_NAMES[slot]}": envie ${kind}.`);
+  }
+}
+
 export async function uploadFile(
   file: File,
   parentId: string,
@@ -238,7 +262,9 @@ export function previewUrl(fileId: string): string {
  * capas, já que o thumbnailLink do Drive nem sempre aceita CORS/cookies.
  */
 export async function fetchBlobUrl(fileId: string): Promise<string> {
-  const res = await driveFetch(`/files/${fileId}?alt=media&supportsAllDrives=true`);
+  const res = await driveFetch(`/files/${fileId}?alt=media&supportsAllDrives=true`, {
+    signal: AbortSignal.timeout(COVER_FETCH_TIMEOUT_MS),
+  });
   const blob = await res.blob();
   return URL.createObjectURL(blob);
 }
@@ -254,7 +280,9 @@ export async function fetchThumbnailUrl(fileId: string): Promise<string> {
     try {
       // pede um tamanho razoável de capa (=s400) em vez do default minúsculo
       const sized = info.thumbnailLink.replace(/=s\d+$/, '=s400');
-      const res = await driveFetch(sized);
+      const res = await driveFetch(sized, {
+        signal: AbortSignal.timeout(COVER_FETCH_TIMEOUT_MS),
+      });
       const blob = await res.blob();
       return URL.createObjectURL(blob);
     } catch {
@@ -264,10 +292,36 @@ export async function fetchThumbnailUrl(fileId: string): Promise<string> {
   return fetchBlobUrl(fileId);
 }
 
-export function setSharedRootFolder(folderIdOrUrl: string): string {
+/** Extrai o ID da pasta de uma URL do Drive ou usa a string como ID. */
+function parseFolderId(folderIdOrUrl: string): string {
   // aceita tanto o ID puro quanto a URL https://drive.google.com/drive/folders/<id>
   const match = folderIdOrUrl.match(/folders\/([\w-]+)/);
-  const id = match ? match[1] : folderIdOrUrl.trim();
+  return match ? match[1] : folderIdOrUrl.trim();
+}
+
+/**
+ * Valida que o ID/URL aponta para uma pasta acessível e só então o persiste.
+ * Antes, qualquer string era gravada no localStorage e só falhava depois, de
+ * forma silenciosa (caía na criação de uma pasta nova).
+ */
+export async function setSharedRootFolder(folderIdOrUrl: string): Promise<string> {
+  const id = parseFolderId(folderIdOrUrl);
+  if (!DRIVE_ID_RE.test(id)) {
+    throw new Error(
+      'Link ou ID inválido. Cole o link da pasta no Drive (…/folders/ID) ou o próprio ID.',
+    );
+  }
+  let info: DriveFileInfo;
+  try {
+    info = await getFileInfo(id);
+  } catch {
+    throw new Error(
+      'Não foi possível acessar essa pasta. Confira o link e se ela foi compartilhada com a sua conta.',
+    );
+  }
+  if (info.mimeType !== FOLDER_MIME) {
+    throw new Error('Esse link aponta para um arquivo, não para uma pasta do Drive.');
+  }
   localStorage.setItem(FOLDER_ID_KEY, id);
   return id;
 }

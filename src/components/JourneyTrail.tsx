@@ -1,6 +1,8 @@
+import { memo, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import type { ContentItem, Stage } from '../types';
-import { buildJourney, formatWhen, type TrailStep } from '../lib/journey';
+import { buildJourney, type TrailStep } from '../lib/journey';
+import { formatDateTime } from '../lib/dates';
 import { StageIcon } from './StageIcon';
 import { NetworkIcon } from './NetworkIcon';
 
@@ -20,8 +22,8 @@ function iconFor(key: TrailStep['key']): Stage | 'check' | 'flag' {
   }
 }
 
-export function JourneyTrail({ item }: { item: ContentItem }) {
-  const j = buildJourney(item);
+export const JourneyTrail = memo(function JourneyTrail({ item }: { item: ContentItem }) {
+  const j = useMemo(() => buildJourney(item), [item]);
   return (
     <div className="journey" role="list" aria-label={j.ariaSummary}>
       {j.steps.map((step, i) => (
@@ -59,7 +61,7 @@ export function JourneyTrail({ item }: { item: ContentItem }) {
             )}
             {step.timestamp && (
               <time className="journey-when" dateTime={step.timestamp}>
-                {formatWhen(step.timestamp)}
+                {formatDateTime(step.timestamp)}
               </time>
             )}
             {step.key === 'publish' && (
@@ -118,4 +120,4 @@ export function JourneyTrail({ item }: { item: ContentItem }) {
       </div>
     </div>
   );
-}
+});

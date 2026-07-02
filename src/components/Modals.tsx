@@ -90,6 +90,7 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
   const signOut = useStore((s) => s.signOut);
   const [folderInput, setFolderInput] = useState('');
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const rootId = getRootFolderId();
 
   return (
@@ -124,6 +125,11 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
           <p className="form-help">
             Use isto se outra pessoa da equipe criou a pasta e compartilhou com você.
           </p>
+          {error && (
+            <p className="form-help" role="alert" style={{ color: 'var(--st-raw, #e5484d)' }}>
+              {error}
+            </p>
+          )}
         </div>
       </div>
       <div className="modal-actions">
@@ -145,9 +151,12 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
           disabled={!folderInput.trim() || busy}
           onClick={async () => {
             setBusy(true);
+            setError(null);
             try {
               await connectSharedFolder(folderInput.trim());
               onClose();
+            } catch (err) {
+              setError(err instanceof Error ? err.message : String(err));
             } finally {
               setBusy(false);
             }

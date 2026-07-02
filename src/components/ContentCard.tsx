@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { memo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { itemStage, NETWORKS, type ContentItem } from '../types';
 import { useStore } from '../store/useStore';
@@ -12,7 +12,7 @@ interface Props {
   onOpen: (id: string) => void;
 }
 
-export function ContentCard({ item, onOpen }: Props) {
+export const ContentCard = memo(function ContentCard({ item, onOpen }: Props) {
   // assina só a URL desta capa — não o mapa inteiro — para que o carregamento
   // de uma capa não re-renderize todos os cards visíveis
   const coverUrl = useStore((s) =>
@@ -73,4 +73,4 @@ export function ContentCard({ item, onOpen }: Props) {
       </div>
     </motion.article>
   );
-}
+});

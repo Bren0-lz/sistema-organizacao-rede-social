@@ -7,6 +7,7 @@ import {
   type Network,
   type Stage,
 } from '../types';
+import { formatDateTime } from './dates';
 
 export type NodeState = 'done' | 'current' | 'pending';
 
@@ -60,16 +61,6 @@ export const STAGE_COLORS: Record<Stage, string> = {
   scheduled: 'var(--st-scheduled)',
   posted: 'var(--st-posted)',
 };
-
-/** "15/06 às 09:00" via toLocaleString('pt-BR'). */
-export function formatWhen(iso?: string): string | undefined {
-  if (!iso) return undefined;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return undefined;
-  const date = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-  const time = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  return `${date} às ${time}`;
-}
 
 function stateForIndex(index: number, progress: number): NodeState {
   if (index < progress) return 'done';
@@ -191,7 +182,7 @@ export function buildJourney(item: ContentItem): Journey {
     if (ns.status === 'posted') {
       branchState = 'done';
       scheduledStep = { key: 'scheduled', state: 'done', title: 'Programado' };
-      const when = formatWhen(ns.postedAt);
+      const when = formatDateTime(ns.postedAt);
       postedStep = {
         key: 'posted',
         state: 'current',
@@ -201,7 +192,7 @@ export function buildJourney(item: ContentItem): Journey {
       };
     } else if (ns.status === 'scheduled') {
       branchState = 'current';
-      const when = formatWhen(ns.scheduledAt);
+      const when = formatDateTime(ns.scheduledAt);
       scheduledStep = {
         key: 'scheduled',
         state: 'current',

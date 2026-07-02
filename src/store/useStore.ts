@@ -10,6 +10,7 @@ import {
   fetchThumbnailUrl,
   setSharedRootFolder,
   uploadFile,
+  validateUpload,
 } from '../services/drive';
 import { loadDatabase, saveDatabase } from '../services/database';
 import { createLimiter } from '../lib/concurrency';
@@ -27,6 +28,17 @@ import {
 const coverLimiter = createLimiter(4);
 /** Uploads em lote: no máximo 3 arquivos subindo ao mesmo tempo. */
 const uploadLimiter = createLimiter(3);
+/**
+ * Teto do cache de capas em memória. Cada capa é um blob-URL criado com
+ * `URL.createObjectURL`; sem limite + revogação, sessões longas (rolar por
+ * centenas de itens) vazam memória indefinidamente.
+ */
+const MAX_COVER_CACHE = 120;
+
+/** Revoga todos os blob-URLs de capas e devolve um mapa vazio. */
+function revokeCovers(covers: Record<string, string>): void {
+  for (const url of Object.values(covers)) URL.revokeObjectURL(url);
+}
 
 export interface UploadTask {
   id: string;
@@ -163,6 +175,7 @@ export const useStore = create<AppState>((set, get) => {
 
     signOut() {
       authSignOut();
+      revokeCovers(get().coverUrls);
       set({ authStatus: 'signedOut', folders: undefined, items: [], coverUrls: {} });
     },
 
@@ -174,7 +187,7 @@ export const useStore = create<AppState>((set, get) => {
     },
 
     async connectSharedFolder(folderIdOrUrl) {
-      const id = setSharedRootFolder(folderIdOrUrl);
+      const id = await setSharedRootFolder(folderIdOrUrl);
       await connect(id);
     },
 
@@ -306,7 +319,22 @@ export const useStore = create<AppState>((set, get) => {
       if (get().coverUrls[fileId]) return;
       try {
         const url = await coverLimiter(() => fetchThumbnailUrl(fileId));
-        set({ coverUrls: { ...get().coverUrls, [fileId]: url } });
+        // outra chamada concorrente pode ter resolvido a mesma capa primeiro
+        const current = get().coverUrls;
+        if (current[fileId]) {
+          URL.revokeObjectURL(url);
+          return;
+        }
+        const next = { ...current, [fileId]: url };
+        // despeja as capas mais antigas (ordem de inserção) acima do teto,
+        // revogando o blob-URL para liberar memória
+        const keys = Object.keys(next);
+        for (let i = 0; i < keys.length - MAX_COVER_CACHE; i++) {
+          const evicted = keys[i];
+          URL.revokeObjectURL(next[evicted]);
+          delete next[evicted];
+        }
+        set({ coverUrls: next });
       } catch {
         // capa indisponível — o card mostra o placeholder
       }
@@ -340,6 +368,7 @@ export const useStore = create<AppState>((set, get) => {
       });
 
     try {
+      validateUpload(file, slot);
       const fileId = await uploadFile(file, parentId, (p) => updateTask({ progress: p }));
       const patch: Partial<ContentItem> = { [SLOT_FIELD[slot]]: fileId };
       if (slot === 'raw') patch.rawUploadedAt = new Date().toISOString();

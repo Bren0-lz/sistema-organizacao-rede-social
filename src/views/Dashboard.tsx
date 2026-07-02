@@ -46,6 +46,17 @@ function stageForNetwork(item: ContentItem, network: Network): Stage | null {
   return 'ready';
 }
 
+/**
+ * Estágio do item dado o filtro ativo — fonte única para o quadro (byStage) e
+ * a lista (listItems). Retorna null quando o item não pertence ao filtro.
+ */
+function stageUnderFilter(item: ContentItem, filter: Filter): Stage | null {
+  if (filter === 'all') return itemStage(item);
+  if (filter === 'raw' || filter === 'edited')
+    return itemStage(item) === filter ? filter : null;
+  return stageForNetwork(item, filter);
+}
+
 export function Dashboard() {
   const items = useStore((s) => s.items);
   const refresh = useStore((s) => s.refresh);
@@ -77,11 +88,7 @@ export function Dashboard() {
   const byStage = useMemo(() => {
     const map = new Map<Stage, ContentItem[]>(STAGES.map(({ stage }) => [stage, []]));
     for (const item of searched) {
-      let stage: Stage | null;
-      if (filter === 'all') stage = itemStage(item);
-      else if (filter === 'raw' || filter === 'edited')
-        stage = itemStage(item) === filter ? filter : null;
-      else stage = stageForNetwork(item, filter);
+      const stage = stageUnderFilter(item, filter);
       if (stage) map.get(stage)!.push(item);
     }
     // programados primeiro por data mais próxima; demais por atualização recente
@@ -97,12 +104,10 @@ export function Dashboard() {
     return map;
   }, [searched, filter]);
 
-  // na visão lista, o filtro de rede vira só "atribuído àquela rede"
+  // mesma regra do quadro: mantém os itens que pertencem ao filtro ativo
   const listItems = useMemo(() => {
     if (filter === 'all') return searched;
-    if (filter === 'raw' || filter === 'edited')
-      return searched.filter((i) => itemStage(i) === filter);
-    return searched.filter((i) => i.networks[filter].assigned);
+    return searched.filter((i) => stageUnderFilter(i, filter) !== null);
   }, [searched, filter]);
 
   const openItem = openItemId ? items.find((i) => i.id === openItemId) : undefined;
@@ -141,6 +146,7 @@ export function Dashboard() {
         <input
           className="search-input"
           type="search"
+          aria-label="Buscar conteúdos por título ou nota"
           placeholder="Buscar por título ou nota…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}

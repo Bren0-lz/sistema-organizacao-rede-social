@@ -2,8 +2,18 @@ import { memo } from 'react';
 import type { Stage } from '../types';
 
 /** Ícones SVG por estágio (currentColor) — emojis variam por SO e não aceitam cor. */
-export const StageIcon = memo(function StageIcon({ stage }: { stage: Stage | 'check' | 'flag' }) {
+export const StageIcon = memo(function StageIcon({
+  stage,
+}: {
+  stage: Stage | 'check' | 'flag' | 'images';
+}) {
   switch (stage) {
+    case 'images': // pilha de fotos (carrossel)
+      return (
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+          <path d="M8 4h11a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm0 2v9h11v-9H8Zm2.5 2.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM9 14l2.5-3 1.8 2.2L15.5 10l2.5 4H9ZM4 8a1 1 0 0 1 1 1v9h9a1 1 0 1 1 0 2H5a2 2 0 0 1-2-2V9a1 1 0 0 1 1-1Z" />
+        </svg>
+      );
     case 'raw': // claquete
       return (
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden>

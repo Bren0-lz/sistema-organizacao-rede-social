@@ -17,7 +17,10 @@ Siga estes passos uma única vez para colocar o Estúdio no ar.
    - **Origens JavaScript autorizadas**:
      - `http://localhost:5173`
      - `https://SEU-SITE.netlify.app` (adicione depois que souber o domínio)
-   - Não precisa de URI de redirecionamento (o app usa o fluxo de token do GIS).
+   - Em **URIs de redirecionamento autorizados**, adicione também:
+     - `https://sistema-organizacao-rede-social.vercel.app`
+     - Para outros domínios usados no deploy, adicione a URL completa deles também.
+     O iPhone usa esse retorno na mesma aba para não depender de popup do Safari.
    - Copie o **Client ID** gerado (termina com `.apps.googleusercontent.com`).
 
 ## 2. Rodar localmente
@@ -40,7 +43,9 @@ arquivo `db.json` (banco de metadados).
 3. Em **Site configuration → Environment variables**, adicione:
    - `VITE_GOOGLE_CLIENT_ID` = seu Client ID.
 4. Faça o deploy, copie o domínio final (ex.: `https://meu-estudio.netlify.app`) e **volte ao
-   Google Cloud** para adicioná-lo nas Origens JavaScript autorizadas da credencial OAuth.
+   Google Cloud** para adicioná-lo na credencial OAuth, em **dois** lugares:
+   - **Origens JavaScript autorizadas**: `https://meu-estudio.netlify.app`
+   - **URIs de redirecionamento autorizados**: `https://meu-estudio.netlify.app/` (com a barra final)
 
 ## 4. Trabalhar em equipe
 
@@ -50,9 +55,37 @@ arquivo `db.json` (banco de metadados).
 3. Cada membro entra no app com a própria conta Google, abre **Configurações** e cola o
    link da pasta compartilhada em "Conectar a uma pasta compartilhada".
 
+## 5. Publicar no YouTube (conta diferente do Drive)
+
+O Drive (banco de dados) e o YouTube usam conexões separadas, então você pode publicar
+vídeos em um canal de uma conta Google **diferente** da conta usada para o Drive.
+
+1. No Google Cloud, em **APIs e serviços → Biblioteca**, ative a **YouTube Data API v3**
+   (no mesmo projeto do Drive ou em um projeto à parte — veja o passo 3 abaixo).
+2. Para que a conta-alvo consiga autorizar a publicação, escolha **uma** das opções:
+   - **Adicionar como Test user**: na **Tela de permissão OAuth** do projeto, inclua o
+     e-mail da conta do YouTube em **Test users**. Use isto se o projeto OAuth padrão do
+     app já serve.
+   - **Client ID OAuth próprio para o YouTube**: se a conta-alvo pertence a outro projeto
+     OAuth (ou a equipe quer publicar pelo próprio projeto), crie um **ID do cliente OAuth**
+     tipo **Aplicativo da Web** (com as mesmas **Origens JavaScript autorizadas** E os mesmos
+     **URIs de redirecionamento autorizados** do passo 1.4 — a conexão do YouTube também
+     redireciona a página), copie o Client ID e cole no app em **Configurações → "Client ID
+     do YouTube (OAuth)"**. Deixe esse campo **vazio** para publicar com o projeto padrão do app.
+3. No app, abra **Configurações → Conta do YouTube → "Conectar YouTube"** e escolha a conta
+   desejada na tela `select_account` do Google. Publicações, edições e exclusões no YouTube
+   usam somente essa conta.
+
+> O Client ID do YouTube fica salvo em `config.json` na pasta do app no Drive, então é
+> compartilhado com a equipe. Ao salvar um novo Client ID o app invalida o token atual e
+> exige reconectar a conta do YouTube.
+
 ## Solução de problemas
 
 - **"VITE_GOOGLE_CLIENT_ID não configurado"** → faltou o `.env.local` (local) ou a variável de ambiente (Netlify; refaça o deploy após criar a variável).
+- **Erro 403 `access_denied` ao conectar o YouTube** → o e-mail dessa conta não está em Test users do projeto OAuth usado, ou faltou ativar a YouTube Data API v3 (veja o passo 5).
 - **Erro 403 `access_denied` no login** → o e-mail não está em Test users.
-- **Popup do Google bloqueado** → permita popups para o domínio do app.
+- **Erro `redirect_uri_mismatch` ao logar** → faltou cadastrar o **URI de redirecionamento**
+  exato (com a barra final `/`) na credencial OAuth, ou ele não bate com a URL do app
+  (passos 1.4 e 3.4). Confira `http(s)://DOMÍNIO/`.
 - **Membro da equipe não vê os conteúdos** → confira se a pasta foi compartilhada como Editor e se ele colou o link da pasta nas Configurações.

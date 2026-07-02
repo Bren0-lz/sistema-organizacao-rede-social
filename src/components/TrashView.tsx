@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { trashDaysLeft, TRASH_RETENTION_DAYS, type ContentItem } from '../types';
 import { useStore } from '../store/useStore';
 import { formatDate } from '../lib/dates';
+import { Icon } from './Icon';
 
 interface Props {
   items: ContentItem[];
@@ -49,7 +50,7 @@ export function TrashView({ items }: Props) {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <h2>Lixeira vazia 🗑</h2>
+        <h2>Lixeira vazia</h2>
         <p>
           Conteúdos removidos ficam aqui por {TRASH_RETENTION_DAYS} dias antes de serem
           excluídos definitivamente.
@@ -72,6 +73,7 @@ export function TrashView({ items }: Props) {
             <th className="col-title">Título</th>
             <th className="col-date">Removido em</th>
             <th className="col-stage">Expira em</th>
+            <th className="col-actions"></th>
           </tr>
         </thead>
         <tbody>
@@ -98,6 +100,16 @@ export function TrashView({ items }: Props) {
                       {left} dia{left === 1 ? '' : 's'}
                     </span>
                   </td>
+                  <td className="col-actions" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      disabled={busy}
+                      title={`Restaurar ${item.title}`}
+                      onClick={() => void run(() => restoreItems([item.id]))}
+                    >
+                      <Icon name="restore" /> Restaurar
+                    </button>
+                  </td>
                 </tr>
               );
             })}
@@ -121,7 +133,7 @@ export function TrashView({ items }: Props) {
               disabled={busy}
               onClick={() => void run(() => restoreItems(ids))}
             >
-              ♻ Restaurar
+              <Icon name="restore" /> Restaurar
             </button>
 
             {confirm === 'purge' ? (
@@ -138,7 +150,7 @@ export function TrashView({ items }: Props) {
                 disabled={busy}
                 onClick={() => setConfirm('purge')}
               >
-                🗑 Excluir definitivamente
+                <Icon name="trash" /> Excluir definitivamente
               </button>
             )}
 

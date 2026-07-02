@@ -1,8 +1,13 @@
 import {
+  hasScheduledTimeArrived,
+  isAutoPostedFromSchedule,
   itemStage,
+  itemType,
   NETWORKS,
   NETWORK_LABELS,
+  rawVideoIds,
   STAGE_ORDER,
+  STAGES_SEQ,
   type ContentItem,
   type Network,
   type Stage,
@@ -12,7 +17,7 @@ import { formatDateTime } from './dates';
 export type NodeState = 'done' | 'current' | 'pending';
 
 export interface TrailStep {
-  key: 'raw' | 'edited' | 'ready' | 'publish' | 'complete';
+  key: 'raw' | 'edited' | 'ready' | 'publish' | 'complete' | 'images';
   stage: Stage; // estágio "dono" da cor (publish→scheduled, complete→posted)
   state: NodeState;
   title: string; // "Vídeo bruto recebido"
@@ -54,6 +59,16 @@ export const STAGE_LABELS: Record<Stage, string> = {
   posted: 'Publicado',
 };
 
+/**
+ * Rótulo do estágio levando em conta o tipo do item: no estágio `raw`, um
+ * carrossel não tem "vídeo", então mostramos "Imagens" em vez de "Vídeo bruto".
+ */
+export function itemStageLabel(item: ContentItem): string {
+  const stage = itemStage(item);
+  if (stage === 'raw' && itemType(item) === 'carousel') return 'Imagens';
+  return STAGE_LABELS[stage];
+}
+
 export const STAGE_COLORS: Record<Stage, string> = {
   raw: 'var(--st-raw)',
   edited: 'var(--st-edited)',
@@ -62,18 +77,24 @@ export const STAGE_COLORS: Record<Stage, string> = {
   posted: 'var(--st-posted)',
 };
 
-function stateForIndex(index: number, progress: number): NodeState {
-  if (index < progress) return 'done';
-  if (index === progress) return 'current';
-  return 'pending';
+/** "15/06 às 09:00" via toLocaleString('pt-BR'). */
+export function formatWhen(iso?: string): string | undefined {
+  if (!iso) return undefined;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return undefined;
+  const date = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  const time = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  return `${date} às ${time}`;
 }
 
 export function miniTrail(item: ContentItem): { stage: Stage; state: NodeState }[] {
-  const progress = STAGE_ORDER[itemStage(item)];
-  return (['raw', 'edited', 'ready', 'scheduled', 'posted'] as Stage[]).map((stage, i) => ({
-    stage,
-    state: stateForIndex(i, progress),
-  }));
+  const current = STAGE_ORDER[itemStage(item)];
+  // Vídeo e carrossel compartilham a mesma sequência de 5 estágios.
+  return STAGES_SEQ.map((stage) => {
+    const o = STAGE_ORDER[stage];
+    const state: NodeState = o < current ? 'done' : o === current ? 'current' : 'pending';
+    return { stage, state };
+  });
 }
 
 export function buildJourney(item: ContentItem): Journey {
@@ -84,14 +105,17 @@ export function buildJourney(item: ContentItem): Journey {
 
   // ----- nó raw -----
   const rawStep: TrailStep = (() => {
+    const rawCount = rawVideoIds(item).length;
+    // "Vídeo bruto recebido" p/ 1 take; "N takes recebidos" p/ vários.
+    const rawTitle = rawCount > 1 ? `${rawCount} takes recebidos` : 'Vídeo bruto recebido';
     if (p > 0) {
-      if (item.rawVideoFileId) {
+      if (rawCount > 0) {
         const ts = item.rawUploadedAt ?? item.createdAt;
         return {
           key: 'raw',
           stage: 'raw',
           state: 'done',
-          title: 'Vídeo bruto recebido',
+          title: rawTitle,
           detail: 'Enviado em',
           timestamp: ts,
         };
@@ -106,12 +130,12 @@ export function buildJourney(item: ContentItem): Journey {
       };
     }
     // stage === 'raw'
-    if (item.rawVideoFileId) {
+    if (rawCount > 0) {
       return {
         key: 'raw',
         stage: 'raw',
         state: 'current',
-        title: 'Vídeo bruto recebido',
+        title: rawTitle,
         detail: 'Enviado em',
         timestamp: item.rawUploadedAt ?? item.createdAt,
       };
@@ -125,16 +149,45 @@ export function buildJourney(item: ContentItem): Journey {
     };
   })();
 
+  // ----- nó images (só carrossel) -----
+  const imagesStep: TrailStep = (() => {
+    const count = item.carouselFileIds?.length ?? 0;
+    if (count > 0) {
+      return {
+        key: 'images',
+        stage: 'raw',
+        state: p > 0 ? 'done' : 'current',
+        title: `${count} ${count === 1 ? 'imagem recebida' : 'imagens recebidas'}`,
+      };
+    }
+    return {
+      key: 'images',
+      stage: 'raw',
+      state: 'current',
+      title: 'Aguardando imagens',
+      detail: 'Adicione as imagens do carrossel na seção abaixo',
+    };
+  })();
+
   // ----- nó edited -----
   const editedStep: TrailStep = (() => {
+    const isCarousel = itemType(item) === 'carousel';
+    const editedAt = isCarousel ? item.carouselEditedAt : item.editedUploadedAt;
+    const detail = isCarousel
+      ? editedAt
+        ? 'Marcado como editado em'
+        : 'Marcado como editado'
+      : editedAt
+        ? 'Versão final anexada em'
+        : 'Versão final anexada';
     if (p > 1) {
       return {
         key: 'edited',
         stage: 'edited',
         state: 'done',
         title: 'Edição concluída',
-        detail: item.editedUploadedAt ? 'Versão final anexada em' : 'Versão final anexada',
-        timestamp: item.editedUploadedAt,
+        detail,
+        timestamp: editedAt,
       };
     }
     if (stage === 'edited') {
@@ -143,8 +196,8 @@ export function buildJourney(item: ContentItem): Journey {
         stage: 'edited',
         state: 'current',
         title: 'Edição concluída',
-        detail: item.editedUploadedAt ? 'Versão final anexada em' : 'Versão final anexada',
-        timestamp: item.editedUploadedAt,
+        detail,
+        timestamp: editedAt,
       };
     }
     return {
@@ -175,27 +228,30 @@ export function buildJourney(item: ContentItem): Journey {
   // ----- ramos por rede -----
   const branches: TrailBranch[] = assigned.map((network) => {
     const ns = item.networks[network];
+    const autoPosted = isAutoPostedFromSchedule(network, ns);
     let scheduledStep: BranchStep;
     let postedStep: BranchStep;
     let branchState: NodeState;
 
-    if (ns.status === 'posted') {
+    if (ns.status === 'posted' || autoPosted) {
+      const postedAt = ns.postedAt ?? (autoPosted ? ns.scheduledAt : undefined);
       branchState = 'done';
       scheduledStep = { key: 'scheduled', state: 'done', title: 'Programado' };
-      const when = formatDateTime(ns.postedAt);
+      const when = formatWhen(postedAt);
       postedStep = {
         key: 'posted',
         state: 'current',
         title: when ? `Publicado em ${when}` : 'Publicado',
-        timestamp: ns.postedAt,
+        timestamp: postedAt,
         url: ns.postUrl,
       };
     } else if (ns.status === 'scheduled') {
+      const arrived = hasScheduledTimeArrived(ns);
       branchState = 'current';
       const when = formatDateTime(ns.scheduledAt);
       scheduledStep = {
         key: 'scheduled',
-        state: 'current',
+        state: arrived ? 'done' : 'current',
         title: when ? `Programado para ${when}` : 'Programado — defina a data',
         timestamp: ns.scheduledAt,
       };
@@ -217,7 +273,9 @@ export function buildJourney(item: ContentItem): Journey {
   });
 
   // ----- nó publish (agregado das redes) -----
-  const postedCount = assigned.filter((n) => item.networks[n].status === 'posted').length;
+  const postedCount = assigned.filter(
+    (n) => item.networks[n].status === 'posted' || isAutoPostedFromSchedule(n, item.networks[n]),
+  ).length;
   const publishStep: TrailStep = (() => {
     let detail: string;
     if (unassigned) detail = 'Nenhuma rede selecionada ainda';
@@ -238,21 +296,26 @@ export function buildJourney(item: ContentItem): Journey {
   const lastPostedAt = assigned
     .map((n) => item.networks[n].postedAt)
     .filter((t): t is string => !!t)
-    .sort()
-    .at(-1);
+    .sort();
+  // `Array.prototype.at` não existe em versões mais antigas do Safari/iOS.
+  // Este trecho roda na primeira renderização do dashboard, logo após o login.
+  const lastPostedAtValue = lastPostedAt[lastPostedAt.length - 1];
   const completeStep: TrailStep = {
     key: 'complete',
     stage: 'posted',
     state: stage === 'posted' ? 'current' : 'pending',
     title:
       stage === 'posted'
-        ? 'Jornada concluída — publicado em todas as redes 🎉'
+        ? 'Jornada concluída — publicado em todas as redes'
         : 'Jornada concluída',
-    timestamp: stage === 'posted' ? lastPostedAt : undefined,
-    detail: stage === 'posted' && lastPostedAt ? 'Última publicação em' : undefined,
+    timestamp: stage === 'posted' ? lastPostedAtValue : undefined,
+    detail: stage === 'posted' && lastPostedAtValue ? 'Última publicação em' : undefined,
   };
 
-  const steps: TrailStep[] = [rawStep, editedStep, readyStep, publishStep, completeStep];
+  const steps: TrailStep[] =
+    itemType(item) === 'carousel'
+      ? [imagesStep, editedStep, readyStep, publishStep, completeStep]
+      : [rawStep, editedStep, readyStep, publishStep, completeStep];
 
   return {
     stage,

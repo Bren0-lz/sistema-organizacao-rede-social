@@ -9,6 +9,10 @@ export const NETWORK_LABELS: Record<Network, string> = {
 };
 
 export type PostStatus = 'none' | 'scheduled' | 'posted';
+export type YouTubePrivacyStatus = 'public' | 'private' | 'unlisted';
+
+/** Tipo de postagem: vídeo ou carrossel de imagens; ambos seguem cru→editado. */
+export type ContentType = 'video' | 'carousel';
 
 export interface NetworkStatus {
   assigned: boolean;
@@ -16,6 +20,13 @@ export interface NetworkStatus {
   scheduledAt?: string;
   postedAt?: string;
   postUrl?: string;
+  /** Legenda/hashtags específicas desta rede. */
+  caption?: string;
+  youtubeVideoId?: string;
+  youtubePrivacyStatus?: YouTubePrivacyStatus;
+  youtubeUploadStatus?: 'idle' | 'uploading' | 'scheduled' | 'failed';
+  youtubeUploadProgress?: number;
+  youtubeUploadError?: string;
 }
 
 export interface ContentItem {
@@ -24,21 +35,85 @@ export interface ContentItem {
   notes?: string;
   createdAt: string;
   updatedAt: string;
+  /** Tipo da postagem; ausente = 'video' (itens criados antes do carrossel). */
+  type?: ContentType;
+  /** Imagens do carrossel, em ordem de exibição. A 1ª é usada como capa. */
+  carouselFileIds?: string[];
+  /** Takes crus, em ordem de envio. Um vídeo pode ser gravado em vários takes. */
+  rawVideoFileIds?: string[];
+  /** Versões editadas (cortes/montagens finais), em ordem de envio. */
+  editedVideoFileIds?: string[];
+  /** Legado: 1 único take cru. Mantido só p/ leitura (itens antigos). */
   rawVideoFileId?: string;
+  /** Legado: 1 única versão editada. Mantido só p/ leitura (itens antigos). */
   editedVideoFileId?: string;
   coverFileId?: string;
   /** Quando o vídeo bruto foi anexado (opcional; itens antigos não têm). */
   rawUploadedAt?: string;
   /** Quando o vídeo editado foi anexado. */
   editedUploadedAt?: string;
+  /** Quando o carrossel foi marcado como editado. Presença = estágio "editado". */
+  carouselEditedAt?: string;
   /** Quando o item foi mandado para a lixeira. Ausente = item ativo. */
   deletedAt?: string;
+  /** Tags livres para organização/filtro (ex.: "série X", "patrocinado"). */
+  tags?: string[];
   networks: Record<Network, NetworkStatus>;
+}
+
+/** Estágio de uma gravação planejada na agenda. */
+export type RecordingStatus = 'planned' | 'recorded' | 'canceled';
+
+/**
+ * Gravação planejada na agenda. Quando marcada como gravada, vira um
+ * ContentItem (vídeo cru) no pipeline, vinculado por `linkedItemId`.
+ */
+export interface Recording {
+  id: string;
+  title: string;
+  /** ISO com data + hora da gravação. */
+  scheduledAt: string;
+  /** Local da gravação (texto livre). */
+  location?: string;
+  /** Roteiro / ideia da gravação. */
+  script?: string;
+  status: RecordingStatus;
+  /** ContentItem criado quando a gravação foi marcada como gravada. */
+  linkedItemId?: string;
+  /** Evento espelhado no Google Agenda (para atualizar/remover depois). */
+  googleCalendarEventId?: string;
+  createdAt: string;
+  updatedAt: string;
+  /** Soft delete; ausente = gravação ativa. */
+  deletedAt?: string;
+}
+
+/**
+ * Ideia solta, sem data: um rascunho no banco de ideias. Pode ser promovida a
+ * uma gravação agendada ou a um ContentItem.
+ */
+export interface Idea {
+  id: string;
+  title: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  /** Soft delete / promoção; ausente = ideia ativa. */
+  deletedAt?: string;
 }
 
 export interface Database {
   version: number;
+  /**
+   * Identificador único da última escrita. Como o Drive não oferece escrita
+   * condicional, `saveDatabase` relê após gravar e compara este campo para
+   * detectar se outra escrita concorrente sobrescreveu a nossa. Ausente em bancos
+   * antigos.
+   */
+  writer?: string;
   items: ContentItem[];
+  recordings: Recording[];
+  ideas: Idea[];
 }
 
 export type FileSlot = 'raw' | 'edited' | 'cover';
@@ -58,7 +133,15 @@ export interface AppFolders {
   raw: string;
   edited: string;
   covers: string;
+  carousel: string;
   dbFileId: string;
+  configFileId: string;
+}
+
+/** Configuração do app guardada no Drive (config.json), compartilhável com a equipe. */
+export interface AppConfig {
+  /** Client ID OAuth usado só no fluxo do YouTube; vazio = usa o VITE_GOOGLE_CLIENT_ID. */
+  youtubeClientId?: string;
 }
 
 /** Dias que um item permanece na lixeira antes de ser excluído de vez. */
@@ -82,11 +165,28 @@ export function emptyNetworkStatus(): NetworkStatus {
   return { assigned: false, status: 'none' };
 }
 
-export function newContentItem(title: string): ContentItem {
+export function hasScheduledTimeArrived(status: NetworkStatus, now = Date.now()): boolean {
+  if (status.status !== 'scheduled' || !status.scheduledAt) return false;
+  const scheduled = new Date(status.scheduledAt).getTime();
+  return Number.isFinite(scheduled) && scheduled <= now;
+}
+
+export function isAutoPostedFromSchedule(
+  network: Network,
+  status: NetworkStatus,
+  now = Date.now(),
+): boolean {
+  void network;
+  return hasScheduledTimeArrived(status, now);
+}
+
+export function newContentItem(title: string, type: ContentType = 'video'): ContentItem {
   const now = new Date().toISOString();
   return {
     id: crypto.randomUUID(),
     title,
+    type,
+    ...(type === 'carousel' ? { carouselFileIds: [] } : {}),
     createdAt: now,
     updatedAt: now,
     networks: {
@@ -95,6 +195,83 @@ export function newContentItem(title: string): ContentItem {
       youtube: emptyNetworkStatus(),
     },
   };
+}
+
+export function newRecording(title: string, scheduledAt: string): Recording {
+  const now = new Date().toISOString();
+  return {
+    id: crypto.randomUUID(),
+    title,
+    scheduledAt,
+    status: 'planned',
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+export function newIdea(title: string): Idea {
+  const now = new Date().toISOString();
+  return {
+    id: crypto.randomUUID(),
+    title,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+/** Tipo da postagem, tratando itens antigos (sem `type`) como vídeo. */
+export function itemType(item: ContentItem): ContentType {
+  return item.type ?? 'video';
+}
+
+/**
+ * Takes crus do item, unificando o campo novo (array) com o legado (1 único id).
+ * Use SEMPRE isto para ler — nunca `item.rawVideoFileId` direto.
+ */
+export function rawVideoIds(item: ContentItem): string[] {
+  if (item.rawVideoFileIds?.length) return item.rawVideoFileIds;
+  return item.rawVideoFileId ? [item.rawVideoFileId] : [];
+}
+
+/** Versões editadas do item, unificando o campo novo (array) com o legado. */
+export function editedVideoIds(item: ContentItem): string[] {
+  if (item.editedVideoFileIds?.length) return item.editedVideoFileIds;
+  return item.editedVideoFileId ? [item.editedVideoFileId] : [];
+}
+
+/**
+ * FileId da miniatura a exibir: no carrossel é a 1ª imagem; no vídeo é a capa.
+ */
+export function coverFileIdFor(item: ContentItem): string | undefined {
+  if (itemType(item) === 'carousel') return item.carouselFileIds?.[0];
+  return item.coverFileId;
+}
+
+/** Origem da miniatura a exibir no card/lista. */
+export interface ThumbSource {
+  fileId: string;
+  /**
+   * `true` quando a miniatura vem do próprio arquivo de vídeo (capa temporária:
+   * o frame que o Drive gera), e não de uma capa definida pelo usuário. Nesse
+   * caso o carregador não deve baixar o vídeo inteiro como fallback.
+   */
+  fromVideo: boolean;
+}
+
+/**
+ * Qual miniatura exibir e de onde ela vem. Igual a {@link coverFileIdFor}
+ * quando há capa/1ª imagem; mas, para um vídeo ainda sem capa, cai no próprio
+ * vídeo (editado de preferência, senão o cru) para usar o frame gerado pelo
+ * Drive como capa provisória, evitando a tela preta.
+ */
+export function thumbSourceFor(item: ContentItem): ThumbSource | undefined {
+  const cover = coverFileIdFor(item);
+  if (cover) return { fileId: cover, fromVideo: false };
+  if (itemType(item) === 'video') {
+    const videoFileId = editedVideoIds(item)[0] ?? rawVideoIds(item)[0];
+    if (videoFileId) return { fileId: videoFileId, fromVideo: true };
+  }
+  return undefined;
 }
 
 /** Estágio do item no pipeline de produção. */
@@ -120,6 +297,10 @@ export function itemStage(item: ContentItem): Stage {
       return 'scheduled';
     return 'ready';
   }
-  if (item.editedVideoFileId) return 'edited';
+  // Carrossel: "cru" enquanto não marcado; "editado" após o usuário marcar.
+  if (itemType(item) === 'carousel') {
+    return item.carouselEditedAt ? 'edited' : 'raw';
+  }
+  if (editedVideoIds(item).length > 0) return 'edited';
   return 'raw';
 }

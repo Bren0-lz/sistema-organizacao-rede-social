@@ -10,6 +10,7 @@ const UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3';
 
 const ROOT_FOLDER_NAME = 'Organizador de Conteúdo';
 const DB_FILE_NAME = 'db.json';
+const CONFIG_FILE_NAME = 'config.json';
 const APP_TAG = { key: 'app', value: 'org-social' };
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
 
@@ -19,7 +20,70 @@ export const SLOT_FOLDER_NAMES: Record<FileSlot, string> = {
   cover: 'Capas',
 };
 
+const CAROUSEL_FOLDER_NAME = 'Imagens de Carrossel';
+
 const FOLDER_ID_KEY = 'org-social:rootFolderId';
+// Estrutura de pastas completa (todos os IDs), para pular a redescoberta ao reabrir.
+const FOLDERS_KEY = 'org-social:folders:v1';
+
+// O Safari pode indisponibilizar o localStorage em alguns contextos de
+// privacidade. Isso não deve impedir a abertura do app após o OAuth.
+function readLocalStorage(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeLocalStorage(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // A pasta será localizada novamente na próxima abertura.
+  }
+}
+
+function removeLocalStorage(key: string): void {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // Nada para limpar quando o armazenamento não está disponível.
+  }
+}
+
+function readCachedFolders(): AppFolders | null {
+  const raw = readLocalStorage(FOLDERS_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<AppFolders>;
+    if (
+      parsed.root &&
+      parsed.raw &&
+      parsed.edited &&
+      parsed.covers &&
+      parsed.carousel &&
+      parsed.dbFileId &&
+      parsed.configFileId
+    ) {
+      return parsed as AppFolders;
+    }
+  } catch {
+    // cache corrompido: será reconstruído na descoberta normal
+  }
+  return null;
+}
+
+/**
+ * Invalida o cache da estrutura de pastas. Chamado quando uma leitura posterior
+ * (db.json/config.json) falha — sinal de que algum ID cacheado ficou obsoleto
+ * (ex.: alguém moveu/recriou uma pasta compartilhada). A próxima conexão
+ * redescobre tudo do zero.
+ */
+export function clearFolderCache(): void {
+  removeLocalStorage(FOLDERS_KEY);
+  removeLocalStorage(FOLDER_ID_KEY);
+}
 
 /** Teto de tamanho por upload (5 GB) — evita travar a rede com arquivos absurdos. */
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024 * 1024;
@@ -73,20 +137,22 @@ async function createFolder(name: string, parentId?: string): Promise<string> {
   return data.id;
 }
 
-async function findChild(parentId: string, name: string): Promise<DriveFileInfo | null> {
-  const files = await findByQuery(
-    `'${parentId}' in parents and name = '${name.replace(/'/g, "\\'")}' and trashed = false`,
-  );
-  return files[0] ?? null;
-}
-
 /**
  * Localiza (ou cria) a estrutura de pastas do app no Drive.
  * Ordem de busca: ID salvo localmente → pasta marcada com appProperties
  * (inclui pastas compartilhadas pela equipe) → cria do zero.
  */
 export async function ensureAppStructure(explicitRootId?: string): Promise<AppFolders> {
-  let rootId = explicitRootId ?? localStorage.getItem(FOLDER_ID_KEY) ?? undefined;
+  // Caminho "reabrir": a estrutura inteira já é conhecida, então pulamos toda a
+  // descoberta. Só vale quando o usuário não está apontando explicitamente para
+  // outra pasta; se algum ID cacheado estiver obsoleto, a leitura seguinte falha
+  // e o store chama clearFolderCache() para reconstruir.
+  if (!explicitRootId) {
+    const cached = readCachedFolders();
+    if (cached) return cached;
+  }
+
+  let rootId = explicitRootId ?? readLocalStorage(FOLDER_ID_KEY) ?? undefined;
 
   if (rootId) {
     // valida que a pasta ainda existe/está acessível
@@ -94,7 +160,7 @@ export async function ensureAppStructure(explicitRootId?: string): Promise<AppFo
       await driveFetch(`/files/${rootId}?fields=id&supportsAllDrives=true`);
     } catch {
       rootId = undefined;
-      localStorage.removeItem(FOLDER_ID_KEY);
+      removeLocalStorage(FOLDER_ID_KEY);
     }
   }
 
@@ -109,33 +175,39 @@ export async function ensureAppStructure(explicitRootId?: string): Promise<AppFo
   if (!rootId) {
     rootId = await createFolder(ROOT_FOLDER_NAME);
   }
-  localStorage.setItem(FOLDER_ID_KEY, rootId);
+  writeLocalStorage(FOLDER_ID_KEY, rootId);
 
-  const folders: Partial<Record<FileSlot, string>> = {};
-  for (const slot of Object.keys(SLOT_FOLDER_NAMES) as FileSlot[]) {
-    const name = SLOT_FOLDER_NAMES[slot];
-    const found = await findChild(rootId, name);
-    folders[slot] = found?.id ?? (await createFolder(name, rootId));
-  }
+  // Uma única listagem dos filhos da raiz substitui as 6 buscas sequenciais.
+  const children = await findByQuery(`'${rootId}' in parents and trashed = false`);
+  const byName = new Map<string, DriveFileInfo>();
+  for (const child of children) byName.set(child.name, child);
 
-  let dbFile = await findChild(rootId, DB_FILE_NAME);
-  if (!dbFile) {
-    const id = await createDbFile(rootId);
-    dbFile = { id, name: DB_FILE_NAME, mimeType: 'application/json' };
-  }
+  // Cada item necessário vem do mapa; o que faltar é criado em paralelo.
+  const [raw, edited, covers, carousel, dbFileId, configFileId] = await Promise.all([
+    byName.get(SLOT_FOLDER_NAMES.raw)?.id ?? createFolder(SLOT_FOLDER_NAMES.raw, rootId),
+    byName.get(SLOT_FOLDER_NAMES.edited)?.id ?? createFolder(SLOT_FOLDER_NAMES.edited, rootId),
+    byName.get(SLOT_FOLDER_NAMES.cover)?.id ?? createFolder(SLOT_FOLDER_NAMES.cover, rootId),
+    byName.get(CAROUSEL_FOLDER_NAME)?.id ?? createFolder(CAROUSEL_FOLDER_NAME, rootId),
+    byName.get(DB_FILE_NAME)?.id ?? createJsonFile(rootId, DB_FILE_NAME, { version: 0, items: [] }),
+    byName.get(CONFIG_FILE_NAME)?.id ?? createJsonFile(rootId, CONFIG_FILE_NAME, {}),
+  ]);
 
-  return {
+  const folders: AppFolders = {
     root: rootId,
-    raw: folders.raw!,
-    edited: folders.edited!,
-    covers: folders.cover!,
-    dbFileId: dbFile.id,
+    raw,
+    edited,
+    covers,
+    carousel,
+    dbFileId,
+    configFileId,
   };
+  writeLocalStorage(FOLDERS_KEY, JSON.stringify(folders));
+  return folders;
 }
 
-async function createDbFile(parentId: string): Promise<string> {
+async function createJsonFile(parentId: string, name: string, initial: unknown): Promise<string> {
   const metadata = {
-    name: DB_FILE_NAME,
+    name,
     parents: [parentId],
     appProperties: { [APP_TAG.key]: APP_TAG.value },
   };
@@ -144,7 +216,7 @@ async function createDbFile(parentId: string): Promise<string> {
     `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` +
     `${JSON.stringify(metadata)}\r\n` +
     `--${boundary}\r\nContent-Type: application/json\r\n\r\n` +
-    `${JSON.stringify({ version: 0, items: [] })}\r\n--${boundary}--`;
+    `${JSON.stringify(initial)}\r\n--${boundary}--`;
   const res = await driveFetch(
     `${UPLOAD_API}/files?uploadType=multipart&supportsAllDrives=true`,
     {
@@ -269,12 +341,45 @@ export async function fetchBlobUrl(fileId: string): Promise<string> {
   return URL.createObjectURL(blob);
 }
 
+export async function fetchFileBlob(fileId: string): Promise<Blob> {
+  const res = await driveFetch(`/files/${fileId}?alt=media&supportsAllDrives=true`);
+  return res.blob();
+}
+
+/**
+ * Baixa o arquivo para o computador do usuário, usando o nome original do Drive.
+ * Cria um link temporário e dispara o clique programaticamente.
+ */
+export async function downloadFile(fileId: string, fallbackName?: string): Promise<void> {
+  const [blob, info] = await Promise.all([
+    fetchFileBlob(fileId),
+    getFileInfo(fileId).catch(() => null),
+  ]);
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = info?.name ?? fallbackName ?? fileId;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 /**
  * Versão leve de {@link fetchBlobUrl} para capas: baixa o `thumbnailLink` do
  * Drive (poucos KB) em vez do arquivo cheio. Se o item não tiver thumbnail
  * disponível, cai de volta para o download completo.
+ *
+ * `allowFullDownload: false` desliga esse fallback — usado quando o fileId é um
+ * vídeo (capa temporária pelo frame do Drive): baixar o vídeo inteiro seria
+ * pesado e um `<img>` nem o exibiria. Sem thumbnail, apenas lança e o card
+ * mantém o placeholder.
  */
-export async function fetchThumbnailUrl(fileId: string): Promise<string> {
+export async function fetchThumbnailUrl(
+  fileId: string,
+  options: { allowFullDownload?: boolean } = {},
+): Promise<string> {
+  const { allowFullDownload = true } = options;
   const info = await getFileInfo(fileId);
   if (info.thumbnailLink) {
     try {
@@ -289,9 +394,13 @@ export async function fetchThumbnailUrl(fileId: string): Promise<string> {
       // thumbnail indisponível/expirado — segue para o fallback abaixo
     }
   }
+  if (!allowFullDownload) {
+    throw new Error('Miniatura do vídeo ainda não disponível no Drive.');
+  }
   return fetchBlobUrl(fileId);
 }
 
+<<<<<<< HEAD
 /** Extrai o ID da pasta de uma URL do Drive ou usa a string como ID. */
 function parseFolderId(folderIdOrUrl: string): string {
   // aceita tanto o ID puro quanto a URL https://drive.google.com/drive/folders/<id>
@@ -323,11 +432,84 @@ export async function setSharedRootFolder(folderIdOrUrl: string): Promise<string
     throw new Error('Esse link aponta para um arquivo, não para uma pasta do Drive.');
   }
   localStorage.setItem(FOLDER_ID_KEY, id);
+=======
+/**
+ * Gera uma capa provisória de um vídeo no próprio navegador: baixa o arquivo
+ * (autenticado, o mesmo caminho usado para reproduzir), desenha um frame em um
+ * `<canvas>` e devolve um blob-URL da imagem (lado máximo de 480px).
+ *
+ * Usado como fallback quando o Drive não disponibiliza um thumbnail utilizável
+ * para o vídeo — caso desta app, que autentica por token (sem cookie de sessão),
+ * então o `thumbnailLink` do Drive costuma falhar por CORS/cookies. Baixa o
+ * vídeo inteiro uma vez; o resultado é cacheado por quem chama.
+ */
+export async function captureVideoFrameUrl(fileId: string): Promise<string> {
+  const blob = await fetchFileBlob(fileId);
+  const srcUrl = URL.createObjectURL(blob);
+  const video = document.createElement('video');
+  video.muted = true;
+  video.playsInline = true;
+  video.preload = 'auto';
+  video.src = srcUrl;
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(new Error('Tempo esgotado ao capturar o frame do vídeo.')),
+        10000,
+      );
+      video.onloadedmetadata = () => {
+        const duration = Number.isFinite(video.duration) ? video.duration : 0;
+        // evita o frame inicial (costuma ser preto): 1s ou metade do vídeo
+        video.currentTime = duration > 0 ? Math.min(duration / 2, 1) : 0.1;
+      };
+      video.onseeked = () => {
+        clearTimeout(timer);
+        resolve();
+      };
+      video.onerror = () => {
+        clearTimeout(timer);
+        reject(new Error('Não foi possível decodificar o vídeo.'));
+      };
+    });
+
+    const w = video.videoWidth;
+    const h = video.videoHeight;
+    if (!w || !h) throw new Error('Vídeo sem dimensões para capturar.');
+    const scale = Math.min(1, 480 / Math.max(w, h));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(w * scale));
+    canvas.height = Math.max(1, Math.round(h * scale));
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas 2D indisponível.');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const frame = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, 'image/jpeg', 0.8),
+    );
+    if (!frame) throw new Error('Falha ao gerar a imagem do frame.');
+    return URL.createObjectURL(frame);
+  } finally {
+    video.onloadedmetadata = null;
+    video.onseeked = null;
+    video.onerror = null;
+    video.removeAttribute('src');
+    video.load();
+    URL.revokeObjectURL(srcUrl);
+  }
+}
+
+export function setSharedRootFolder(folderIdOrUrl: string): string {
+  // aceita tanto o ID puro quanto a URL https://drive.google.com/drive/folders/<id>
+  const match = folderIdOrUrl.match(/folders\/([\w-]+)/);
+  const id = match ? match[1] : folderIdOrUrl.trim();
+  writeLocalStorage(FOLDER_ID_KEY, id);
+>>>>>>> 08bd6e7193f0e8f32a6d01ae28c173420a7666c0
   return id;
 }
 
 export function getRootFolderId(): string | null {
-  return localStorage.getItem(FOLDER_ID_KEY);
+  return readLocalStorage(FOLDER_ID_KEY);
 }
 
 export function rootFolderUrl(rootId: string): string {

@@ -1,12 +1,13 @@
 import { useRef, useState, type DragEvent } from 'react';
 import { motion } from 'framer-motion';
 import { useStore } from '../store/useStore';
+import { Icon, type IconName } from './Icon';
 
 type BulkSlot = 'raw' | 'edited';
 
-const SLOT_LABEL: Record<BulkSlot, string> = {
-  raw: '🎬 Vídeos crus',
-  edited: '✂️ Vídeos editados',
+const SLOT_META: Record<BulkSlot, { icon: IconName; label: string }> = {
+  raw: { icon: 'video', label: 'Vídeos crus' },
+  edited: { icon: 'scissors', label: 'Vídeos editados' },
 };
 
 export function BulkUploadModal({ onClose }: { onClose: () => void }) {
@@ -14,6 +15,7 @@ export function BulkUploadModal({ onClose }: { onClose: () => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [slot, setSlot] = useState<BulkSlot>('raw');
+  const [groupIntoOne, setGroupIntoOne] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -36,7 +38,7 @@ export function BulkUploadModal({ onClose }: { onClose: () => void }) {
     setBusy(true);
     try {
       // fecha já: o progresso continua nos toasts e nos cards
-      void bulkUploadAsItems(files, slot);
+      void bulkUploadAsItems(files, slot, { groupIntoOne });
       onClose();
     } finally {
       setBusy(false);
@@ -44,12 +46,12 @@ export function BulkUploadModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <motion.div
+    // Backdrop escuro e estático para abrir rápido sem recalcular blur no fundo.
+    <div
       className="modal-backdrop"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      onClick={onClose}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <motion.div
         className="modal modal-wide"
@@ -59,23 +61,36 @@ export function BulkUploadModal({ onClose }: { onClose: () => void }) {
         transition={{ type: 'spring', stiffness: 380, damping: 30 }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2>📤 Subir em lote</h2>
+        <h2><Icon name="upload" /> Subir em lote</h2>
         <p className="form-help" style={{ marginTop: 0 }}>
-          Cada vídeo vira um conteúdo novo, com o título tirado do nome do arquivo. Você pode
-          ajustar título, capa e redes depois.
+          {groupIntoOne
+            ? 'Todos os arquivos entram num único conteúdo, como vários takes/versões. Útil para um vídeo gravado em partes.'
+            : 'Cada vídeo vira um conteúdo novo, com o título tirado do nome do arquivo. Você pode ajustar título, capa e redes depois.'}
         </p>
 
         <div className="bulk-slot-pick">
-          {(Object.keys(SLOT_LABEL) as BulkSlot[]).map((s) => (
+          {(Object.keys(SLOT_META) as BulkSlot[]).map((s) => (
             <button
               key={s}
               className={`status-tab ${slot === s ? 'active' : ''}`}
               onClick={() => setSlot(s)}
             >
-              {SLOT_LABEL[s]}
+              <Icon name={SLOT_META[s].icon} /> {SLOT_META[s].label}
             </button>
           ))}
         </div>
+
+        <label className="bulk-group-toggle">
+          <input
+            type="checkbox"
+            checked={groupIntoOne}
+            onChange={(e) => setGroupIntoOne(e.target.checked)}
+          />
+          <span>
+            Agrupar em um único conteúdo{' '}
+            {slot === 'raw' ? '(vários takes)' : '(várias versões)'}
+          </span>
+        </label>
 
         <div
           className={`bulk-drop ${dragOver ? 'drag-over' : ''}`}
@@ -87,7 +102,7 @@ export function BulkUploadModal({ onClose }: { onClose: () => void }) {
           onDragLeave={() => setDragOver(false)}
           onDrop={onDrop}
         >
-          <span className="bulk-drop-icon">⬆️</span>
+          <span className="bulk-drop-icon"><Icon name="upload" /></span>
           <span>Arraste vários vídeos aqui ou clique para escolher</span>
           <input
             ref={inputRef}
@@ -117,7 +132,7 @@ export function BulkUploadModal({ onClose }: { onClose: () => void }) {
         )}
 
         <div className="modal-actions">
-          <button className="btn btn-ghost" onClick={onClose}>
+          <button className="btn btn-modal-close" onClick={onClose}>
             Cancelar
           </button>
           <button
@@ -129,6 +144,6 @@ export function BulkUploadModal({ onClose }: { onClose: () => void }) {
           </button>
         </div>
       </motion.div>
-    </motion.div>
+    </div>
   );
 }

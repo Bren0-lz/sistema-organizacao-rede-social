@@ -364,15 +364,14 @@ export function NewItemModal({
 }
 
 export function SettingsModal({ onClose }: { onClose: () => void }) {
+  const connectSharedFolder = useStore((s) => s.connectSharedFolder);
   const connectYoutube = useStore((s) => s.connectYoutube);
   const disconnectYoutube = useStore((s) => s.disconnectYoutube);
   const saveYoutubeClientId = useStore((s) => s.saveYoutubeClientId);
   const signOut = useStore((s) => s.signOut);
-<<<<<<< HEAD
   const [folderInput, setFolderInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-=======
   const youtubeAuthStatus = useStore((s) => s.youtubeAuthStatus);
   const youtubeAccount = useStore((s) => s.youtubeAccount);
   const youtubeErrorMessage = useStore((s) => s.youtubeErrorMessage);
@@ -381,7 +380,6 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
   const [clientIdInput, setClientIdInput] = useState(youtubeClientId ?? '');
   const [clientIdBusy, setClientIdBusy] = useState(false);
   const [prevYoutubeClientId, setPrevYoutubeClientId] = useState(youtubeClientId);
->>>>>>> 08bd6e7193f0e8f32a6d01ae28c173420a7666c0
   const rootId = getRootFolderId();
 
   // O config.json do Drive carrega de forma assíncrona (e muda ao salvar): mantém o
@@ -414,6 +412,18 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
             </p>
           </div>
         )}
+        <div>
+          <label className="form-label">Conectar a uma pasta compartilhada</label>
+          <input
+            placeholder="Link ou ID da pasta no Drive"
+            value={folderInput}
+            onChange={(e) => setFolderInput(e.target.value)}
+          />
+          <p className="form-help">
+            Cole o link da pasta "Organizador de Conteúdo" compartilhada com você para usar a
+            mesma base do time e clique em Conectar.
+          </p>
+        </div>
         <div>
           <label className="form-label">Client ID do YouTube (OAuth)</label>
           <input
@@ -513,7 +523,6 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
         <button className="btn btn-modal-close" onClick={onClose}>
           Fechar
         </button>
-<<<<<<< HEAD
         <button
           className="btn btn-primary"
           disabled={!folderInput.trim() || busy}
@@ -532,8 +541,6 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
         >
           {busy ? 'Conectando…' : 'Conectar'}
         </button>
-=======
->>>>>>> 08bd6e7193f0e8f32a6d01ae28c173420a7666c0
       </div>
     </ModalShell>
   );

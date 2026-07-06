@@ -400,39 +400,6 @@ export async function fetchThumbnailUrl(
   return fetchBlobUrl(fileId);
 }
 
-<<<<<<< HEAD
-/** Extrai o ID da pasta de uma URL do Drive ou usa a string como ID. */
-function parseFolderId(folderIdOrUrl: string): string {
-  // aceita tanto o ID puro quanto a URL https://drive.google.com/drive/folders/<id>
-  const match = folderIdOrUrl.match(/folders\/([\w-]+)/);
-  return match ? match[1] : folderIdOrUrl.trim();
-}
-
-/**
- * Valida que o ID/URL aponta para uma pasta acessível e só então o persiste.
- * Antes, qualquer string era gravada no localStorage e só falhava depois, de
- * forma silenciosa (caía na criação de uma pasta nova).
- */
-export async function setSharedRootFolder(folderIdOrUrl: string): Promise<string> {
-  const id = parseFolderId(folderIdOrUrl);
-  if (!DRIVE_ID_RE.test(id)) {
-    throw new Error(
-      'Link ou ID inválido. Cole o link da pasta no Drive (…/folders/ID) ou o próprio ID.',
-    );
-  }
-  let info: DriveFileInfo;
-  try {
-    info = await getFileInfo(id);
-  } catch {
-    throw new Error(
-      'Não foi possível acessar essa pasta. Confira o link e se ela foi compartilhada com a sua conta.',
-    );
-  }
-  if (info.mimeType !== FOLDER_MIME) {
-    throw new Error('Esse link aponta para um arquivo, não para uma pasta do Drive.');
-  }
-  localStorage.setItem(FOLDER_ID_KEY, id);
-=======
 /**
  * Gera uma capa provisória de um vídeo no próprio navegador: baixa o arquivo
  * (autenticado, o mesmo caminho usado para reproduzir), desenha um frame em um
@@ -499,12 +466,37 @@ export async function captureVideoFrameUrl(fileId: string): Promise<string> {
   }
 }
 
-export function setSharedRootFolder(folderIdOrUrl: string): string {
+/** Extrai o ID da pasta de uma URL do Drive ou usa a string como ID. */
+function parseFolderId(folderIdOrUrl: string): string {
   // aceita tanto o ID puro quanto a URL https://drive.google.com/drive/folders/<id>
   const match = folderIdOrUrl.match(/folders\/([\w-]+)/);
-  const id = match ? match[1] : folderIdOrUrl.trim();
+  return match ? match[1] : folderIdOrUrl.trim();
+}
+
+/**
+ * Valida que o ID/URL aponta para uma pasta acessível e só então o persiste.
+ * Antes, qualquer string era gravada no localStorage e só falhava depois, de
+ * forma silenciosa (caía na criação de uma pasta nova).
+ */
+export async function setSharedRootFolder(folderIdOrUrl: string): Promise<string> {
+  const id = parseFolderId(folderIdOrUrl);
+  if (!DRIVE_ID_RE.test(id)) {
+    throw new Error(
+      'Link ou ID inválido. Cole o link da pasta no Drive (…/folders/ID) ou o próprio ID.',
+    );
+  }
+  let info: DriveFileInfo;
+  try {
+    info = await getFileInfo(id);
+  } catch {
+    throw new Error(
+      'Não foi possível acessar essa pasta. Confira o link e se ela foi compartilhada com a sua conta.',
+    );
+  }
+  if (info.mimeType !== FOLDER_MIME) {
+    throw new Error('Esse link aponta para um arquivo, não para uma pasta do Drive.');
+  }
   writeLocalStorage(FOLDER_ID_KEY, id);
->>>>>>> 08bd6e7193f0e8f32a6d01ae28c173420a7666c0
   return id;
 }
 

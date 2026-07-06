@@ -21,11 +21,8 @@ import {
   readJsonFile,
   setSharedRootFolder,
   uploadFile,
-<<<<<<< HEAD
   validateUpload,
-=======
   writeJsonFile,
->>>>>>> 08bd6e7193f0e8f32a6d01ae28c173420a7666c0
 } from '../services/drive';
 import {
   loadDatabase,
@@ -512,14 +509,10 @@ export const useStore = create<AppState>((set, get) => {
 
     signOut() {
       authSignOut();
-<<<<<<< HEAD
-      revokeCovers(get().coverUrls);
-      set({ authStatus: 'signedOut', folders: undefined, items: [], coverUrls: {} });
-=======
       setYoutubeClientId(undefined);
       // Revoga os blob-URLs das capas antes de descartar o cache, senão os blobs
       // ficam retidos na memória do navegador a cada login/logout.
-      for (const url of Object.values(get().coverUrls)) URL.revokeObjectURL(url);
+      revokeCovers(get().coverUrls);
       coverRetries.clear();
       coverRetryScheduled.clear();
       set({
@@ -576,7 +569,6 @@ export const useStore = create<AppState>((set, get) => {
         youtubeAccount: undefined,
         youtubeErrorMessage: undefined,
       });
->>>>>>> 08bd6e7193f0e8f32a6d01ae28c173420a7666c0
     },
 
     async refresh() {
@@ -1147,9 +1139,8 @@ export const useStore = create<AppState>((set, get) => {
 
     async loadCover(fileId, options) {
       if (get().coverUrls[fileId]) return;
-<<<<<<< HEAD
-      try {
-        const url = await coverLimiter(() => fetchThumbnailUrl(fileId));
+      const cacheUrl = (url: string) => {
+        coverRetries.delete(fileId);
         // outra chamada concorrente pode ter resolvido a mesma capa primeiro
         const current = get().coverUrls;
         if (current[fileId]) {
@@ -1166,10 +1157,6 @@ export const useStore = create<AppState>((set, get) => {
           delete next[evicted];
         }
         set({ coverUrls: next });
-=======
-      const cacheUrl = (url: string) => {
-        coverRetries.delete(fileId);
-        set({ coverUrls: { ...get().coverUrls, [fileId]: url } });
       };
 
       try {
@@ -1178,7 +1165,6 @@ export const useStore = create<AppState>((set, get) => {
         );
         cacheUrl(url);
         return;
->>>>>>> 08bd6e7193f0e8f32a6d01ae28c173420a7666c0
       } catch {
         // miniatura do Drive indisponível — capas de imagem param aqui (mantêm
         // o placeholder); vídeos seguem para o fallback de captura local
@@ -1354,7 +1340,8 @@ export const useStore = create<AppState>((set, get) => {
       });
 
     try {
-      validateUpload(file, slot);
+      // imagens do carrossel seguem a mesma regra de validação da capa
+      validateUpload(file, kind === 'carousel' ? 'cover' : kind);
       const fileId = await uploadFile(file, parentId, (p) => updateTask({ progress: p }));
       if (kind === 'carousel') {
         await appendCarouselImage(itemId, fileId);

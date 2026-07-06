@@ -55,15 +55,33 @@ describe('drive (funções puras / cache)', () => {
   });
 
   describe('setSharedRootFolder', () => {
-    it('extrai o id de uma URL de pasta e o salva', () => {
-      const id = setSharedRootFolder('https://drive.google.com/drive/folders/folder123?usp=sharing');
-      expect(id).toBe('folder123');
-      expect(getRootFolderId()).toBe('folder123');
+    function mockFolderInfo(id: string) {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        okJson({ id, name: 'Pasta', mimeType: 'application/vnd.google-apps.folder' }),
+      );
+    }
+
+    it('extrai o id de uma URL de pasta e o salva', async () => {
+      mockFolderInfo('folder1234567');
+      const id = await setSharedRootFolder(
+        'https://drive.google.com/drive/folders/folder1234567?usp=sharing',
+      );
+      expect(id).toBe('folder1234567');
+      expect(getRootFolderId()).toBe('folder1234567');
     });
 
-    it('aceita o id puro (aparando espaços)', () => {
-      expect(setSharedRootFolder('  plain-id  ')).toBe('plain-id');
-      expect(localStorage.getItem(FOLDER_ID_KEY)).toBe('plain-id');
+    it('aceita o id puro (aparando espaços)', async () => {
+      mockFolderInfo('plain-id-123');
+      await expect(setSharedRootFolder('  plain-id-123  ')).resolves.toBe('plain-id-123');
+      expect(localStorage.getItem(FOLDER_ID_KEY)).toBe('plain-id-123');
+    });
+
+    it('rejeita quando o alvo não é uma pasta e não persiste nada', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        okJson({ id: 'file-id-video', name: 'Arquivo', mimeType: 'video/mp4' }),
+      );
+      await expect(setSharedRootFolder('file-id-video')).rejects.toThrow(/não para uma pasta/);
+      expect(localStorage.getItem(FOLDER_ID_KEY)).toBeNull();
     });
   });
 

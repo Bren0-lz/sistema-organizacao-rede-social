@@ -55,7 +55,8 @@ describe('NewItemModal', () => {
     expect(input.multiple).toBe(true);
     fireEvent.change(input, { target: { files: [firstTake, secondTake] } });
 
-    expect(screen.getByText('take-1.mp4')).toBeInTheDocument();
+    // o 1º vídeo aparece no preview do player e também na lista de arquivos
+    expect(screen.getAllByText('take-1.mp4').length).toBeGreaterThan(0);
     expect(screen.getByText('take-2.mp4')).toBeInTheDocument();
   });
 });

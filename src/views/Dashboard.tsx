@@ -82,17 +82,19 @@ function stageForNetwork(item: ContentItem, network: Network): Stage | null {
   return 'ready';
 }
 
-<<<<<<< HEAD
 /**
  * Estágio do item dado o filtro ativo — fonte única para o quadro (byStage) e
  * a lista (listItems). Retorna null quando o item não pertence ao filtro.
  */
 function stageUnderFilter(item: ContentItem, filter: Filter): Stage | null {
   if (filter === 'all') return itemStage(item);
+  if (filter === 'carousel' || filter === 'carousel-raw' || filter === 'carousel-ready')
+    return matchesCarouselFilter(item, filter) ? itemStage(item) : null;
   if (filter === 'raw' || filter === 'edited')
     return itemStage(item) === filter ? filter : null;
   return stageForNetwork(item, filter);
-=======
+}
+
 function nextScheduledAt(item: ContentItem): string {
   const dates = NETWORKS.map((network) => item.networks[network])
     .filter((status) => status.assigned && status.status === 'scheduled' && status.scheduledAt)
@@ -193,7 +195,6 @@ function BoardColumn({
       </div>
     </motion.section>
   );
->>>>>>> 08bd6e7193f0e8f32a6d01ae28c173420a7666c0
 }
 
 export function Dashboard() {
@@ -281,17 +282,7 @@ export function Dashboard() {
   const byStage = useMemo(() => {
     const map = new Map<Stage, ContentItem[]>(STAGES.map(({ stage }) => [stage, []]));
     for (const item of searched) {
-<<<<<<< HEAD
       const stage = stageUnderFilter(item, filter);
-=======
-      let stage: Stage | null;
-      if (filter === 'all') stage = itemStage(item);
-      else if (filter === 'carousel' || filter === 'carousel-raw' || filter === 'carousel-ready')
-        stage = matchesCarouselFilter(item, filter) ? itemStage(item) : null;
-      else if (filter === 'raw' || filter === 'edited')
-        stage = itemStage(item) === filter ? filter : null;
-      else stage = stageForNetwork(item, filter);
->>>>>>> 08bd6e7193f0e8f32a6d01ae28c173420a7666c0
       if (stage) map.get(stage)!.push(item);
     }
     // programados primeiro por data mais próxima; demais por atualização recente
@@ -305,12 +296,6 @@ export function Dashboard() {
     return map;
   }, [searched, filter]);
 
-<<<<<<< HEAD
-  // mesma regra do quadro: mantém os itens que pertencem ao filtro ativo
-  const listItems = useMemo(() => {
-    if (filter === 'all') return searched;
-    return searched.filter((i) => stageUnderFilter(i, filter) !== null);
-=======
   // O CSS consegue igualar colunas na mesma linha do grid. Aqui propagamos a
   // altura da maior coluna para as linhas seguintes (ex.: "Publicado").
   useLayoutEffect(() => {
@@ -335,15 +320,10 @@ export function Dashboard() {
     };
   }, [view, byStage]);
 
-  // na visão lista, o filtro de rede vira só "atribuído àquela rede"
+  // mesma regra do quadro: mantém os itens que pertencem ao filtro ativo
   const listItems = useMemo(() => {
     if (filter === 'all') return searched;
-    if (filter === 'carousel' || filter === 'carousel-raw' || filter === 'carousel-ready')
-      return searched.filter((i) => matchesCarouselFilter(i, filter));
-    if (filter === 'raw' || filter === 'edited')
-      return searched.filter((i) => itemStage(i) === filter);
-    return searched.filter((i) => i.networks[filter].assigned);
->>>>>>> 08bd6e7193f0e8f32a6d01ae28c173420a7666c0
+    return searched.filter((i) => stageUnderFilter(i, filter) !== null);
   }, [searched, filter]);
 
   const openItem = openItemId ? items.find((i) => i.id === openItemId) : undefined;

@@ -10,6 +10,7 @@ import {
   type ContentItem,
 } from '../types';
 import { useStore } from '../store/useStore';
+import { formatDate } from '../lib/dates';
 import { useInView } from '../lib/concurrency';
 import { NetworkIcon } from './NetworkIcon';
 import { StageIcon } from './StageIcon';
@@ -56,7 +57,7 @@ function LazyThumb({
   return (
     <div className="row-thumb" ref={ref} data-type={isCarousel ? 'carousel' : 'video'}>
       {url ? (
-        <img src={url} alt={alt} loading="lazy" />
+        <img src={url} alt="" loading="lazy" />
       ) : (
         <span className="row-thumb-ph">
           <Icon name={!fromVideo && fileId ? 'hourglass' : isCarousel ? 'carousel' : 'video'} />
@@ -111,11 +112,7 @@ const ListRow = memo(function ListRow({
         />
       </td>
       <td className="col-thumb">
-<<<<<<< HEAD
-        <LazyThumb fileId={item.coverFileId} alt={item.coverFileId ? `Capa de ${item.title}` : ''} />
-=======
         <LazyThumb fileId={thumb?.fileId} fromVideo={thumb?.fromVideo} isCarousel={isCarousel} />
->>>>>>> 08bd6e7193f0e8f32a6d01ae28c173420a7666c0
       </td>
       <td className="col-title">
         <span className="row-title">{item.title}</span>
@@ -158,15 +155,7 @@ const ListRow = memo(function ListRow({
           <StageIcon stage={stage} /> {itemStageLabel(item)}
         </span>
       </td>
-<<<<<<< HEAD
       <td className="col-date">{formatDate(item.updatedAt)}</td>
-=======
-      <td className="col-date">
-        {new Date(item.updatedAt).toLocaleDateString('pt-BR', {
-          day: '2-digit',
-          month: '2-digit',
-        })}
-      </td>
       <td className="col-actions" onClick={(e) => e.stopPropagation()}>
         {confirming ? (
           <span className="row-delete-confirm">
@@ -199,7 +188,6 @@ const ListRow = memo(function ListRow({
           </button>
         )}
       </td>
->>>>>>> 08bd6e7193f0e8f32a6d01ae28c173420a7666c0
     </tr>
   );
 });
